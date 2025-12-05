@@ -9,7 +9,7 @@ workflows:
 
     environment:
       groups:
-        - sc500vette@aol.com          # ← add your Apple ID + App-Specific Password in Codemagic → Settings → Environment variables
+        - sc500vette@aol.comstroke12345stroke         # ← add your Apple ID + App-Specific Password in Codemagic → Settings → Environment variables
       vars:
         XCODE_WORKSPACE: "strokesnchokes.xcworkspace"
         XCODE_SCHEME: "strokesnchokes"
