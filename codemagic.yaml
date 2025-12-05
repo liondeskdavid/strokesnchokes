@@ -5,7 +5,7 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m2
     integrations:
-      app_store_connect: LiondeskDavid Apple ID   # ← change this if you used a different name when you connected your Apple ID
+      app_store_connect: sc500vette@aol.com   # ← change this if you used a different name when you connected your Apple ID
 
     environment:
       groups:
