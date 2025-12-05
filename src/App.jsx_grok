@@ -1,0 +1,206 @@
+// src/App.jsx  ← FINAL VERSION – FULL GOLF APP
+import React, { useState, useEffect } from 'react';
+import { auth, db } from './firebase';
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { collection, addDoc, onSnapshot, serverTimestamp, query, orderBy } from 'firebase/firestore';
+
+const NUM_HOLES = 18;
+const HOLE_NUMBERS = Array.from({ length: NUM_HOLES }, (_, i) => i + 1);
+
+export default function App() {
+  const [userId, setUserId] = useState(null);
+  const [players, setPlayers] = useState([]);
+  const [rounds, setRounds] = useState([]);
+  const [activeRound, setActiveRound] = useState(null);
+  const [scores, setScores] = useState({});
+  const [newPlayerName, setNewPlayerName] = useState('');
+  const [newPlayerHcp, setNewPlayerHcp] = useState('');
+  const [courseName, setCourseName] = useState('');
+
+  // Auto sign-in
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) setUserId(user.uid);
+      else signInAnonymously(auth);
+    });
+    return unsub;
+  }, []);
+
+  // Load players & rounds
+  useEffect(() => {
+    if (!userId) return;
+
+    const playersRef = collection(db, `users/${userId}/players`);
+    const roundsRef = collection(db, `users/${userId}/rounds`);
+
+    onSnapshot(playersRef, (snap) => {
+      setPlayers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    onSnapshot(query(roundsRef, orderBy('createdAt', 'desc')), (snap) => {
+      const rs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setRounds(rs);
+      const active = rs.find(r => r.status === 'Active') || rs[0];
+      if (active) {
+        setActiveRound({ ...active, id: active.id });
+        setScores(active.scores || {});
+      }
+    });
+  }, [userId]);
+
+  const addPlayer = async () => {
+    if (!newPlayerName.trim()) return;
+    await addDoc(collection(db, `users/${userId}/players`), {
+      name: newPlayerName.trim(),
+      handicap: parseInt(newPlayerHcp) || 0,
+      createdAt: serverTimestamp(),
+    });
+    setNewPlayerName('');
+    setNewPlayerHcp('');
+  };
+
+  const startRound = async () => {
+    if (players.length === 0 || !courseName.trim()) return;
+    const initialScores = {};
+    players.forEach(p => {
+      initialScores[p.name] = {};
+      HOLE_NUMBERS.forEach(h => initialScores[p.name][`hole${h}`] = '');
+    });
+
+    const ref = await addDoc(collection(db, `users/${userId}/rounds`), {
+      courseName: courseName.trim(),
+      players: players.map(p => ({ name: p.name, handicap: p.handicap || 0 })),
+      scores: initialScores,
+      status: 'Active',
+      createdAt: serverTimestamp(),
+    });
+    setActiveRound({ id: ref.id, courseName, scores: initialScores });
+    setCourseName('');
+  };
+
+  const updateScore = (playerName, hole, value) => {
+    const num = value === '' ? '' : Math.max(1, parseInt(value) || 0);
+    setScores(prev => ({
+      ...prev,
+      [playerName]: { ...prev[playerName], [`hole${hole}`]: num }
+    }));
+    // Auto-save to Firebase
+    if (activeRound?.id) {
+      addDoc(collection(db, `users/${userId}/rounds`), { scores }, { merge: true });
+    }
+  };
+
+  if (!userId) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-600 to-blue-700">
+        <div className="text-white text-3xl font-bold">Loading Strokes-n-Chokes...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 pb-24">
+      {/* Header */}
+      <header className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 shadow-2xl">
+        <h1 className="text-4xl font-bold text-center">Strokes-n-Chokes</h1>
+        <p className="text-center opacity-90">Golf Scorecard + Betting Chaos</p>
+      </header>
+
+      <div className="p-4 space-y-6 max-w-4xl mx-auto">
+        {/* Add Player */}
+        <section className="bg-white rounded-2xl shadow-xl p-5">
+          <h2 className="text-2xl font-bold mb-4">Add Player</h2>
+          <div className="flex gap-3">
+            <input
+              placeholder="Name"
+              value={newPlayerName}
+              onChange={e => setNewPlayerName(e.target.value)}
+              className="flex-1 p-3 border rounded-xl text-lg"
+            />
+            <input
+              type="number"
+              placeholder="HCP"
+              value={newPlayerHcp}
+              onChange={e => setNewPlayerHcp(e.target.value)}
+              className="w-24 p-3 border rounded-xl text-center"
+            />
+            <button onClick={addPlayer} className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold">
+              Add
+            </button>
+          </div>
+          <div className="mt-4 space-y-2">
+            {players.map(p => (
+              <div key={p.id} className="bg-gradient-to-r from-indigo-100 to-purple-100 p-4 rounded-xl font-bold text-lg">
+                {p.name} <span className="text-indigo-700">(HCP {p.handicap || 0})</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Start Round */}
+        {!activeRound && (
+          <section className="bg-white rounded-2xl shadow-xl p-5">
+            <h2 className="text-2xl font-bold mb-4">Start New Round</h2>
+            <input
+              placeholder="Course Name (e.g. Torrey Pines)"
+              value={courseName}
+              onChange={e => setCourseName(e.target.value)}
+              className="w-full p-4 border rounded-xl text-lg mb-4"
+            />
+            <button
+              onClick={startRound}
+              disabled={players.length === 0 || !courseName.trim()}
+              className="w-full bg-blue-600 disabled:bg-gray-400 text-white py-5 rounded-xl text-2xl font-bold"
+            >
+              Start Round
+            </button>
+          </section>
+        )}
+
+        {/* Scorecard */}
+        {activeRound && (
+          <section className="bg-white rounded-2xl shadow-xl p-5">
+            <h2 className="text-2xl font-bold mb-4 text-center">{activeRound.courseName}</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-center">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="p-3">Hole</th>
+                    {HOLE_NUMBERS.map(h => <th key={h} className="w-12">{h}</th>)}
+                    <th className="p-3">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {players.map(p => {
+                    const total = HOLE_NUMBERS.reduce((sum, h) => sum + (parseInt(scores[p.name]?.[`hole${h}`] || 0) || 0), 0);
+                    return (
+                      <tr key={p.name} className="border-t">
+                        <td className="p-3 font-bold text-left">{p.name}</td>
+                        {HOLE_NUMBERS.map(h => (
+                          <td key={h} className="p-1">
+                            <input
+                              type="tel"
+                              value={scores[p.name]?.[`hole${h}`] || ''}
+                              onChange={e => updateScore(p.name, h, e.target.value)}
+                              className="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-green-500"
+                            />
+                          </td>
+                        ))}
+                        <td className="p-3 font-bold text-xl">{total || '-'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* Floating Action Button */}
+      <button className="fixed bottom-6 right-6 bg-green-600 text-white w-16 h-16 rounded-full shadow-2xl text-4xl font-bold z-10">
+        +
+      </button>
+    </div>
+  );
+}

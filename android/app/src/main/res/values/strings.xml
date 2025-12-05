@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Strokes-n-Chokes</string>
+    <string name="title_activity_main">Strokes-n-Chokes</string>
+    <string name="package_name">com.snc.strokesnchokes</string>
+    <string name="custom_url_scheme">com.snc.strokesnchokes</string>
+</resources>
