@@ -1,0 +1,53 @@
+# codemagic.yaml
+workflows:
+  ios-workflow:
+    name: iOS Build → TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: LiondeskDavid Apple ID   # ← change this if you used a different name when you connected your Apple ID
+
+    environment:
+      groups:
+        - app_store_credentials          # ← add your Apple ID + App-Specific Password in Codemagic → Settings → Environment variables
+      vars:
+        XCODE_WORKSPACE: "strokesnchokes.xcworkspace"
+        XCODE_SCHEME: "strokesnchokes"
+        BUNDLE_ID: "com.liondeskdavid.strokesnchokes"   # ← change only if you edited capacitor.config.ts
+      node: latest
+      xcode: latest
+
+    triggering:
+      events:
+        - push
+        - tag
+      branch_patterns:
+        - pattern: main
+          include: true
+
+    scripts:
+      - name: Install npm dependencies
+        # Install everything
+        script: |
+          npm ci
+
+      - name: Install Capacitor plugins
+        script: |
+          npm install @capacitor/core @capacitor/cli
+
+      - name: Build web assets (Vite)
+        script: |
+          npm run build
+
+      - name: Capacitor sync & iOS setup
+        script: |
+          npx cap sync ios
+          npx cap open ios &   # opens Xcode in the background (required once for pods)
+
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios/App && pod install --repo-update
+
+      - name: Increment build number
+        script: |
+          cd
