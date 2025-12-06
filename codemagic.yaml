@@ -84,25 +84,37 @@ workflows:
 
           echo "--- Diagnostic complete. Proceeding to build... ---"
       # ---------------------------
-
+      
       - name: Prepare and Build IPA for TestFlight
         script: |
-          # 1. Define the absolute path to the exportOptions.plist using $CM_BUILD_DIR
+          # Define the correct paths
+          WORKSPACE_PATH="ios/App/App.xcworkspace"
+          ARCHIVE_PATH="build/strokesnchokes.xcarchive"
           EXPORT_PLIST_PATH="$CM_BUILD_DIR/ios/exportOptions.plist"
-          echo "Using absolute export options plist path: $EXPORT_PLIST_PATH"
+          
+          echo "Using workspace path: $WORKSPACE_PATH"
 
-          # 2. Increment the build number (must run from the 'ios/App' directory)
+          # 1. Increment the build number
           (
             cd ios/App
             agvtool new-version -all $(($(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID") + 1))
           )
+          
+          # 2. ARCHIVE using xcodebuild
+          echo "--- Starting xcodebuild archive ---"
+          xcodebuild archive \
+            -workspace "$WORKSPACE_PATH" \
+            -scheme "$IOS_SCHEME" \
+            -configuration Release \
+            -destination generic/platform=iOS \
+            -archivePath "$ARCHIVE_PATH" | xcpretty
 
-          # 3. Build the IPA using the guaranteed absolute path for the export plist.
-          xcode-project build-ipa \
-            --workspace "ios/App/App.xcworkspace" \
-            --scheme "strokesnchokes" \
-            --export-options-plist "$EXPORT_PLIST_PATH"
-    
+          # 3. EXPORT IPA using xcodebuild
+          echo "--- Starting xcodebuild export ---"
+          xcodebuild -exportArchive \
+            -archivePath "$ARCHIVE_PATH" \
+            -exportOptionsPlist "$EXPORT_PLIST_PATH" \
+            -exportPath "build/ios/ipa" | xcpretty
 
     artifacts:
       - build/ios/ipa/*.ipa
