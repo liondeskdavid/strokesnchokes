@@ -8,9 +8,11 @@ workflows:
     environment:
       vars:
         BUNDLE_ID: "com.liondeskdavid.strokesnchokes"
-        ASC_KEY_ID: "FKNBK58HF2"
-        ASC_ISSUER_ID: "6c57ab02-4757-49f6-b5d2-462bcca62124"
-
+        ASC_KEY_ID: "FKNBK58HF2"  # ← Your 10-char Key ID
+        ASC_ISSUER_ID: "6c57ab02-4757-49f6-b5d2-462bcca62124"  # ← Your Issuer ID
+        # The key content should be stored as a SECRET in Codemagic UI.
+        APP_STORE_PRIVATE_KEY: "API_KEY_CONTENT_SECRET"
+       
       node: latest
       xcode: latest
 
