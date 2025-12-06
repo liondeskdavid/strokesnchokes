@@ -1,4 +1,4 @@
-# codemagic.yaml — FINAL WORKING VERSION (Dec 2025)
+# codemagic.yaml — Fixed with App Store Connect API Key Reference and Dependencies
 workflows:
   ios-testflight:
     name: iOS → TestFlight
@@ -7,30 +7,43 @@ workflows:
 
     environment:
       vars:
+        # REQUIRED FOR THE API BLOCK BELOW
         BUNDLE_ID: "com.liondeskdavid.strokesnchokes"
         ASC_KEY_ID: "FKNBK58HF2"  # ← Your 10-char Key ID
         ASC_ISSUER_ID: "6c57ab02-4757-49f6-b5d2-462bcca62124"  # ← Your Issuer ID
         # The key content should be stored as a SECRET in Codemagic UI.
         APP_STORE_PRIVATE_KEY: "API_KEY_CONTENT_SECRET"
-       
+        
       node: latest
       xcode: latest
 
     triggering:
       events:
         - push
+        - tag
       branch_patterns:
         - pattern: main
           include: true
 
     scripts:
-      - name: Install dependencies
+      - name: Install npm dependencies
         script: |
-          npm ci
+          npm ci --prefer-offline
+          
+      # --- NEW STEP: Install the missing Capacitor iOS package ---
+      - name: Install Capacitor iOS dependency
+        script: |
+          npm install @capacitor/ios
+      # ---------------------------------------------------------
 
-      - name: Build web assets
+      - name: Build web assets (Vite)
         script: |
           npm run build
+          
+      - name: Capacitor add iOS platform
+        script: |
+          # This should now succeed since the dependency is installed
+     #     npx cap add ios
 
       - name: Capacitor sync iOS
         script: |
@@ -38,44 +51,28 @@ workflows:
 
       - name: Install CocoaPods
         script: |
-          cd ios/App && pod install
+          cd ios/App
+          pod install --repo-update
 
-      - name: Build IPA (Correct workspace + export options)
+      - name: Increment build number
         script: |
-          # Generate correct exportOptions.plist for TestFlight
-          cat > exportOptions.plist << EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store</string>
-            <key>teamID</key>
-            <string>TAU24Q4HV5</string>
-          </dict>
-          </plist>
-          EOF
+          cd ios/App
+          agvtool new-version -all $(($(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID") + 1))
 
-          # Build IPA with correct paths
-          xcodebuild -workspace "ios/App/App.xcworkspace" \
-                     -scheme "App" \
-                     -configuration Release \
-                     -archivePath "build/App.xcarchive" \
-                     archive
-
-          xcodebuild -exportArchive \
-                     -archivePath "build/App.xcarchive" \
-                     -exportOptionsPlist exportOptions.plist \
-                     -exportPath "build/ipa" \
-                     -allowProvisioningUpdates
+      - name: Build IPA (Fixed workspace path!)
+        script: |
+          xcode-project build-ipa \
+            --workspace "ios/App/App.xcworkspace" \
+            --scheme "App"
 
     artifacts:
-      - build/ipa/*.ipa
+      - build/ios/ipa/*.ipa
 
     publishing:
       app_store_connect:
-        auth:
-          api_key_id: $ASC_KEY_ID
-          issuer_id: $ASC_ISSUER_ID
-          private_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        # Authentication fields for App Store Connect
+        key_id: $ASC_KEY_ID
+        issuer_id: $ASC_ISSUER_ID
+        api_key: $APP_STORE_PRIVATE_KEY 
         submit_to_testflight: true
+        submit_to_app_store: false
