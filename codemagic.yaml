@@ -52,7 +52,7 @@ workflows:
         script: |
           npx cap sync ios
 
-         - name: Install CocoaPods and Verify Workspace
+      - name: Install CocoaPods and Verify Workspace
         script: |
           # 1. Install CocoaPods dependencies inside the iOS project folder
           cd ios/App
