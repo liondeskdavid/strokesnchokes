@@ -1,4 +1,4 @@
-# codemagic.yaml — Fixed with App Store Connect API Key Reference
+# codemagic.yaml — Fixed with App Store Connect API Key Reference and Capacitor Add
 workflows:
   ios-testflight:
     name: iOS → TestFlight
@@ -12,7 +12,6 @@ workflows:
         ASC_KEY_ID: "FKNBK58HF2"  # ← Your 10-char Key ID
         ASC_ISSUER_ID: "6c57ab02-4757-49f6-b5d2-462bcca62124"  # ← Your Issuer ID
         # The key content should be stored as a SECRET in Codemagic UI.
-        # Make sure this variable name matches the secret name in the UI.
         APP_STORE_PRIVATE_KEY: "API_KEY_CONTENT_SECRET"
         
       node: latest
@@ -34,6 +33,12 @@ workflows:
       - name: Build web assets (Vite)
         script: |
           npm run build
+          
+      # --- NEW STEP ADDED HERE ---
+      - name: Capacitor add iOS platform
+        script: |
+          npx cap add ios
+      # ---------------------------
 
       - name: Capacitor sync iOS
         script: |
@@ -47,6 +52,7 @@ workflows:
       - name: Increment build number
         script: |
           cd ios/App
+          # This command relies on the bundle ID and should work once the platform is added.
           agvtool new-version -all $(($(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID") + 1))
 
       - name: Build IPA for TestFlight
@@ -61,10 +67,9 @@ workflows:
 
     publishing:
       app_store_connect:
-        # Use the environment variables to provide the IDs
+        # Authentication fields for App Store Connect
         key_id: $ASC_KEY_ID
         issuer_id: $ASC_ISSUER_ID
-        # The api_key MUST reference the secret containing the .p8 file content
         api_key: $APP_STORE_PRIVATE_KEY 
         submit_to_testflight: true
         submit_to_app_store: false
