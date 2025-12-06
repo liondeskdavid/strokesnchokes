@@ -8,7 +8,7 @@ workflows:
     environment:
       vars:
         # REQUIRED FOR THE API BLOCK BELOW
-        BUNDLE_ID: "com.liondeskdavid.strokesnchokes"
+        BUNDLE_ID: "com.davidanderson.strokesnchokes"
         ASC_KEY_ID: "FKNBK58HF2"  # ← Your 10-char Key ID
         APP_STORE_CONNECT_KEY_IDENTIFIER: "FKNBK58HF2"
         ASC_ISSUER_ID: "6c57ab02-4757-49f6-b5d2-462bcca62124"  # ← Your Issuer ID
