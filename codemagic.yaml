@@ -15,6 +15,7 @@ workflows:
         APP_STORE_CONNECT_ISSUER_ID: "6c57ab02-4757-49f6-b5d2-462bcca62124"
         # The key content should be stored as a SECRET in Codemagic UI.
         APP_STORE_PRIVATE_KEY: "API_KEY_CONTENT_SECRET"
+        APP_STORE_CONNECT_PRIVATE_KEY: "API_KEY_CONTENT_SECRET"
         
       node: latest
       xcode: latest
