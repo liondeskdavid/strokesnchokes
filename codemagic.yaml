@@ -1,4 +1,4 @@
-# codemagic.yaml — Fixed with App Store Connect API Key Reference and Capacitor Add
+# codemagic.yaml — Fixed with App Store Connect API Key Reference and Dependencies
 workflows:
   ios-testflight:
     name: iOS → TestFlight
@@ -29,16 +29,21 @@ workflows:
       - name: Install npm dependencies
         script: |
           npm ci --prefer-offline
+          
+      # --- NEW STEP: Install the missing Capacitor iOS package ---
+      - name: Install Capacitor iOS dependency
+        script: |
+          npm install @capacitor/ios
+      # ---------------------------------------------------------
 
       - name: Build web assets (Vite)
         script: |
           npm run build
           
-      # --- NEW STEP ADDED HERE ---
       - name: Capacitor add iOS platform
         script: |
+          # This should now succeed since the dependency is installed
           npx cap add ios
-      # ---------------------------
 
       - name: Capacitor sync iOS
         script: |
@@ -52,7 +57,6 @@ workflows:
       - name: Increment build number
         script: |
           cd ios/App
-          # This command relies on the bundle ID and should work once the platform is added.
           agvtool new-version -all $(($(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID") + 1))
 
       - name: Build IPA for TestFlight
