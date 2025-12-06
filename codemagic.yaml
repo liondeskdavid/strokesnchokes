@@ -46,16 +46,24 @@ workflows:
       - name: Capacitor add iOS platform
         script: |
           # This should now succeed since the dependency is installed
-          npx cap add ios
+     #     npx cap add ios
 
       - name: Capacitor sync iOS
         script: |
           npx cap sync ios
 
-      - name: Install CocoaPods
+         - name: Install CocoaPods and Verify Workspace
         script: |
+          # 1. Install CocoaPods dependencies inside the iOS project folder
           cd ios/App
           pod install --repo-update
+          
+          # 2. Crucial diagnostic step: List contents of ios/App to confirm workspace existence
+          echo "--- Listing contents of the ios/App directory (should show App.xcworkspace) ---"
+          ls -R 
+          
+          # Return to root directory for subsequent steps
+          cd ../..
 
       - name: Increment build number
         script: |
