@@ -10,7 +10,7 @@
 
 <!-- !!! IMPORTANT: Replace YOUR_TEAM_ID with your 10-character Apple Developer Team ID !!! -->
 <key>teamID</key>
-<string>YOUR_TEAM_ID</string>
+<string>TAU24Q4HV5</string>
 
 <!-- Ensures debug symbols are uploaded for crash reporting -->
 <key>uploadSymbols</key>
