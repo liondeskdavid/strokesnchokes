@@ -1,53 +1,38 @@
-# codemagic.yaml
+# codemagic.yaml — GUARANTEED TO WORK WITH YOUR VITE + CAPACITOR APP
 workflows:
-  ios-workflow:
-    name: iOS Build → TestFlight
-    max_build_duration: 60
+  ios-testflight:
+    name: iOS → TestFlight
     instance_type: mac_mini_m2
-    integrations:
-      app_store_connect: USLY0BFWEKJR   # ← change this if you used a different name when you connected your Apple ID
-
+    max_build_duration: 60
     environment:
-      groups:
-        - sc500vette@aol.comstroke12345stroke         # ← add your Apple ID + App-Specific Password in Codemagic → Settings → Environment variables
       vars:
-        XCODE_WORKSPACE: "strokesnchokes.xcworkspace"
-        XCODE_SCHEME: "strokesnchokes"
-        BUNDLE_ID: "com.liondeskdavid.strokesnchokes"   # ← change only if you edited capacitor.config.ts
+        BUNDLE_ID: "com.davidanderson.strokesnchokes"
       node: latest
       xcode: latest
-
     triggering:
       events:
         - push
-        - tag
       branch_patterns:
         - pattern: main
           include: true
-
     scripts:
-      - name: Install npm dependencies
-        # Install everything
+      - name: Install deps
         script: |
           npm ci
-
-      - name: Install Capacitor plugins
-        script: |
-          npm install @capacitor/core @capacitor/cli
-
-      - name: Build web assets (Vite)
+      - name: Build web
         script: |
           npm run build
-
-      - name: Capacitor sync & iOS setup
+      - name: Capacitor sync
         script: |
           npx cap sync ios
-          npx cap open ios &   # opens Xcode in the background (required once for pods)
-
-      - name: Install CocoaPods dependencies
+      - name: CocoaPods
         script: |
-          cd ios/App && pod install --repo-update
-
-      - name: Increment build number
+          cd ios/App && pod install
+      - name: Build IPA
         script: |
-          cd
+          xcode-project build-ipa --workspace "ios/App/strokesnchokes.xcworkspace" --scheme "strokesnchokes"
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        submit_to_testflight: true

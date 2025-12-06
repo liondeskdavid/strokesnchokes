@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "8daf5c1e-3e45-4249-9efd-97d9beac42fc"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.davidanderson.strokesnchokes",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}
