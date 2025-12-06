@@ -1,0 +1,30 @@
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+
+<plist version="1.0">
+<dict>
+<!-- The method for distributing the app. 'app-store' is correct for TestFlight. -->
+<key>method</key>
+<string>app-store</string>
+
+<!-- !!! IMPORTANT: Replace YOUR_TEAM_ID with your 10-character Apple Developer Team ID !!! -->
+<key>teamID</key>
+<string>TAU24Q4HV5</string>
+
+<!-- Ensures debug symbols are uploaded for crash reporting -->
+<key>uploadSymbols</key>
+<true/>
+
+<!-- Ensures the resulting archive is uploaded to App Store Connect immediately -->
+<key>destination</key>
+<string>upload</string>
+
+<!-- This setting isn't strictly necessary with API key signing but doesn't hurt -->
+<key>signingStyle</key>
+<string>automatic</string>
+
+
+</dict>
+</plist>
