@@ -7,10 +7,14 @@ workflows:
 
     environment:
       vars:
+        # REQUIRED FOR THE API BLOCK BELOW
         BUNDLE_ID: "com.liondeskdavid.strokesnchokes"
-        APP_STORE_CONNECT_KEY_NAME: "Codemagic"   # ← Exact name from Step 2
-        ASC_KEY_ID: "FKNBK58HF2"                    # ← Your 10-char Key ID
+        ASC_KEY_ID: "FKNBK58HF2"  # ← Your 10-char Key ID
         ASC_ISSUER_ID: "6c57ab02-4757-49f6-b5d2-462bcca62124"  # ← Your Issuer ID
+        # The key content should be stored as a SECRET in Codemagic UI.
+        # Make sure this variable name matches the secret name in the UI.
+        APP_STORE_PRIVATE_KEY: "API_KEY_CONTENT_SECRET"
+        
       node: latest
       xcode: latest
 
@@ -57,6 +61,10 @@ workflows:
 
     publishing:
       app_store_connect:
-        api_key: FKNBK58HF2   # References the key from Step 2
+        # Use the environment variables to provide the IDs
+        key_id: $ASC_KEY_ID
+        issuer_id: $ASC_ISSUER_ID
+        # The api_key MUST reference the secret containing the .p8 file content
+        api_key: $APP_STORE_PRIVATE_KEY 
         submit_to_testflight: true
         submit_to_app_store: false
