@@ -1,38 +1,61 @@
-# codemagic.yaml — GUARANTEED TO WORK WITH YOUR VITE + CAPACITOR APP
+# codemagic.yaml — Fixed with App Store Connect API Key Reference
 workflows:
   ios-testflight:
     name: iOS → TestFlight
     instance_type: mac_mini_m2
-    max_build_duration: 60
+    max_build_duration: 90
+
     environment:
       vars:
-        BUNDLE_ID: "com.davidanderson.strokesnchokes"
+        BUNDLE_ID: "com.liondeskdavid.strokesnchokes"
+        APP_STORE_CONNECT_KEY_NAME: "Codemagic"   # ← Exact name from Step 2
+
       node: latest
       xcode: latest
+
     triggering:
       events:
         - push
+        - tag
       branch_patterns:
         - pattern: main
           include: true
+
     scripts:
-      - name: Install deps
+      - name: Install npm dependencies
         script: |
-          npm ci
-      - name: Build web
+          npm ci --prefer-offline
+
+      - name: Build web assets (Vite)
         script: |
           npm run build
-      - name: Capacitor sync
+
+      - name: Capacitor sync iOS
         script: |
           npx cap sync ios
-      - name: CocoaPods
+
+      - name: Install CocoaPods
         script: |
-          cd ios/App && pod install
-      - name: Build IPA
+          cd ios/App
+          pod install --repo-update
+
+      - name: Increment build number
         script: |
-          xcode-project build-ipa --workspace "ios/App/strokesnchokes.xcworkspace" --scheme "strokesnchokes"
+          cd ios/App
+          agvtool new-version -all $(($(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID") + 1))
+
+      - name: Build IPA for TestFlight
+        script: |
+          xcode-project build-ipa \
+            --workspace "ios/App/strokesnchokes.xcworkspace" \
+            --scheme "strokesnchokes" \
+            --export-options-plist "ios/exportOptions.plist"
+
     artifacts:
       - build/ios/ipa/*.ipa
+
     publishing:
       app_store_connect:
+        api_key: FKNBK58HF2   # References the key from Step 2
         submit_to_testflight: true
+        submit_to_app_store: false
