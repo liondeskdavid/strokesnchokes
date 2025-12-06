@@ -43,7 +43,7 @@ workflows:
       - name: Capacitor add iOS platform
         script: |
           # This should now succeed since the dependency is installed
-          npx cap add ios
+     #     npx cap add ios
 
       - name: Capacitor sync iOS
         script: |
