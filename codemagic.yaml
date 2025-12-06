@@ -9,6 +9,15 @@ workflows:
       vars:
         BUNDLE_ID: "com.liondeskdavid.strokesnchokes"
         APP_STORE_CONNECT_KEY_NAME: "Codemagic"   # ← Exact name from Step 2
+        ASC_KEY_ID: "FKNBK58HF2"                    # ← Your 10-char Key ID
+        ASC_ISSUER_ID: "6c57ab02-4757-49f6-b5d2-462bcca62124"  # ← Your Issuer ID
+        ASC_PRIVATE_KEY: |
+          -----BEGIN PRIVATE KEY-----
+MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgRxl6uZfwstvpjV5C
+b77vae9S/eRPHKpXf2owQGW6N0OgCgYIKoZIzj0DAQehRANCAAQ6lj4+C9X1AZD+
+UltpaT9qBkjduspj+4hai1F0zzLMn9q+QL5+tfxqJPo7h53RuyAfCvivFb9yzMeq
+aXMrtYdN
+-----END PRIVATE KEY-----
 
       node: latest
       xcode: latest
