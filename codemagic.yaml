@@ -59,11 +59,44 @@ workflows:
           cd ios/App
           agvtool new-version -all $(($(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID") + 1))
 
-      - name: Build IPA (Fixed workspace path!)
+
+      # --- NEW DIAGNOSTIC STEP ---
+      - name: Verify Export Options Plist
         script: |
+          EXPORT_PLIST_PATH="$CM_BUILD_DIR/ios/exportOptions.plist"
+          
+          echo "--- 1. Current working directory for context ---"
+          pwd
+          
+          echo "--- 2. Checking for file existence and permissions ---"
+          # This command will list the file or fail if it doesn't exist
+          ls -l $EXPORT_PLIST_PATH 
+          
+          echo "--- 3. Printing file contents (excluding private key) ---"
+          # This command will print the actual content Codemagic sees
+          cat $EXPORT_PLIST_PATH 
+
+          echo "--- Diagnostic complete. Proceeding to build... ---"
+      # ---------------------------
+
+      - name: Prepare and Build IPA for TestFlight
+        script: |
+          # 1. Define the absolute path to the exportOptions.plist using $CM_BUILD_DIR
+          EXPORT_PLIST_PATH="$CM_BUILD_DIR/ios/exportOptions.plist"
+          echo "Using absolute export options plist path: $EXPORT_PLIST_PATH"
+
+          # 2. Increment the build number (must run from the 'ios/App' directory)
+          (
+            cd ios/App
+            agvtool new-version -all $(($(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID") + 1))
+          )
+
+          # 3. Build the IPA using the guaranteed absolute path for the export plist.
           xcode-project build-ipa \
-            --workspace "ios/App/App.xcworkspace" \
-            --scheme "App"
+            --workspace "ios/App/strokesnchokes.xcworkspace" \
+            --scheme "strokesnchokes" \
+            --export-options-plist "$EXPORT_PLIST_PATH"
+    
 
     artifacts:
       - build/ios/ipa/*.ipa
