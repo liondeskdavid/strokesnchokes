@@ -87,6 +87,7 @@ workflows:
       
       - name: Prepare and Build IPA for TestFlight
         script: |
+        
           # Define the correct paths
           WORKSPACE_PATH="ios/App/App.xcworkspace"
           ARCHIVE_PATH="build/strokesnchokes.xcarchive"
