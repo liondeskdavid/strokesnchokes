@@ -59,12 +59,11 @@ workflows:
           cd ios/App
           agvtool new-version -all $(($(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID") + 1))
 
-      - name: Build IPA for TestFlight
+      - name: Build IPA (Fixed workspace path!)
         script: |
           xcode-project build-ipa \
-            --workspace "ios/App/strokesnchokes.xcworkspace" \
-            --scheme "strokesnchokes" \
-            --export-options-plist "ios/exportOptions.plist"
+            --workspace "ios/App/App.xcworkspace" \
+            --scheme "App"
 
     artifacts:
       - build/ios/ipa/*.ipa
