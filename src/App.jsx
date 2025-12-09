@@ -24,7 +24,7 @@ const getCourseCollectionPath = (userId) => `users/${userId}/courses`;
 
 // --- Constants ---
 const NUM_HOLES = 18;
-const BET_TYPES = ['Side Bet', 'Nassau', 'Skins', 'Match Play', 'Low Ball/High Ball (Not Active)'];
+const BET_TYPES = ['Side Bet', 'Nassau', 'Skins', 'Match Play', '9 Point', 'Low Ball/High Ball (Not Active)'];
 const JUNK_TYPES = [
     { id: 'greenies', name: 'Greenies', description: 'Closest to pin on par 3', points: 1 },
     { id: 'sandies', name: 'Sandies', description: 'Up-and-down from greenside bunker', points: 1 },
@@ -512,10 +512,10 @@ const CustomBetManager = ({
                 value={newBetType}
                 onChange={(e) => {
                     setNewBetType(e.target.value);
-                    // Auto-fill name for Nassau/Skins/Match Play, clear for others
-                    if (e.target.value === 'Nassau' || e.target.value === 'Skins' || e.target.value === 'Match Play') {
+                    // Auto-fill name for Nassau/Skins/Match Play/9 Point, clear for others
+                    if (e.target.value === 'Nassau' || e.target.value === 'Skins' || e.target.value === 'Match Play' || e.target.value === '9 Point') {
                         setNewBetName(e.target.value);
-                    } else if (newBetName === 'Nassau' || newBetName === 'Skins' || newBetName === 'Match Play') {
+                    } else if (newBetName === 'Nassau' || newBetName === 'Skins' || newBetName === 'Match Play' || newBetName === '9 Point') {
                         setNewBetName('');
                     }
                 }}
@@ -527,20 +527,20 @@ const CustomBetManager = ({
             </select>
             <input
                 type="text"
-                placeholder={(newBetType === 'Nassau' || newBetType === 'Skins' || newBetType === 'Match Play') ? `Bet Name (auto-filled as '${newBetType}')` : "Bet Name (e.g., First Birdie)"}
-                value={(newBetType === 'Nassau' || newBetType === 'Skins' || newBetType === 'Match Play') ? newBetType : newBetName}
+                placeholder={(newBetType === 'Nassau' || newBetType === 'Skins' || newBetType === 'Match Play' || newBetType === '9 Point') ? `Bet Name (auto-filled as '${newBetType}')` : "Bet Name (e.g., First Birdie)"}
+                value={(newBetType === 'Nassau' || newBetType === 'Skins' || newBetType === 'Match Play' || newBetType === '9 Point') ? newBetType : newBetName}
                 onChange={(e) => {
-                    if (newBetType !== 'Nassau' && newBetType !== 'Skins' && newBetType !== 'Match Play') {
+                    if (newBetType !== 'Nassau' && newBetType !== 'Skins' && newBetType !== 'Match Play' && newBetType !== '9 Point') {
                         setNewBetName(e.target.value);
                     }
                 }}
-                disabled={newBetType === 'Nassau' || newBetType === 'Skins' || newBetType === 'Match Play'}
-                className={`w-full p-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 ${(newBetType === 'Nassau' || newBetType === 'Skins' || newBetType === 'Match Play') ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                disabled={newBetType === 'Nassau' || newBetType === 'Skins' || newBetType === 'Match Play' || newBetType === '9 Point'}
+                className={`w-full p-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 ${(newBetType === 'Nassau' || newBetType === 'Skins' || newBetType === 'Match Play' || newBetType === '9 Point') ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             />
             <div className="flex space-x-2">
                 <input
                     type="number"
-                    placeholder={newBetType === 'Nassau' ? "$ Per Side" : "$ Amount"}
+                    placeholder={newBetType === 'Nassau' ? "$ Per Side" : newBetType === '9 Point' ? "$ Per Point" : "$ Amount"}
                     value={newBetAmount}
                     onChange={(e) => setNewBetAmount(e.target.value)}
                     className="w-28 p-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
@@ -549,7 +549,7 @@ const CustomBetManager = ({
                 <button
                     onClick={handleAddBet}
                     className="px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition duration-150 shadow-md disabled:opacity-50"
-                    disabled={!dbReady || (!newBetName.trim() && newBetType !== 'Nassau' && newBetType !== 'Skins') || !newBetAmount}
+                    disabled={!dbReady || (!newBetName.trim() && newBetType !== 'Nassau' && newBetType !== 'Skins' && newBetType !== 'Match Play' && newBetType !== '9 Point') || !newBetAmount}
                 >
                     Add
                 </button>
@@ -557,6 +557,11 @@ const CustomBetManager = ({
             {newBetType === 'Nassau' && (
                 <p className="text-xs text-gray-600 mt-1">
                     Nassau creates 3 bets: Front 9, Back 9, and Total. Amount is per side (e.g., $1 = $3 total).
+                </p>
+            )}
+            {newBetType === '9 Point' && (
+                <p className="text-xs text-gray-600 mt-1">
+                    9 Point is a 3-player game where 9 points are split per hole based on net scores. Requires exactly 3 players.
                 </p>
             )}
             {newBetType === 'Skins' && (
@@ -590,6 +595,7 @@ const CustomBetManager = ({
                             {bet.type} {
                                 bet.type === 'Nassau' ? `($${bet.amount.toFixed(0)}/side)` :
                                 bet.type === 'Skins' ? `($${bet.amount.toFixed(0)}/skin${bet.carryOver !== false ? ', CO' : ''})` :
+                                bet.type === '9 Point' ? `($${bet.amount.toFixed(0)}/point)` :
                                 `($${bet.amount.toFixed(0)})`
                             }
                         </span>
@@ -1085,7 +1091,7 @@ const BetRecorder = ({
     if (!activeRound || activeRound.status !== 'Active') return null;
 
     const playerNames = players.map(p => p.name);
-    const manualBets = allAvailableBets.filter(b => b.type !== 'Skins' && b.type !== 'Nassau' && b.type !== 'Match Play');
+    const manualBets = allAvailableBets.filter(b => b.type !== 'Skins' && b.type !== 'Nassau' && b.type !== 'Match Play' && b.type !== '9 Point');
     const allBets = [...manualBets, ...(roundBets || [])];
 
     return (
@@ -1612,6 +1618,101 @@ const SkinsBetTracker = ({ skinsBets, skinsResults, calculatedScores }) => {
     );
 };
 
+const NinePointBetTracker = ({ ninePointBets, ninePointResults, calculatedScores }) => {
+    if (!ninePointBets || ninePointBets.length === 0) return null;
+    
+    const roundPlayers = calculatedScores.players || [];
+    
+    // Only show for 3 players
+    if (roundPlayers.length !== 3) return null;
+    
+    return (
+        <div className="p-5 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl shadow-xl border-2 border-green-300 mb-6">
+            <h2 className="text-2xl font-bold text-green-800 mb-4 text-center">9 Point Bet Tracker</h2>
+            
+            {ninePointBets.map(bet => {
+                const result = ninePointResults[bet.id];
+                if (!result) return null;
+                
+                return (
+                    <div key={bet.id} className="mb-4 p-4 bg-white rounded-xl border-2 border-green-200">
+                        <div className="text-center mb-3">
+                            <h3 className="text-lg font-bold text-green-700">{bet.name}</h3>
+                            <p className="text-sm text-gray-600">
+                                ${bet.amount} per point
+                            </p>
+                        </div>
+                        
+                        {/* Points Won and Winnings */}
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-3">
+                            <div className="text-xs font-semibold text-gray-700 uppercase mb-2">
+                                Points Won & Net Winnings (Zero-Sum)
+                            </div>
+                            <div className="space-y-2">
+                                {roundPlayers.map(player => {
+                                    const pointsWon = result.pointsWon?.[player.name] || 0;
+                                    const netWinnings = result.netWinnings?.[player.name] || 0;
+                                    const grossWinnings = result.grossWinnings?.[player.name] || (pointsWon * bet.amount);
+                                    
+                                    return (
+                                        <div key={player.name} className="flex justify-between items-center text-sm">
+                                            <span className="font-medium text-gray-700">{player.name}:</span>
+                                            <div className="flex items-center space-x-4">
+                                                <span className="text-green-700 font-semibold">
+                                                    {pointsWon} point{pointsWon !== 1 ? 's' : ''}
+                                                </span>
+                                                <span className="text-gray-600 text-xs">
+                                                    Gross: ${grossWinnings.toFixed(0)}
+                                                </span>
+                                                <span className={`font-bold ${netWinnings >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    Net: {netWinnings >= 0 ? '+' : ''}${netWinnings.toFixed(0)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        
+                        {/* Hole-by-Hole Breakdown (Collapsible) */}
+                        <details className="mt-3">
+                            <summary className="cursor-pointer text-sm font-semibold text-green-700 hover:text-green-800">
+                                Hole-by-Hole Breakdown
+                            </summary>
+                            <div className="mt-2 bg-gray-50 p-3 rounded-lg border border-gray-200 max-h-64 overflow-y-auto">
+                                <div className="grid grid-cols-3 gap-2 text-xs">
+                                    <div className="font-semibold text-gray-700">Hole</div>
+                                    <div className="font-semibold text-gray-700 col-span-2">Points Distribution</div>
+                                    {Array.from({ length: 18 }, (_, i) => i + 1).map(hole => {
+                                        const holePoints = result.holePoints?.[hole];
+                                        if (!holePoints) return null;
+                                        
+                                        return (
+                                            <React.Fragment key={hole}>
+                                                <div className="font-medium text-gray-600">{hole}</div>
+                                                <div className="col-span-2 text-gray-700">
+                                                    {roundPlayers.map((player, idx) => {
+                                                        const points = holePoints[player.name] || 0;
+                                                        return (
+                                                            <span key={player.name} className={idx > 0 ? 'ml-3' : ''}>
+                                                                {player.name}: <span className="font-semibold text-green-700">{points}</span>
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
 const MatchPlayBetTracker = ({ matchPlayBets, matchPlayResults, calculatedScores, activeRound, players: savedPlayers = [] }) => {
     if (!matchPlayBets || matchPlayBets.length === 0) return null;
     
@@ -2123,6 +2224,7 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                 nassau: 0,
                 skins: 0,
                 matchPlay: 0,
+                ninePoint: 0,
                 junk: 0,
                 total: 0 // Will be calculated as sum of gross winnings
             };
@@ -2294,6 +2396,21 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                     }
                 });
 
+                // 9 Point - Only show positive winnings (what they earned, not what they lost)
+                const ninePointBets = allAvailableBets.filter(b => b.type === '9 Point');
+                const ninePointResults = calculatedScores.ninePointResults || {};
+                ninePointBets.forEach(bet => {
+                    const result = ninePointResults[bet.id];
+                    if (result && result.grossWinnings) {
+                        teamPlayerNames.forEach(playerName => {
+                            const grossWinnings = result.grossWinnings[playerName] || 0;
+                            if (grossWinnings > 0) {
+                                breakdown[team.name].ninePoint += grossWinnings;
+                            }
+                        });
+                    }
+                });
+
                 // Junk - Only show positive winnings (what they earned, not what they lost)
                 teamPlayerNames.forEach(playerName => {
                     const junkAmount = junkWinnings[playerName] || 0;
@@ -2305,7 +2422,7 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                 // Calculate total gross winnings for team
                 breakdown[team.name].total = breakdown[team.name].manual + breakdown[team.name].nassau + 
                                              breakdown[team.name].skins + breakdown[team.name].matchPlay + 
-                                             breakdown[team.name].junk;
+                                             breakdown[team.name].ninePoint + breakdown[team.name].junk;
             });
         } else {
             // For singles, calculate directly
@@ -2409,6 +2526,20 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                 }
             });
 
+            // 9 Point - Only show positive winnings (what they earned, not what they lost)
+            const ninePointBets = allAvailableBets.filter(b => b.type === '9 Point');
+            const ninePointResults = calculatedScores.ninePointResults || {};
+            ninePointBets.forEach(bet => {
+                const result = ninePointResults[bet.id];
+                if (result && result.grossWinnings) {
+                    Object.entries(result.grossWinnings).forEach(([playerName, grossWinnings]) => {
+                        if (breakdown[playerName] && grossWinnings > 0) {
+                            breakdown[playerName].ninePoint += grossWinnings;
+                        }
+                    });
+                }
+            });
+
             // Junk - Only show positive winnings (what they earned, not what they lost)
             Object.entries(junkWinnings).forEach(([playerName, net]) => {
                 if (breakdown[playerName] && net > 0) {
@@ -2420,7 +2551,7 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
             Object.keys(breakdown).forEach(playerName => {
                 breakdown[playerName].total = breakdown[playerName].manual + breakdown[playerName].nassau + 
                                              breakdown[playerName].skins + breakdown[playerName].matchPlay + 
-                                             breakdown[playerName].junk;
+                                             breakdown[playerName].ninePoint + breakdown[playerName].junk;
             });
         }
 
@@ -2605,11 +2736,11 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                 </h4>
                 <div className="space-y-3">
                     {summaryData.map(item => {
-                        const breakdown = winningsBreakdown[item.name] || { manual: 0, nassau: 0, skins: 0, matchPlay: 0, junk: 0, total: 0 };
+                        const breakdown = winningsBreakdown[item.name] || { manual: 0, nassau: 0, skins: 0, matchPlay: 0, ninePoint: 0, junk: 0, total: 0 };
                         return (
                             <div key={item.name} className="bg-white p-3 rounded-lg border border-blue-300">
                                 <div className="font-semibold text-blue-900 mb-2">{item.name}</div>
-                                <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-xs">
+                                <div className="grid grid-cols-2 md:grid-cols-7 gap-2 text-xs">
                                     <div>
                                         <div className="text-gray-600 font-semibold">Manual</div>
                                         <div className="font-bold text-green-600">
@@ -2632,6 +2763,12 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                                         <div className="text-gray-600 font-semibold">Match Play</div>
                                         <div className="font-bold text-green-600">
                                             ${breakdown.matchPlay.toFixed(0)}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="text-gray-600 font-semibold">9 Point</div>
+                                        <div className="font-bold text-green-600">
+                                            ${breakdown.ninePoint.toFixed(0)}
                                         </div>
                                     </div>
                                     <div>
@@ -3025,7 +3162,7 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                 
                 {/* Manual Bets */}
                 {allAvailableBets && betSelections && (() => {
-                    const manualBets = allAvailableBets.filter(b => b.type !== 'Skins' && b.type !== 'Nassau' && b.type !== 'Match Play');
+                    const manualBets = allAvailableBets.filter(b => b.type !== 'Skins' && b.type !== 'Nassau' && b.type !== 'Match Play' && b.type !== '9 Point');
                     const betsWithWinners = manualBets.filter(bet => {
                         const winner = betSelections[bet.name];
                         return winner && winner !== 'N/A' && winner.trim() !== '';
@@ -3114,6 +3251,7 @@ const Scorecard = ({
     const nassauBets = allAvailableBets.filter(b => b.type === 'Nassau');
     const skinsBets = allAvailableBets.filter(b => b.type === 'Skins');
     const matchPlayBets = allAvailableBets.filter(b => b.type === 'Match Play');
+    const ninePointBets = allAvailableBets.filter(b => b.type === '9 Point');
     
     // Helper to get player initials (first initial + last initial, all caps)
     const getInitials = (name) => {
@@ -3170,7 +3308,7 @@ const Scorecard = ({
                 <table className="min-w-full border-collapse border-2 border-gray-300 bg-white">
                     <thead>
                         <tr className="bg-emerald-600 text-white">
-                            <th className="border border-gray-300 px-3 py-2 text-left font-bold">Player</th>
+                            <th className="border border-gray-300 px-3 py-2 text-left font-bold sticky left-0 z-10 bg-emerald-600">Player</th>
                             {holes.map(h => {
                                 const par = holeData[`hole${h}`]?.par || 4;
                                 return (
@@ -3197,7 +3335,7 @@ const Scorecard = ({
                             
                             return (
                                 <tr key={player.name} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                                    <td className="border border-gray-300 px-3 py-2 font-bold text-gray-800 align-top">
+                                    <td className={`border border-gray-300 px-3 py-2 font-bold text-gray-800 align-top sticky left-0 z-10 ${idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
                                         <div className="flex flex-col">
                                             <span className="text-sm font-bold">{getInitials(player.name)}</span>
                                             <span className="text-xs text-gray-500">HCP {player.handicap || 0}</span>
@@ -3470,6 +3608,15 @@ const Scorecard = ({
                     calculatedScores={calculatedScores}
                     activeRound={activeRound}
                     players={players}
+                />
+            )}
+            
+        {/* 9 Point Bet Tracker */}
+        {ninePointBets.length > 0 && (
+                <NinePointBetTracker 
+                    ninePointBets={ninePointBets}
+                    ninePointResults={calculatedScores.ninePointResults || {}}
+                    calculatedScores={calculatedScores}
                 />
             )}
 
@@ -4193,7 +4340,145 @@ const App = () => {
             });
         }
 
-        return { playerTotals, holeData: holeDataResult, players: roundPlayers, grossWinner, netWinner, nassauResults, skinsResults, matchPlayResults };
+        // Calculate 9 Point (if 9 Point bets exist and exactly 3 players)
+        const ninePointBets = allAvailableBets.filter(b => b.type === '9 Point');
+        const ninePointResults = {};
+        
+        if (ninePointBets.length > 0 && roundPlayers.length === 3) {
+            ninePointBets.forEach(bet => {
+                const pointAmount = bet.amount || 0;
+                const pointsWon = {};
+                const holePoints = {}; // Track points per hole for display
+                
+                // Initialize points won for each player
+                roundPlayers.forEach(player => {
+                    pointsWon[player.name] = 0;
+                });
+                
+                // Calculate points for each hole
+                HOLE_NUMBERS.forEach(h => {
+                    const holeKey = `hole${h}`;
+                    const holeScores = {};
+                    
+                    // Get net scores for this hole
+                    roundPlayers.forEach(player => {
+                        const netScore = holeDataResult[player.name]?.[holeKey]?.netScore;
+                        if (netScore && netScore > 0) {
+                            holeScores[player.name] = netScore;
+                        }
+                    });
+                    
+                    if (Object.keys(holeScores).length === 3) {
+                        // All 3 players have scores for this hole
+                        const scores = Object.values(holeScores);
+                        const minScore = Math.min(...scores);
+                        const maxScore = Math.max(...scores);
+                        const scoreCounts = {};
+                        
+                        // Count occurrences of each score
+                        Object.entries(holeScores).forEach(([name, score]) => {
+                            scoreCounts[score] = (scoreCounts[score] || []).concat(name);
+                        });
+                        
+                        const winners = scoreCounts[minScore] || [];
+                        const losers = scoreCounts[maxScore] || [];
+                        
+                        let holePointsDistribution = {};
+                        
+                        // Check for Blitz: winner must beat BOTH other players by 2+ strokes
+                        if (winners.length === 1) {
+                            const winnerName = winners[0];
+                            const winnerScore = minScore;
+                            const otherScores = Object.entries(holeScores)
+                                .filter(([name]) => name !== winnerName)
+                                .map(([, score]) => score);
+                            
+                            // Check if winner beats both other players by 2+ strokes
+                            const beatsBothBy2Plus = otherScores.every(score => score - winnerScore >= 2);
+                            
+                            if (beatsBothBy2Plus) {
+                                // Blitz: Winner gets all 9 points
+                                holePointsDistribution[winnerName] = 9;
+                                roundPlayers.forEach(player => {
+                                    if (player.name !== winnerName) {
+                                        holePointsDistribution[player.name] = 0;
+                                    }
+                                });
+                            } else {
+                                // Not a blitz, continue with normal scoring logic below
+                                // This will be handled by the else-if chain
+                            }
+                        }
+                        
+                        // If not a blitz, check other scenarios
+                        if (Object.keys(holePointsDistribution).length === 0) {
+                            if (winners.length === 3) {
+                                // Three-way tie: 3 points each
+                                roundPlayers.forEach(player => {
+                                    holePointsDistribution[player.name] = 3;
+                                });
+                            } else if (winners.length === 1 && losers.length === 2) {
+                                // One winner, two tied: Winner gets 5, tied get 2 each
+                                holePointsDistribution[winners[0]] = 5;
+                                losers.forEach(loser => {
+                                    holePointsDistribution[loser] = 2;
+                                });
+                            } else if (winners.length === 2 && losers.length === 1) {
+                                // Two tied, one loser: Tied get 4 each, loser gets 1
+                                winners.forEach(winner => {
+                                    holePointsDistribution[winner] = 4;
+                                });
+                                holePointsDistribution[losers[0]] = 1;
+                            } else {
+                                // Fallback: should not happen, but handle gracefully
+                                roundPlayers.forEach(player => {
+                                    holePointsDistribution[player.name] = 3;
+                                });
+                            }
+                        }
+                        
+                        // Add points to totals
+                        Object.entries(holePointsDistribution).forEach(([name, points]) => {
+                            pointsWon[name] = (pointsWon[name] || 0) + points;
+                        });
+                        
+                        // Store hole points for display
+                        holePoints[h] = holePointsDistribution;
+                    }
+                });
+                
+                // Calculate winnings: Each point is worth pointAmount
+                // For 3 players, this is zero-sum: total points = 9 * 18 = 162 points
+                // Each player's liability = (162 * pointAmount) / 3 = 54 * pointAmount
+                const totalHoles = HOLE_NUMBERS.filter(h => {
+                    const holeKey = `hole${h}`;
+                    return roundPlayers.every(p => holeDataResult[p.name]?.[holeKey]?.netScore > 0);
+                }).length;
+                
+                const totalPointsValue = totalHoles * 9 * pointAmount;
+                const liabilityPerPlayer = totalPointsValue / 3;
+                
+                // Calculate net winnings
+                const netWinnings = {};
+                roundPlayers.forEach(player => {
+                    const grossWinnings = (pointsWon[player.name] || 0) * pointAmount;
+                    netWinnings[player.name] = grossWinnings - liabilityPerPlayer;
+                });
+                
+                ninePointResults[bet.id] = {
+                    pointsWon,
+                    holePoints,
+                    netWinnings,
+                    grossWinnings: Object.fromEntries(
+                        roundPlayers.map(p => [p.name, (pointsWon[p.name] || 0) * pointAmount])
+                    ),
+                    amount: pointAmount,
+                    totalHoles
+                };
+            });
+        }
+
+        return { playerTotals, holeData: holeDataResult, players: roundPlayers, grossWinner, netWinner, nassauResults, skinsResults, matchPlayResults, ninePointResults };
     }, [activeRound, players, scores, holeDataEdit, allAvailableBets]);
 
 
@@ -4201,7 +4486,7 @@ const App = () => {
     const generateInitialBetSelections = useCallback((bets) => {
         const initialSelections = {};
         // Only include manual bets in initial selections (exclude Skins, Nassau, and Match Play which are auto-calculated)
-        bets.filter(b => b.type !== 'Skins' && b.type !== 'Nassau' && b.type !== 'Match Play').forEach(bet => {
+        bets.filter(b => b.type !== 'Skins' && b.type !== 'Nassau' && b.type !== 'Match Play' && b.type !== '9 Point').forEach(bet => {
             initialSelections[bet.name] = ''; // Stores winner name (string)
         });
         return initialSelections;
@@ -4540,8 +4825,8 @@ const App = () => {
                 } else {
                     // Regular custom bet
                     const bet = allAvailableBets.find(b => b.name === betKey);
-                    // Exclude auto-calculated bet types (Skins, Nassau, Match Play)
-                    if (bet && bet.type !== 'Skins' && bet.type !== 'Nassau' && bet.type !== 'Match Play') {
+                    // Exclude auto-calculated bet types (Skins, Nassau, Match Play, 9 Point)
+                    if (bet && bet.type !== 'Skins' && bet.type !== 'Nassau' && bet.type !== 'Match Play' && bet.type !== '9 Point') {
                         winnings[winnerName] = (winnings[winnerName] || 0) + bet.amount;
                     }
                 }
@@ -4620,7 +4905,24 @@ const App = () => {
             });
         }
 
-        // 2e. Junk/Side Bets Calculation
+        // 2e. 9 Point Calculation (Automatic) - Only for 3 players
+        const ninePointBets = allAvailableBets.filter(b => b.type === '9 Point');
+        const ninePointResults = calculatedScores.ninePointResults || {};
+
+        if (ninePointBets.length > 0 && playerNames.length === 3) {
+            ninePointBets.forEach(bet => {
+                const result = ninePointResults[bet.id];
+                if (result && result.netWinnings) {
+                    // Add 9 Point winnings to total winnings
+                    playerNames.forEach(name => {
+                        const ninePointWinnings = result.netWinnings[name] || 0;
+                        winnings[name] = (winnings[name] || 0) + ninePointWinnings;
+                    });
+                }
+            });
+        }
+
+        // 2f. Junk/Side Bets Calculation
         const junkWinnings = {};
         playerNames.forEach(name => junkWinnings[name] = 0);
         
@@ -4813,7 +5115,7 @@ const App = () => {
     const handleAddBet = async () => {
         setBetError(null);
         // For Nassau/Skins, use the type name if not provided
-        const betName = (newBetType === 'Nassau' || newBetType === 'Skins') ? newBetType : newBetName.trim();
+        const betName = (newBetType === 'Nassau' || newBetType === 'Skins' || newBetType === 'Match Play' || newBetType === '9 Point') ? newBetType : newBetName.trim();
         
         if (!db || !userId || !betName || isNaN(parseFloat(newBetAmount)) || parseFloat(newBetAmount) < 0) {
             setBetError(new Error("Invalid bet name or amount."));
