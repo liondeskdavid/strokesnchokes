@@ -14,6 +14,7 @@
     "@capacitor/android": "^7.4.4",
     "@capacitor/cli": "^7.4.4",
     "@capacitor/core": "^7.4.4",
+    "android": "^0.0.8",
     "autoprefixer": "^10.4.22",
     "expo": "^54.0.27",
     "firebase": "^12.6.0",

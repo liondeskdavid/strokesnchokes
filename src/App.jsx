@@ -3484,14 +3484,7 @@ const Scorecard = ({
         <>
         {/* Action Buttons at Top */}
         {!isReadOnly && !isEnded && activeRound && activeRound.status === 'Active' && (
-            <div className="mb-4 grid grid-cols-3 gap-3">
-                <button
-                    onClick={handleSaveScores}
-                    disabled={!dbReady}
-                    className="py-2 px-4 bg-teal-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-teal-700 disabled:opacity-50"
-                >
-                    Save Scores
-                </button>
+            <div className="mb-4 grid grid-cols-2 gap-3">
                 <button
                     onClick={() => setIsShareModalOpen(true)}
                     disabled={!dbReady}
@@ -3757,6 +3750,7 @@ const Scorecard = ({
                                     setIsViewingSharedRound(false);
                                     setSharedRound(null);
                                     setSharedRoundId(null);
+                                    setSharedRoundOwnerId(null);
                                     setActiveRoundId(null);
                                     setIsShareModalOpen(false);
                                 }}
@@ -3853,6 +3847,7 @@ const App = () => {
     const [shareCodeInput, setShareCodeInput] = useState('');
     const [sharedRound, setSharedRound] = useState(null);
     const [sharedRoundId, setSharedRoundId] = useState(null);
+    const [sharedRoundOwnerId, setSharedRoundOwnerId] = useState(null);
     const [isViewingSharedRound, setIsViewingSharedRound] = useState(false);
     const [shareCodeToDisplay, setShareCodeToDisplay] = useState(null);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -3869,29 +3864,29 @@ const App = () => {
     
     // Set up real-time listener for shared round
     useEffect(() => {
-        if (!isViewingSharedRound || !sharedRoundId || !db || !sharedRound) return;
+        if (!isViewingSharedRound || !sharedRoundId || !db || !sharedRoundOwnerId) return;
         
-        // Get the owner's userId from the shared round data
-        const ownerUserId = sharedRound.userId || (sharedRound.ownerUserId);
-        
-        // If we don't have the owner's userId, we can't set up the listener
-        // This should have been set when we loaded the shared round
-        if (!ownerUserId) {
-            console.warn('Cannot set up real-time listener: owner userId not found');
-            return;
-        }
+        console.log('Setting up real-time listener for shared round', { sharedRoundId, sharedRoundOwnerId });
         
         // Set up real-time listener for the shared round
-        const roundRef = doc(db, getRoundCollectionPath(ownerUserId), sharedRoundId);
+        const roundRef = doc(db, getRoundCollectionPath(sharedRoundOwnerId), sharedRoundId);
         const unsubscribe = onSnapshot(roundRef, (roundDoc) => {
             if (roundDoc.exists()) {
-                const roundData = { id: roundDoc.id, ...roundDoc.data(), ownerUserId: ownerUserId };
+                const roundData = { id: roundDoc.id, ...roundDoc.data(), ownerUserId: sharedRoundOwnerId };
+                
+                console.log('Real-time update received for shared round', { 
+                    roundId: roundDoc.id, 
+                    scores: roundData.scores,
+                    timestamp: new Date().toISOString()
+                });
                 
                 // Update shared round state
                 setSharedRound(roundData);
                 
                 // Update all related state in real-time
-                setScores(roundData.scores || {});
+                const newScores = roundData.scores || {};
+                console.log('Updating scores from real-time listener', newScores);
+                setScores(newScores);
                 setBetSelections(roundData.betSelections || {});
                 setHoleDataEdit(roundData.holeData || generateDefaultHoleData());
                 setJunkEvents(roundData.junkEvents || {});
@@ -3903,8 +3898,11 @@ const App = () => {
             console.error('Error listening to shared round:', error);
         });
         
-        return () => unsubscribe();
-    }, [isViewingSharedRound, sharedRoundId, db, sharedRound]);
+        return () => {
+            console.log('Cleaning up real-time listener for shared round');
+            unsubscribe();
+        };
+    }, [isViewingSharedRound, sharedRoundId, db, sharedRoundOwnerId]);
     
     // Junk/Side Bets State
     const [selectedJunkTypes, setSelectedJunkTypes] = useState([]);
@@ -3949,6 +3947,8 @@ const App = () => {
     // Debounce refs for Firestore writes
     const junkEventSaveTimeoutRef = useRef(null);
     const betSelectionSaveTimeoutRef = useRef(null);
+    const scoreSaveTimeoutRef = useRef(null);
+    const latestScoresRef = useRef(scores);
     // Track if we have a pending junk event save to prevent onSnapshot from overwriting
     const hasPendingJunkSaveRef = useRef(false);
 
@@ -4890,7 +4890,9 @@ const App = () => {
                 const isScoresEmpty = Object.keys(scores).length === 0;
 
                 if (isNewRoundSelected || isRoundEnded || isScoresEmpty) {
-                     setScores(currentActiveRound.scores || {});
+                     const loadedScores = currentActiveRound.scores || {};
+                     setScores(loadedScores);
+                     latestScoresRef.current = loadedScores;
                      setLastLoadedScoresRoundId(currentActiveRound.id);
                 }
             }
@@ -4990,6 +4992,8 @@ const App = () => {
         setCurrentView('rounds');
         setIsViewingSharedRound(false);
         setSharedRound(null);
+        setSharedRoundId(null);
+        setSharedRoundOwnerId(null);
     };
     
     // Handle entering share code to view shared round
@@ -5029,6 +5033,9 @@ const App = () => {
             }
             
             const roundData = { id: roundDoc.id, ...roundDoc.data(), ownerUserId: ownerUserId };
+            
+            // Store ownerUserId separately for the listener
+            setSharedRoundOwnerId(ownerUserId);
             
             // Set as shared round
             setSharedRound(roundData);
@@ -5694,13 +5701,45 @@ const App = () => {
 
     // 5. Scoring Logic (same as before)
     const handleScoreChange = (playerName, holeNumber, score) => {
-        setScores(prevScores => ({
-            ...prevScores,
-            [playerName]: {
-                ...prevScores[playerName],
-                [`hole${holeNumber}`]: score,
+        // Update local state immediately for responsive UI using functional update
+        setScores(prevScores => {
+            const updatedScores = {
+                ...prevScores,
+                [playerName]: {
+                    ...prevScores[playerName],
+                    [`hole${holeNumber}`]: score,
+                }
+            };
+            
+            // Store latest scores in ref for the timeout
+            latestScoresRef.current = updatedScores;
+            
+            // Auto-save to Firestore with debouncing (only for master user, not read-only)
+            if (!isViewingSharedRound && db && userId && activeRoundId) {
+                // Clear any pending save
+                if (scoreSaveTimeoutRef.current) {
+                    clearTimeout(scoreSaveTimeoutRef.current);
+                }
+                
+                // Debounce the save to prevent too many rapid writes
+                scoreSaveTimeoutRef.current = setTimeout(async () => {
+                    try {
+                        const roundRef = doc(db, getRoundCollectionPath(userId), activeRoundId);
+                        // Use the latest scores from ref (most recent value)
+                        await updateDoc(roundRef, {
+                            scores: latestScoresRef.current,
+                            lastUpdated: serverTimestamp(),
+                        });
+                        console.log("Scores auto-saved successfully!");
+                    } catch (error) {
+                        console.error("Failed to auto-save scores:", error);
+                        // Don't show alert for auto-save failures to avoid interrupting user
+                    }
+                }, 500); // 500ms debounce
             }
-        }));
+            
+            return updatedScores;
+        });
     };
 
     const handleJunkEventChange = useCallback((playerName, holeKey, junkId, isChecked) => {
