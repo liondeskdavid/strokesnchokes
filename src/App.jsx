@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import {
     getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc,
-    serverTimestamp, query,
+    serverTimestamp, query, where, getDocs, getDoc,
 } from 'firebase/firestore';
 
 // YOUR REAL FIREBASE CONFIG — THIS IS THE ONLY THING YOU NEED
@@ -21,6 +21,7 @@ const getPlayerCollectionPath = (userId) => `users/${userId}/players`;
 const getRoundCollectionPath = (userId) => `users/${userId}/rounds`;
 const getBetCollectionPath = (userId) => `users/${userId}/custom_bets`;  // Fixed: was missing!
 const getCourseCollectionPath = (userId) => `users/${userId}/courses`;
+const SHARED_ROUNDS_COLLECTION = 'shared_rounds'; // Collection for mapping share codes to rounds
 
 // --- Constants ---
 const NUM_HOLES = 18;
@@ -35,6 +36,18 @@ const JUNK_TYPES = [
 const HOLE_NUMBERS = Array.from({ length: NUM_HOLES }, (_, i) => i + 1);
 
 // --- Utility Functions ---
+
+/**
+ * Generate a 4-character alphanumeric share code
+ */
+const generateShareCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 4; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+};
 
 /**
  * Handles error logging and displays a simple message to the user.
@@ -3215,6 +3228,17 @@ const Scorecard = ({
     finalSummaryRef,
     handleRoundPlayerHandicapChange,
     handleRemovePlayerFromRound,
+    isReadOnly = false,
+    isShareModalOpen,
+    setIsShareModalOpen,
+    shareCodeInput,
+    setShareCodeInput,
+    handleEnterShareCode,
+    isViewingSharedRound,
+    setIsViewingSharedRound,
+    setSharedRound,
+    setSharedRoundId,
+    setActiveRoundId,
     betSelections,
     handleBetWinnerChange,
     userId,
@@ -3301,7 +3325,7 @@ const Scorecard = ({
     
     // Render traditional scorecard table
     const renderScorecardTable = (holes, sectionName) => {
-        const isReadOnly = isEnded;
+        const isReadOnlyMode = isEnded || isReadOnly;
         
         return (
             <div className="overflow-x-auto">
@@ -3350,7 +3374,7 @@ const Scorecard = ({
                                         
                                         return (
                                             <td key={h} className="border border-gray-300 px-1 py-2 text-center align-top">
-                                                {isReadOnly ? (
+                                                {isReadOnlyMode ? (
                                                     <div className="flex flex-col items-center justify-start">
                                                         <div className="text-lg font-bold text-gray-800">
                                                             {score || '-'}
@@ -3459,8 +3483,8 @@ const Scorecard = ({
     return (
         <>
         {/* Action Buttons at Top */}
-        {!isEnded && activeRound && activeRound.status === 'Active' && (
-            <div className="mb-4 grid grid-cols-2 gap-3">
+        {!isReadOnly && !isEnded && activeRound && activeRound.status === 'Active' && (
+            <div className="mb-4 grid grid-cols-3 gap-3">
                 <button
                     onClick={handleSaveScores}
                     disabled={!dbReady}
@@ -3469,11 +3493,36 @@ const Scorecard = ({
                     Save Scores
                 </button>
                 <button
+                    onClick={() => setIsShareModalOpen(true)}
+                    disabled={!dbReady}
+                    className="py-2 px-4 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                    Share
+                </button>
+                <button
                     onClick={handleEndRound}
                     disabled={!dbReady}
                     className="py-2 px-4 bg-red-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-red-700 disabled:opacity-50"
                 >
                     End Round
+                </button>
+            </div>
+        )}
+        
+        {/* Share button for ended rounds and shared rounds */}
+        {((isEnded && activeRound) || (isViewingSharedRound && activeRound)) && (
+            <div className="mb-4">
+                <button
+                    onClick={() => setIsShareModalOpen(true)}
+                    className="w-full py-2 px-4 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-blue-700 flex items-center justify-center gap-2"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                    Share Round
                 </button>
             </div>
         )}
@@ -3619,6 +3668,107 @@ const Scorecard = ({
                     calculatedScores={calculatedScores}
                 />
             )}
+        
+        {/* Share Modal */}
+        {isShareModalOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl shadow-2xl border-2 border-blue-200 max-w-md w-full p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-2xl font-bold text-blue-800">Share Round</h3>
+                        <button
+                            onClick={() => {
+                                setIsShareModalOpen(false);
+                                setShareCodeInput('');
+                            }}
+                            className="text-gray-500 hover:text-gray-700"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    {/* Share Code Display */}
+                    {activeRound && activeRound.shareCode && (
+                        <div className="mb-6">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Share Code:
+                            </label>
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1 px-4 py-3 bg-blue-50 border-2 border-blue-400 rounded-lg text-center text-3xl font-bold tracking-widest text-blue-600">
+                                    {activeRound.shareCode}
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(activeRound.shareCode);
+                                        alert('Share code copied to clipboard!');
+                                    }}
+                                    className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    title="Copy to clipboard"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2 text-center">
+                                Share this code with others to let them view this round
+                            </p>
+                        </div>
+                    )}
+                    
+                    {/* Enter Share Code Section */}
+                    <div className="border-t pt-4">
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            Enter Share Code to View Round:
+                        </label>
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={shareCodeInput}
+                                onChange={(e) => setShareCodeInput(e.target.value.toUpperCase().slice(0, 4))}
+                                placeholder="ABCD"
+                                maxLength={4}
+                                className="flex-1 px-4 py-2 border-2 border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg font-bold tracking-widest uppercase"
+                            />
+                            <button
+                                onClick={async () => {
+                                    await handleEnterShareCode();
+                                    if (isViewingSharedRound) {
+                                        setIsShareModalOpen(false);
+                                    }
+                                }}
+                                disabled={!dbReady || shareCodeInput.length !== 4}
+                                className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                            >
+                                View
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {/* Show if viewing shared round */}
+                    {isViewingSharedRound && (
+                        <div className="mt-4 p-3 bg-yellow-100 border-2 border-yellow-400 rounded-lg">
+                            <p className="text-sm font-semibold text-yellow-800 text-center">
+                                📖 Viewing Shared Round (Read-Only)
+                            </p>
+                            <button
+                                onClick={() => {
+                                    setIsViewingSharedRound(false);
+                                    setSharedRound(null);
+                                    setSharedRoundId(null);
+                                    setActiveRoundId(null);
+                                    setIsShareModalOpen(false);
+                                }}
+                                className="mt-2 w-full px-4 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700"
+                            >
+                                Exit Shared View
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        )}
 
         {/* Totals Summary */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3699,6 +3849,14 @@ const App = () => {
     const [teamMode, setTeamMode] = useState('singles'); // 'singles' or 'teams'
     const [teams, setTeams] = useState([]); // [{ id: string, name: string, playerIds: string[] }]
     
+    // Round sharing state
+    const [shareCodeInput, setShareCodeInput] = useState('');
+    const [sharedRound, setSharedRound] = useState(null);
+    const [sharedRoundId, setSharedRoundId] = useState(null);
+    const [isViewingSharedRound, setIsViewingSharedRound] = useState(false);
+    const [shareCodeToDisplay, setShareCodeToDisplay] = useState(null);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    
     // View state for bottom navigation
     const [currentView, setCurrentView] = useState('play'); // 'play', 'rounds', or 'management'
     
@@ -3708,6 +3866,45 @@ const App = () => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     }, [currentView]);
+    
+    // Set up real-time listener for shared round
+    useEffect(() => {
+        if (!isViewingSharedRound || !sharedRoundId || !db || !sharedRound) return;
+        
+        // Get the owner's userId from the shared round data
+        const ownerUserId = sharedRound.userId || (sharedRound.ownerUserId);
+        
+        // If we don't have the owner's userId, we can't set up the listener
+        // This should have been set when we loaded the shared round
+        if (!ownerUserId) {
+            console.warn('Cannot set up real-time listener: owner userId not found');
+            return;
+        }
+        
+        // Set up real-time listener for the shared round
+        const roundRef = doc(db, getRoundCollectionPath(ownerUserId), sharedRoundId);
+        const unsubscribe = onSnapshot(roundRef, (roundDoc) => {
+            if (roundDoc.exists()) {
+                const roundData = { id: roundDoc.id, ...roundDoc.data(), ownerUserId: ownerUserId };
+                
+                // Update shared round state
+                setSharedRound(roundData);
+                
+                // Update all related state in real-time
+                setScores(roundData.scores || {});
+                setBetSelections(roundData.betSelections || {});
+                setHoleDataEdit(roundData.holeData || generateDefaultHoleData());
+                setJunkEvents(roundData.junkEvents || {});
+                setSelectedJunkTypes(roundData.selectedJunkTypes || []);
+                setJunkPointValues(roundData.junkPointValues || {});
+                setRoundBets(roundData.roundBets || []);
+            }
+        }, (error) => {
+            console.error('Error listening to shared round:', error);
+        });
+        
+        return () => unsubscribe();
+    }, [isViewingSharedRound, sharedRoundId, db, sharedRound]);
     
     // Junk/Side Bets State
     const [selectedJunkTypes, setSelectedJunkTypes] = useState([]);
@@ -3741,7 +3938,12 @@ const App = () => {
     const [lastLoadedScoresRoundId, setLastLoadedScoresRoundId] = useState(null);
 
 
-    const activeRound = useMemo(() => rounds.find(r => r.id === activeRoundId), [rounds, activeRoundId]);
+    const activeRound = useMemo(() => {
+        if (isViewingSharedRound && sharedRound) {
+            return sharedRound;
+        }
+        return rounds.find(r => r.id === activeRoundId);
+    }, [rounds, activeRoundId, isViewingSharedRound, sharedRound]);
     const allAvailableBets = customBets;
     
     // Debounce refs for Firestore writes
@@ -4595,8 +4797,39 @@ const App = () => {
 
         // Fetch Rounds (Fix for preserving local scores is here)
         const roundQuery = collection(db, getRoundCollectionPath(userId));
-        const unsubscribeRounds = onSnapshot(roundQuery, (snapshot) => {
+        const unsubscribeRounds = onSnapshot(roundQuery, async (snapshot) => {
             const roundList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            // Ensure all rounds have share codes
+            const roundsToUpdate = [];
+            for (const round of roundList) {
+                if (!round.shareCode) {
+                    const shareCode = generateShareCode();
+                    roundsToUpdate.push({ roundId: round.id, shareCode });
+                }
+            }
+            
+            // Update rounds that don't have share codes
+            for (const { roundId, shareCode } of roundsToUpdate) {
+                try {
+                    const roundRef = doc(db, getRoundCollectionPath(userId), roundId);
+                    await updateDoc(roundRef, {
+                        shareCode: shareCode,
+                        lastUpdated: serverTimestamp(),
+                    });
+                    
+                    // Create shared round entry
+                    await addDoc(collection(db, SHARED_ROUNDS_COLLECTION), {
+                        shareCode: shareCode,
+                        userId: userId,
+                        roundId: roundId,
+                        createdAt: serverTimestamp(),
+                    });
+                } catch (error) {
+                    console.error(`Failed to add share code to round ${roundId}:`, error);
+                }
+            }
+            
             setRounds(roundList);
 
             const currentActiveRound = roundList.find(r => r.id === activeRoundId);
@@ -4702,7 +4935,10 @@ const App = () => {
                 ? holeDataEdit 
                 : generateDefaultHoleData();
 
-            // 2. Create New Round
+            // 2. Generate share code
+            const shareCode = generateShareCode();
+            
+            // 3. Create New Round
             const newRoundRef = await addDoc(collection(db, getRoundCollectionPath(userId)), {
                 date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
                 courseName: newRoundCourseName.trim() || 'Unspecified Course',
@@ -4717,6 +4953,15 @@ const App = () => {
                 handicapMode: handicapMode || 'lowest', // Store handicap calculation mode
                 teamMode: teamMode || 'singles', // Store team mode
                 teams: teamMode === 'teams' ? teams : [], // Store teams if in teams mode
+                shareCode: shareCode, // Store share code
+                createdAt: serverTimestamp(),
+            });
+            
+            // 4. Create shared round entry for code lookup
+            await addDoc(collection(db, SHARED_ROUNDS_COLLECTION), {
+                shareCode: shareCode,
+                userId: userId,
+                roundId: newRoundRef.id,
                 createdAt: serverTimestamp(),
             });
 
@@ -4743,6 +4988,112 @@ const App = () => {
         setActiveRoundId(roundId);
         // Auto-switch to rounds view when selecting a round
         setCurrentView('rounds');
+        setIsViewingSharedRound(false);
+        setSharedRound(null);
+    };
+    
+    // Handle entering share code to view shared round
+    const handleEnterShareCode = async () => {
+        if (!db || !shareCodeInput.trim()) return;
+        
+        const code = shareCodeInput.trim().toUpperCase();
+        if (code.length !== 4) {
+            alert('Share code must be 4 characters');
+            return;
+        }
+        
+        try {
+            // Look up the share code in shared_rounds collection
+            const sharedRoundsQuery = query(
+                collection(db, SHARED_ROUNDS_COLLECTION),
+                where('shareCode', '==', code)
+            );
+            const querySnapshot = await getDocs(sharedRoundsQuery);
+            
+            if (querySnapshot.empty) {
+                alert('Share code not found. Please check the code and try again.');
+                return;
+            }
+            
+            const sharedRoundDoc = querySnapshot.docs[0];
+            const sharedRoundData = sharedRoundDoc.data();
+            const { userId: ownerUserId, roundId } = sharedRoundData;
+            
+            // Fetch the actual round data
+            const roundRef = doc(db, getRoundCollectionPath(ownerUserId), roundId);
+            const roundDoc = await getDoc(roundRef);
+            
+            if (!roundDoc.exists()) {
+                alert('Round not found. It may have been deleted.');
+                return;
+            }
+            
+            const roundData = { id: roundDoc.id, ...roundDoc.data(), ownerUserId: ownerUserId };
+            
+            // Set as shared round
+            setSharedRound(roundData);
+            setSharedRoundId(roundDoc.id);
+            setIsViewingSharedRound(true);
+            setShareCodeInput('');
+            setCurrentView('rounds');
+            
+            // Initialize state from the round data
+            setScores(roundData.scores || {});
+            setBetSelections(roundData.betSelections || {});
+            setHoleDataEdit(roundData.holeData || generateDefaultHoleData());
+            setJunkEvents(roundData.junkEvents || {});
+            setSelectedJunkTypes(roundData.selectedJunkTypes || []);
+            setJunkPointValues(roundData.junkPointValues || {});
+            setRoundBets(roundData.roundBets || []);
+        } catch (error) {
+            handleError('Failed to load shared round:', error);
+            alert('Failed to load shared round. Please try again.');
+        }
+    };
+    
+    // Generate share code for existing round (if it doesn't have one)
+    const handleGenerateShareCode = async (roundId) => {
+        if (!db || !userId || !roundId) return;
+        
+        try {
+            const roundRef = doc(db, getRoundCollectionPath(userId), roundId);
+            const roundDoc = await getDoc(roundRef);
+            
+            if (!roundDoc.exists()) {
+                alert('Round not found');
+                return;
+            }
+            
+            const roundData = roundDoc.data();
+            
+            // If round already has a share code, just display it
+            if (roundData.shareCode) {
+                setShareCodeToDisplay(roundData.shareCode);
+                return;
+            }
+            
+            // Generate new share code
+            const shareCode = generateShareCode();
+            
+            // Update round with share code
+            await updateDoc(roundRef, {
+                shareCode: shareCode,
+                lastUpdated: serverTimestamp(),
+            });
+            
+            // Create shared round entry
+            await addDoc(collection(db, SHARED_ROUNDS_COLLECTION), {
+                shareCode: shareCode,
+                userId: userId,
+                roundId: roundId,
+                createdAt: serverTimestamp(),
+            });
+            
+            setShareCodeToDisplay(shareCode);
+        } catch (error) {
+            handleError('Failed to generate share code:', error);
+            alert('Failed to generate share code. Please try again.');
+        }
     };
 
     // Hole Data Editor Handlers
@@ -5667,10 +6018,21 @@ const App = () => {
                 {/* Rounds View - Scorecard, Bets, Summary, Winnings */}
                 {currentView === 'rounds' && (
                     <>
-                        {activeRoundId ? (
+                        {(activeRoundId || isViewingSharedRound) ? (
                             <Scorecard
                                 activeRound={activeRound}
-                                activeRoundId={activeRoundId}
+                                activeRoundId={isViewingSharedRound ? sharedRoundId : activeRoundId}
+                                isReadOnly={isViewingSharedRound}
+                                isShareModalOpen={isShareModalOpen}
+                                setIsShareModalOpen={setIsShareModalOpen}
+                                shareCodeInput={shareCodeInput}
+                                setShareCodeInput={setShareCodeInput}
+                                handleEnterShareCode={handleEnterShareCode}
+                                isViewingSharedRound={isViewingSharedRound}
+                                setIsViewingSharedRound={setIsViewingSharedRound}
+                                setSharedRound={setSharedRound}
+                                setSharedRoundId={setSharedRoundId}
+                                setActiveRoundId={setActiveRoundId}
                                 scores={scores}
                                 handleScoreChange={handleScoreChange}
                                 handleSaveScores={handleSaveScores}
@@ -5706,9 +6068,40 @@ const App = () => {
                                 setNewRoundBetPlayer2={setNewRoundBetPlayer2}
                             />
                         ) : (
-                            <div className="p-8 bg-white rounded-2xl shadow-xl border-2 border-gray-200 text-center">
-                                <p className="text-gray-600 text-lg mb-4">No round selected</p>
-                                <p className="text-gray-500 text-sm">Go to the "Play" tab to start a new round or select an existing round</p>
+                            <div className="p-8 bg-white rounded-2xl shadow-xl border-2 border-gray-200">
+                                <div className="text-center mb-6">
+                                    <p className="text-gray-600 text-lg mb-2">No round selected</p>
+                                    <p className="text-gray-500 text-sm mb-6">Go to the "Play" tab to start a new round, select an existing round, or enter a share code below</p>
+                                </div>
+                                
+                                {/* Share Code Entry */}
+                                <div className="max-w-md mx-auto">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Enter Share Code to View Round:
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={shareCodeInput}
+                                        onChange={(e) => setShareCodeInput(e.target.value.toUpperCase().slice(0, 4))}
+                                        placeholder="ABCD"
+                                        maxLength={4}
+                                        className="w-full px-4 py-3 border-2 border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-xl font-bold tracking-widest uppercase mb-2"
+                                    />
+                                    <button
+                                        onClick={async () => {
+                                            await handleEnterShareCode();
+                                        }}
+                                        disabled={!dbReady || shareCodeInput.length !== 4}
+                                        className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                    >
+                                        View Round
+                                    </button>
+                                    {shareCodeInput.length > 0 && shareCodeInput.length < 4 && (
+                                        <p className="text-xs text-gray-500 mt-2 text-center">
+                                            Enter 4 characters
+                                        </p>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </>
