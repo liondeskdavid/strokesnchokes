@@ -123,14 +123,12 @@ const PlayerManager = ({
     };
 
     return (
-        <div className="p-3 bg-white rounded-2xl shadow-xl border-2 border-emerald-200">
-            <h2 className="text-lg font-bold text-emerald-800 mb-2">Select Players</h2>
+        <div className="p-3 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
+            <h2 className="text-lg font-bold text-blue-800 mb-2">Select Players</h2>
             
             {/* Select existing player or enter a new one */}
             <div className="mb-3">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                    Saved Players
-                </label>
+              
                 <select
                     value={selectedExistingPlayerId}
                     onChange={(e) => {
@@ -150,9 +148,9 @@ const PlayerManager = ({
                             }
                         }
                     }}
-                    className="w-full p-2 border border-gray-300 rounded-lg bg-white text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full p-2 border border-gray-300 rounded-lg bg-white text-sm focus:ring-blue-500 focus:border-blue-500"
                 >
-                    <option value="">-- New Player --</option>
+                    <option value="">-- Select Player --</option>
                     {players.map(player => (
                         <option key={player.id} value={player.id}>
                             {player.name} (HCP {player.handicap ?? 0})
@@ -167,32 +165,32 @@ const PlayerManager = ({
                     placeholder="First Name"
                     value={newPlayerFirstName}
                     onChange={(e) => setNewPlayerFirstName(e.target.value)}
-                    className="flex-1 min-w-0 max-w-28 p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                    className="flex-1 min-w-0 max-w-28 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
                 <input
                     type="text"
                     placeholder="Last Name"
                     value={newPlayerLastName}
                     onChange={(e) => setNewPlayerLastName(e.target.value)}
-                    className="flex-1 min-w-0 max-w-28 p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                    className="flex-1 min-w-0 max-w-28 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
                 <input
                     type="number"
                     placeholder="HCP"
                     value={newPlayerHandicap}
                     onChange={(e) => setNewPlayerHandicap(e.target.value)}
-                    className="w-16 p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-16 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                     min="-54" max="54"
                 />
                 <button
                     onClick={handleAddPlayer}
-                    className="px-3 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition duration-150 shadow-md disabled:opacity-50 text-sm"
+                    className="px-3 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-md disabled:opacity-50 text-sm"
                     disabled={!dbReady || !newPlayerFirstName.trim()}
                 >
                     Add
                 </button>
             </div>
-            <div className="space-y-2 max-h-40 overflow-y-auto mt-1">
+            <div className="space-y-2 mt-1">
             {players.length === 0 ? (
                 <p className="text-gray-500 italic p-2 bg-gray-50 rounded">
                     Add player names here before starting a round.
@@ -274,8 +272,8 @@ const TeamsManager = ({
     const availablePlayers = players.filter(p => roundPlayerIds.includes(p.id));
 
     return (
-        <div className="p-3 bg-white rounded-2xl shadow-xl border-2 border-emerald-200">
-            <h2 className="text-lg font-bold text-emerald-800 mb-2">Teams</h2>
+        <div className="p-3 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
+            <h2 className="text-lg font-bold text-blue-800 mb-2">Teams</h2>
             
             <div className="mb-3">
                 <label className="block text-xs font-semibold text-gray-600 mb-1">
@@ -289,7 +287,7 @@ const TeamsManager = ({
                             setTeams([]);
                         }
                     }}
-                    className="w-full p-2 border border-gray-300 rounded-lg bg-white text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full p-2 border border-gray-300 rounded-lg bg-white text-sm focus:ring-blue-500 focus:border-blue-500"
                 >
                     <option value="singles">Singles (Individual Play)</option>
                     <option value="teams">Teams</option>
@@ -299,14 +297,14 @@ const TeamsManager = ({
             {teamMode === 'teams' && (
                 <div className="space-y-3">
                     {teams.map(team => (
-                        <div key={team.id} className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+                        <div key={team.id} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                             <div className="flex items-center space-x-2 mb-2">
                                 <input
                                     type="text"
                                     placeholder="Team Name"
                                     value={team.name}
                                     onChange={(e) => updateTeamName(team.id, e.target.value)}
-                                    className="flex-1 p-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                    className="flex-1 p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
                                 />
                                 <button
                                     onClick={() => removeTeam(team.id)}
@@ -330,15 +328,15 @@ const TeamsManager = ({
                                             return (
                                                 <label
                                                     key={player.id}
-                                                    className="flex items-center space-x-2 p-2 rounded-lg hover:bg-indigo-100 cursor-pointer transition-colors"
+                                                    className="flex items-center space-x-2 p-2 rounded-lg hover:bg-blue-100 cursor-pointer transition-colors"
                                                 >
                                                     <input
                                                         type="checkbox"
                                                         checked={isSelected}
                                                         onChange={() => togglePlayerInTeam(team.id, player.id)}
-                                                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                                     />
-                                                    <span className={`text-sm flex-1 ${isSelected ? 'font-semibold text-indigo-700' : 'text-gray-700'}`}>
+                                                    <span className={`text-sm flex-1 ${isSelected ? 'font-semibold text-blue-700' : 'text-gray-700'}`}>
                                                         {player.name}
                                                     </span>
                                                 </label>
@@ -352,7 +350,7 @@ const TeamsManager = ({
                     <button
                         type="button"
                         onClick={addTeam}
-                        className="w-full px-3 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition duration-150 shadow-md text-sm"
+                        className="w-full px-3 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-md text-sm"
                         disabled={!dbReady}
                     >
                         + Add Team
@@ -395,9 +393,9 @@ const ManagePlayers = ({
     };
 
     return (
-        <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-emerald-200 w-full">
+        <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-blue-200 w-full">
             <div className="mb-4">
-                <h2 className="text-lg font-bold text-emerald-800">Manage Players</h2>
+                <h2 className="text-lg font-bold text-blue-800">Manage Players</h2>
                 <p className="text-sm text-gray-500 mt-1">
                     {players.length} player{players.length !== 1 ? 's' : ''} saved
                 </p>
@@ -428,7 +426,7 @@ const ManagePlayers = ({
                                                     <button
                                                         onClick={() => handleEditPlayer(player.id)}
                                                         disabled={!dbReady}
-                                                        className="px-3 py-1 bg-yellow-500 text-white text-xs font-medium rounded-lg hover:bg-yellow-600 transition duration-150 disabled:opacity-50"
+                                                        className="px-3 py-1 bg-gray-500 text-white text-xs font-medium rounded-lg hover:bg-gray-600 transition duration-150 disabled:opacity-50"
                                                     >
                                                         Edit
                                                     </button>
@@ -450,21 +448,21 @@ const ManagePlayers = ({
                                                         placeholder="First Name"
                                                         value={editingPlayerFirstName}
                                                         onChange={(e) => setEditingPlayerFirstName(e.target.value)}
-                                                        className="flex-1 min-w-0 p-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                                                        className="flex-1 min-w-0 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
                                                     />
                                                     <input
                                                         type="text"
                                                         placeholder="Last Name"
                                                         value={editingPlayerLastName}
                                                         onChange={(e) => setEditingPlayerLastName(e.target.value)}
-                                                        className="flex-1 min-w-0 p-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                                                        className="flex-1 min-w-0 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
                                                     />
                                                     <input
                                                         type="number"
                                                         placeholder="HCP"
                                                         value={editingPlayerHandicap}
                                                         onChange={(e) => setEditingPlayerHandicap(e.target.value)}
-                                                        className="w-20 p-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                                                        className="w-20 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                                                         min="-54"
                                                         max="54"
                                                     />
@@ -473,7 +471,7 @@ const ManagePlayers = ({
                                                     <button
                                                         onClick={handleSaveEditedPlayer}
                                                         disabled={!dbReady || !editingPlayerFirstName.trim()}
-                                                        className="flex-1 px-4 py-2 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition duration-150 disabled:opacity-50"
+                                                        className="flex-1 px-4 py-2 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition duration-150 disabled:opacity-50"
                                                     >
                                                         Save
                                                     </button>
@@ -511,8 +509,8 @@ const CustomBetManager = ({
     handleDeleteBet,
     betError
 }) => (
-    <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-emerald-200">
-        <h2 className="text-lg font-bold text-emerald-800 mb-2">Select Your Game and Bets</h2>
+    <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
+        <h2 className="text-lg font-bold text-blue-800 mb-2">Select Your Game and Bets</h2>
 
         {betError && (
              <div className="p-3 mb-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm font-medium">
@@ -525,44 +523,41 @@ const CustomBetManager = ({
                 value={newBetType}
                 onChange={(e) => {
                     setNewBetType(e.target.value);
-                    // Auto-fill name for Nassau/Skins/Match Play/9 Point, clear for others
-                    if (e.target.value === 'Nassau' || e.target.value === 'Skins' || e.target.value === 'Match Play' || e.target.value === '9 Point') {
+                    // Auto-fill name for non-Side Bet types, clear for Side Bet
+                    if (e.target.value !== 'Side Bet') {
                         setNewBetName(e.target.value);
-                    } else if (newBetName === 'Nassau' || newBetName === 'Skins' || newBetName === 'Match Play' || newBetName === '9 Point') {
+                    } else {
                         setNewBetName('');
                     }
                 }}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 bg-white"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white"
             >
                 {BET_TYPES.map(type => (
                     <option key={type} value={type}>{type}</option>
                 ))}
             </select>
-            <input
-                type="text"
-                placeholder={(newBetType === 'Nassau' || newBetType === 'Skins' || newBetType === 'Match Play' || newBetType === '9 Point') ? `Bet Name (auto-filled as '${newBetType}')` : "Bet Name (e.g., First Birdie)"}
-                value={(newBetType === 'Nassau' || newBetType === 'Skins' || newBetType === 'Match Play' || newBetType === '9 Point') ? newBetType : newBetName}
-                onChange={(e) => {
-                    if (newBetType !== 'Nassau' && newBetType !== 'Skins' && newBetType !== 'Match Play' && newBetType !== '9 Point') {
-                        setNewBetName(e.target.value);
-                    }
-                }}
-                disabled={newBetType === 'Nassau' || newBetType === 'Skins' || newBetType === 'Match Play' || newBetType === '9 Point'}
-                className={`w-full p-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 ${(newBetType === 'Nassau' || newBetType === 'Skins' || newBetType === 'Match Play' || newBetType === '9 Point') ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-            />
+            {newBetType === 'Side Bet' && (
+                <input
+                    type="text"
+                    placeholder="Bet Name (e.g., First Birdie)"
+                    value={newBetName}
+                    onChange={(e) => setNewBetName(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                />
+            )}
             <div className="flex space-x-2">
                 <input
                     type="number"
                     placeholder={newBetType === 'Nassau' ? "$ Per Side" : newBetType === '9 Point' ? "$ Per Point" : "$ Amount"}
                     value={newBetAmount}
                     onChange={(e) => setNewBetAmount(e.target.value)}
-                    className="w-28 p-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
+                    className="w-28 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                     min="0"
                 />
                 <button
                     onClick={handleAddBet}
-                    className="px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition duration-150 shadow-md disabled:opacity-50"
-                    disabled={!dbReady || (!newBetName.trim() && newBetType !== 'Nassau' && newBetType !== 'Skins' && newBetType !== 'Match Play' && newBetType !== '9 Point') || !newBetAmount}
+                    className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-md disabled:opacity-50"
+                    disabled={!dbReady || (newBetType === 'Side Bet' && !newBetName.trim()) || !newBetAmount}
                 >
                     Add
                 </button>
@@ -584,7 +579,7 @@ const CustomBetManager = ({
                             type="checkbox"
                             checked={newBetCarryOver}
                             onChange={(e) => setNewBetCarryOver(e.target.checked)}
-                            className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                         />
                         <span className="text-sm text-gray-700">Enable Carry Over (ties carry to next hole)</span>
                     </label>
@@ -602,9 +597,9 @@ const CustomBetManager = ({
                 </p>
             ) : (
                 customBets.map(bet => (
-                    <div key={bet.id} className="grid grid-cols-3 gap-2 items-center p-2 bg-purple-50 rounded-lg border border-purple-200">
-                        <span className="font-medium text-purple-700 text-left">{bet.name}</span>
-                        <span className="text-sm text-purple-600 font-mono text-left">
+                    <div key={bet.id} className="grid grid-cols-3 gap-2 items-center p-2 bg-blue-50 rounded-lg border border-blue-200">
+                        <span className="font-medium text-blue-700 text-left">{bet.name}</span>
+                        <span className="text-sm text-blue-600 font-mono text-left">
                             {bet.type} {
                                 bet.type === 'Nassau' ? `($${bet.amount.toFixed(0)}/side)` :
                                 bet.type === 'Skins' ? `($${bet.amount.toFixed(0)}/skin${bet.carryOver !== false ? ', CO' : ''})` :
@@ -614,7 +609,7 @@ const CustomBetManager = ({
                         </span>
                         <button
                             onClick={() => handleDeleteBet(bet.id)}
-                            className="text-red-500 hover:text-red-700 transition duration-150 text-sm"
+                            className="px-2 py-1 text-xs font-medium rounded-lg border bg-white text-red-600 border-red-400 hover:bg-red-50"
                         >
                             Delete
                         </button>
@@ -641,8 +636,8 @@ const JunkManager = ({
     };
 
     return (
-        <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-orange-200">
-            <h2 className="text-lg font-bold text-orange-800 mb-2">Junk / Side Bets</h2>
+        <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
+            <h2 className="text-lg font-bold text-gray-800 mb-2">Junk & Side Bets</h2>
             <p className="text-sm text-gray-600 mb-4">
                 Select which Junk bets to track. Points are awarded per event and can be worth different amounts.
             </p>
@@ -653,7 +648,7 @@ const JunkManager = ({
                     const pointValue = junkPointValues[junk.id] || junk.points;
                     
                     return (
-                        <div key={junk.id} className={`p-3 rounded-lg border-2 ${isSelected ? 'bg-orange-50 border-orange-300' : 'bg-gray-50 border-gray-200'}`}>
+                        <div key={junk.id} className={`p-3 rounded-lg border-2 ${isSelected ? 'bg-gray-50 border-gray-300' : 'bg-gray-50 border-gray-200'}`}>
                             <div className="flex items-center justify-between mb-2">
                                 <label className="flex items-center space-x-2 cursor-pointer flex-grow">
                                     <input
@@ -661,7 +656,7 @@ const JunkManager = ({
                                         checked={isSelected}
                                         onChange={() => toggleJunkType(junk.id)}
                                         disabled={!dbReady}
-                                        className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                                        className="w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-500"
                                     />
                                     <div>
                                         <span className="font-semibold text-gray-800">{junk.name}</span>
@@ -692,8 +687,8 @@ const JunkManager = ({
             </div>
             
             {selectedJunkTypes.length > 0 && (
-                <div className="mt-4 p-3 bg-orange-100 rounded-lg border border-orange-300">
-                    <p className="text-xs text-orange-800">
+                <div className="mt-4 p-3 bg-gray-100 rounded-lg border border-gray-300">
+                    <p className="text-xs text-gray-800">
                         <strong>Selected:</strong> {selectedJunkTypes.map(id => JUNK_TYPES.find(j => j.id === id)?.name).join(', ')}
                     </p>
                 </div>
@@ -734,7 +729,7 @@ const CourseManager = ({
                 <div className="flex space-x-2 mb-3">
                     <input
                         type="text"
-                        placeholder="Course Name (e.g., St. Andrews)"
+                        placeholder="Course Name"
                         value={newCourseName}
                         onChange={(e) => setNewCourseName(e.target.value)}
                         className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
@@ -773,7 +768,7 @@ const CourseManager = ({
                                             <div className="flex space-x-2">
                                                 <button
                                                     onClick={() => handleEditCourse(course.id)}
-                                                    className="px-3 py-1 bg-yellow-500 text-white text-sm font-medium rounded-lg hover:bg-yellow-600 transition duration-150"
+                                                    className="px-3 py-1 bg-gray-500 text-white text-sm font-medium rounded-lg hover:bg-gray-600 transition duration-150"
                                                 >
                                                     Edit
                                                 </button>
@@ -802,25 +797,25 @@ const CourseManager = ({
                                             
                                             {/* Hole Data Editor for Editing */}
                                             <div className="bg-white p-3 rounded-lg border border-blue-300">
-                                                <p className="text-xs text-yellow-700 mb-2 text-center font-medium">
+                                                <p className="text-xs text-gray-700 mb-2 text-center font-medium">
                                                     Edit Par (3–5) and HCP Index (1–18)
                                                 </p>
                                                 <div className="overflow-x-auto">
                                                     <div className="inline-block min-w-full">
                                                         <table className="w-full text-center border-collapse text-xs">
                                                             <thead>
-                                                                <tr className="bg-yellow-100">
-                                                                    <th className="p-1 border border-yellow-300">Hole</th>
+                                                                <tr className="bg-gray-100">
+                                                                    <th className="p-1 border border-gray-300">Hole</th>
                                                                     {HOLE_NUMBERS.map(h => (
-                                                                        <th key={h} className="p-1 border border-yellow-300 w-10 text-xs font-bold">{h}</th>
+                                                                        <th key={h} className="p-1 border border-gray-300 w-10 text-xs font-bold">{h}</th>
                                                                     ))}
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
                                                                 <tr className="bg-white">
-                                                                    <td className="p-1 text-xs font-bold bg-yellow-100 border border-yellow-300">Par</td>
+                                                                    <td className="p-1 text-xs font-bold bg-gray-100 border border-gray-300">Par</td>
                                                                     {HOLE_NUMBERS.map(h => (
-                                                                        <td key={`par-${h}`} className="p-1 border border-yellow-300">
+                                                                        <td key={`par-${h}`} className="p-1 border border-gray-300">
                                                                             <input
                                                                                 type="number"
                                                                                 min="3" max="5"
@@ -836,15 +831,15 @@ const CourseManager = ({
                                                                                         holeData: newHoleData
                                                                                     });
                                                                                 }}
-                                                                                className="w-10 h-8 text-center text-xs font-bold border border-gray-400 rounded focus:border-green-600"
+                                                                                className="w-10 h-8 text-center text-xs font-bold border border-gray-400 rounded focus:border-blue-600"
                                                                             />
                                                                         </td>
                                                                     ))}
                                                                 </tr>
                                                                 <tr className="bg-white">
-                                                                    <td className="p-1 text-xs font-bold bg-yellow-100 border border-yellow-300">Index</td>
+                                                                    <td className="p-1 text-xs font-bold bg-gray-100 border border-gray-300">Index</td>
                                                                     {HOLE_NUMBERS.map(h => (
-                                                                        <td key={`index-${h}`} className="p-1 border border-yellow-300">
+                                                                        <td key={`index-${h}`} className="p-1 border border-gray-300">
                                                                             <input
                                                                                 type="number"
                                                                                 min="1" max="18"
@@ -860,7 +855,7 @@ const CourseManager = ({
                                                                                         holeData: newHoleData
                                                                                     });
                                                                                 }}
-                                                                                className="w-10 h-8 text-center text-xs font-bold border border-gray-400 rounded focus:border-purple-600"
+                                                                                className="w-10 h-8 text-center text-xs font-bold border border-gray-400 rounded focus:border-blue-600"
                                                                             />
                                                                         </td>
                                                                     ))}
@@ -875,7 +870,7 @@ const CourseManager = ({
                                                 <button
                                                     onClick={handleSaveEditedCourse}
                                                     disabled={!dbReady || !editingCourseHoleData?.name?.trim()}
-                                                    className="flex-1 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition duration-150 shadow-md disabled:opacity-50"
+                                                    className="flex-1 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-md disabled:opacity-50"
                                                 >
                                                     Save Changes
                                                 </button>
@@ -959,42 +954,29 @@ const RoundSelector = ({
 
     return (
 
-        <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-emerald-200">
+        <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
             <div>
-                <h2 className="text-lg font-semibold mb-2 text-gray-800">Select Course & Handicap Calculation Mode</h2>
+            <h2 className="text-lg font-bold text-blue-800 mb-2">Select Course & Handicap Mode</h2>
 
                 <div className="mb-2">
                     <select
                         value={selectedCourseId}
                         onChange={(e) => handleCourseSelect(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 mb-2 bg-white"
+                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 mb-2 bg-white"
                     >
-                        <option value="">-- Select Existing Course --</option>
+                        <option value="">-- Select Course --</option>
                         {courses.map(course => (
                             <option key={course.id} value={course.id}>{course.name}</option>
                         ))}
                     </select>
                 </div>
-
-                <input
-                    type="text"
-                    placeholder="Course Name (e.g., St. Andrews)"
-                    value={newRoundCourseName}
-                    onChange={(e) => {
-                        setNewRoundCourseName(e.target.value);
-                        setSelectedCourseId(''); // Clear selection when manually typing
-                    }}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 mb-2"
-                />
                 
                 <div className="mb-2">
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">
-                        Handicap Calculation Mode
-                    </label>
+                  
                     <select
                         value={handicapMode}
                         onChange={(e) => setHandicapMode(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 bg-white text-sm"
+                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
                     >
                         <option value="lowest">Lowest Handicap as 0 (Relative)</option>
                         <option value="gross">Gross Handicap (Absolute)</option>
@@ -1006,72 +988,7 @@ const RoundSelector = ({
                     </p>
                 </div>
 
-                {playersCount === 0 && (
-                     <div className="p-3 mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm font-medium">
-                        Please add at least one player to start a new round.
-                     </div>
-                )}
-
-                <button
-                    onClick={handleStartNewRound}
-                    className="w-full px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition duration-150 shadow-md mb-4 disabled:opacity-50"
-                    disabled={!dbReady || playersCount === 0}
-                >
-                    Start New Round
-                </button>
-
-                <h3 className="text-lg font-medium mb-2 text-gray-700">Past Rounds ({rounds.length})</h3>
             </div>
-            <ul className="space-y-1 max-h-40 overflow-y-auto">
-                {rounds
-                    .slice()
-                    .sort((a, b) => {
-                        // First sort by status: Active rounds before Ended (and others)
-                        const statusOrder = (status) => {
-                            if (status === 'Active') return 0;
-                            if (status === 'Ended') return 1;
-                            return 2;
-                        };
-
-                        const statusDiff = statusOrder(a.status) - statusOrder(b.status);
-                        if (statusDiff !== 0) return statusDiff;
-
-                        // Within same status, sort by date/createdAt descending (latest first)
-                        const getDate = (round) => {
-                            if (round.createdAt?.toDate) return round.createdAt.toDate();
-                            if (round.date) return new Date(round.date);
-                            return 0;
-                        };
-
-                        const dateA = getDate(a);
-                        const dateB = getDate(b);
-
-                        return dateB - dateA;
-                    })
-                    .map(round => {
-                        const isTeamRound = round.teamMode === 'teams';
-                        const playerCount = isTeamRound && round.teams 
-                            ? round.teams.reduce((total, team) => total + (team.playerIds?.length || 0), 0)
-                            : (round.players?.length || 0);
-                        
-                        return (
-                            <li key={round.id}
-                                onClick={() => handleSelectRound(round.id)}
-                                className={`p-2 rounded-lg cursor-pointer transition duration-150 border ${activeRoundId === round.id ? 'bg-indigo-100 border-indigo-500 text-indigo-800 font-semibold' : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-700'}`}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <span className="font-semibold">{round.courseName || 'Unspecified'}</span>
-                                        <span className="text-sm text-gray-500 ml-2">({round.date}) - {round.status}</span>
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                        {isTeamRound ? 'Team' : 'Single'} • {playerCount} {playerCount === 1 ? 'Player' : 'Players'}
-                                    </div>
-                                </div>
-                            </li>
-                        );
-                    })}
-            </ul>
         </div>
     );
 };
@@ -1108,21 +1025,21 @@ const BetRecorder = ({
     const allBets = [...manualBets, ...(roundBets || [])];
 
     return (
-        <div className="p-3 bg-white rounded-xl shadow-lg border-2 border-indigo-400 mb-6">
-            <h2 className="text-lg font-bold text-center mb-3 text-indigo-800">
+        <div className="p-3 bg-white rounded-xl shadow-lg border-2 border-blue-400 mb-6">
+            <h2 className="text-lg font-bold text-center mb-3 text-blue-800">
                 Prop Bets
             </h2>
 
             {/* Add On-The-Fly Bet Form */}
             {handleAddRoundBet && setNewRoundBetName && (
-            <div className="mb-4 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-                <h3 className="text-sm font-semibold text-indigo-700 mb-2">Add Bet During Round</h3>
+            <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <h3 className="text-sm font-semibold text-blue-700 mb-2">Add Bet During Round</h3>
                 <div className="space-y-2">
                     <div className="flex gap-2">
                         <select
                             value={newRoundBetType || 'everyone'}
                             onChange={(e) => setNewRoundBetType && setNewRoundBetType(e.target.value)}
-                            className="flex-1 p-2 text-xs border border-indigo-300 rounded-lg bg-white focus:border-indigo-600 focus:outline-none"
+                            className="flex-1 p-2 text-xs border border-blue-300 rounded-lg bg-white focus:border-blue-600 focus:outline-none"
                         >
                             <option value="everyone">Everyone</option>
                             <option value="twoPlayers">Two Players</option>
@@ -1132,7 +1049,7 @@ const BetRecorder = ({
                             placeholder="Bet Name"
                             value={newRoundBetName || ''}
                             onChange={(e) => setNewRoundBetName && setNewRoundBetName(e.target.value)}
-                            className="flex-1 p-2 text-xs border border-indigo-300 rounded-lg focus:border-indigo-600 focus:outline-none"
+                            className="flex-1 p-2 text-xs border border-blue-300 rounded-lg focus:border-blue-600 focus:outline-none"
                         />
                     </div>
                     {newRoundBetType === 'twoPlayers' && (
@@ -1140,7 +1057,7 @@ const BetRecorder = ({
                             <select
                                 value={newRoundBetPlayer1 || ''}
                                 onChange={(e) => setNewRoundBetPlayer1 && setNewRoundBetPlayer1(e.target.value)}
-                                className="flex-1 p-2 text-xs border border-indigo-300 rounded-lg bg-white focus:border-indigo-600 focus:outline-none"
+                                className="flex-1 p-2 text-xs border border-blue-300 rounded-lg bg-white focus:border-blue-600 focus:outline-none"
                             >
                                 <option value="">Player 1</option>
                                 {playerNames.map(name => (
@@ -1150,7 +1067,7 @@ const BetRecorder = ({
                             <select
                                 value={newRoundBetPlayer2 || ''}
                                 onChange={(e) => setNewRoundBetPlayer2 && setNewRoundBetPlayer2(e.target.value)}
-                                className="flex-1 p-2 text-xs border border-indigo-300 rounded-lg bg-white focus:border-indigo-600 focus:outline-none"
+                                className="flex-1 p-2 text-xs border border-blue-300 rounded-lg bg-white focus:border-blue-600 focus:outline-none"
                             >
                                 <option value="">Player 2</option>
                                 {playerNames.filter(n => n !== (newRoundBetPlayer1 || '')).map(name => (
@@ -1170,7 +1087,7 @@ const BetRecorder = ({
                                         placeholder="Amount $"
                                         value={newRoundBetAmount || ''}
                                         onChange={(e) => setNewRoundBetAmount && setNewRoundBetAmount(e.target.value)}
-                                        className="w-full p-2 text-xs border border-indigo-300 rounded-lg focus:border-indigo-600 focus:outline-none"
+                                        className="w-full p-2 text-xs border border-blue-300 rounded-lg focus:border-blue-600 focus:outline-none"
                                         min="0"
                                         step="0.01"
                                     />
@@ -1182,7 +1099,7 @@ const BetRecorder = ({
                                         placeholder="Odds Amount $"
                                         value={newRoundBetOdds || ''}
                                         onChange={(e) => setNewRoundBetOdds && setNewRoundBetOdds(e.target.value)}
-                                        className="w-full p-2 text-xs border border-indigo-300 rounded-lg focus:border-indigo-600 focus:outline-none"
+                                        className="w-full p-2 text-xs border border-blue-300 rounded-lg focus:border-blue-600 focus:outline-none"
                                         min="0"
                                         step="0.01"
                                     />
@@ -1199,7 +1116,7 @@ const BetRecorder = ({
                                 placeholder="Winner Gets $"
                                 value={newRoundBetAmount || ''}
                                 onChange={(e) => setNewRoundBetAmount && setNewRoundBetAmount(e.target.value)}
-                                className="flex-1 p-2 text-xs border border-indigo-300 rounded-lg focus:border-indigo-600 focus:outline-none"
+                                className="flex-1 p-2 text-xs border border-blue-300 rounded-lg focus:border-blue-600 focus:outline-none"
                                 min="0"
                                 step="0.01"
                             />
@@ -1208,7 +1125,7 @@ const BetRecorder = ({
                     <button
                         onClick={() => handleAddRoundBet && handleAddRoundBet()}
                         disabled={!dbReady || !newRoundBetName.trim() || !newRoundBetAmount || (newRoundBetType === 'twoPlayers' && (!newRoundBetPlayer1 || !newRoundBetPlayer2 || !newRoundBetOdds)) || !handleAddRoundBet}
-                        className="w-full py-1.5 px-3 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-1.5 px-3 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Add Bet
                     </button>
@@ -1238,17 +1155,17 @@ const BetRecorder = ({
                             : isRoundBet ? 'Everyone' : `${bet.type || 'Side Bet'}`;
                         
                         return (
-                            <div key={betKey} className="bg-indigo-50 p-3 rounded-lg border border-indigo-200">
+                            <div key={betKey} className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                                 <div className="flex items-center justify-between gap-3">
                                     <div className="flex-1">
-                                        <h3 className="text-sm font-bold text-indigo-700">{bet.name}</h3>
+                                        <h3 className="text-sm font-bold text-blue-700">{bet.name}</h3>
                                         <p className="text-xs text-gray-600">{betTypeLabel} • {displayAmount}</p>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <select
                                             value={betSelections[betKey] || ''}
                                             onChange={(e) => handleBetWinnerChange(betKey, e.target.value)}
-                                            className="flex-shrink-0 min-w-[150px] p-2 text-sm font-medium bg-white border border-indigo-300 rounded-lg focus:border-indigo-600 focus:outline-none"
+                                            className="flex-shrink-0 min-w-[150px] p-2 text-sm font-medium bg-white border border-blue-300 rounded-lg focus:border-blue-600 focus:outline-none"
                                         >
                                             <option value="">-- Select Winner --</option>
                                             {bet.betType === 'twoPlayers' && bet.player1 && bet.player2
@@ -1308,21 +1225,21 @@ const JunkTracker = ({
     };
     
     return (
-        <div className="p-5 bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl shadow-xl border-2 border-orange-300 mb-6">
-            <h2 className="text-xl font-bold text-orange-800 mb-2 text-center">Junk / Side Bets Tracker</h2>
+        <div className="p-5 bg-gradient-to-r from-gray-50 to-gray-50 rounded-2xl shadow-xl border-2 border-gray-300 mb-6">
+            <h2 className="text-lg font-bold text-blue-800 mb-2">Junk / Side Bets Tracker</h2>
             
             {/* Per-Hole Junk Input - Organized by Junk Type */}
             <div className="mb-6">
-                <h3 className="text-lg font-semibold text-orange-700 mb-3">Record Junk Events by Hole</h3>
+                <h3 className="text-lg font-semibold text-gray-700 mb-3">Record Junk Events by Hole</h3>
                 <div className="space-y-4 max-h-96 overflow-y-auto">
                     {selectedJunkTypes.map(junkId => {
                         const junkType = JUNK_TYPES.find(j => j.id === junkId);
                         if (!junkType) return null;
                         
                         const isLosingDots = junkId === 'losingDots';
-                        const bgColor = isLosingDots ? 'bg-red-50' : 'bg-green-50';
-                        const borderColor = isLosingDots ? 'border-red-300' : 'border-green-300';
-                        const textColor = isLosingDots ? 'text-red-800' : 'text-green-800';
+                        const bgColor = isLosingDots ? 'bg-red-50' : 'bg-blue-50';
+                        const borderColor = isLosingDots ? 'border-red-300' : 'border-blue-300';
+                        const textColor = isLosingDots ? 'text-red-800' : 'text-blue-800';
                         
                         return (
                             <div key={junkId} className={`p-4 rounded-lg border-2 ${borderColor} ${bgColor}`}>
@@ -1386,7 +1303,7 @@ const JunkTracker = ({
                                                                         type="checkbox"
                                                                         checked={isChecked}
                                                                         onChange={(e) => handleJunkEventChange(player.name, holeKey, junkId, e.target.checked)}
-                                                                        className={`w-4 h-4 ${isLosingDots ? 'text-red-600' : 'text-green-600'} border-gray-300 rounded focus:ring-2 focus:ring-orange-500`}
+                                                                        className={`w-4 h-4 ${isLosingDots ? 'text-red-600' : 'text-blue-600'} border-gray-300 rounded focus:ring-2 focus:ring-gray-500`}
                                                                     />
                                                                 </label>
                                                             );
@@ -1453,7 +1370,7 @@ const JunkTracker = ({
                                                                         type="checkbox"
                                                                         checked={isChecked}
                                                                         onChange={(e) => handleJunkEventChange(player.name, holeKey, junkId, e.target.checked)}
-                                                                        className={`w-4 h-4 ${isLosingDots ? 'text-red-600' : 'text-green-600'} border-gray-300 rounded focus:ring-2 focus:ring-orange-500`}
+                                                                        className={`w-4 h-4 ${isLosingDots ? 'text-red-600' : 'text-blue-600'} border-gray-300 rounded focus:ring-2 focus:ring-gray-500`}
                                                                     />
                                                                 </label>
                                                             );
@@ -1508,13 +1425,13 @@ const JunkTotals = ({
     });
     
     return (
-        <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-orange-200 mb-6">
-            <h3 className="text-lg font-semibold text-orange-700 mb-3 text-center">Junk Totals</h3>
+        <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-gray-200 mb-6">
+            <h3 className="text-lg font-semibold text-gray-700 mb-3 text-center">Junk Totals</h3>
             <div className="space-y-3">
                 {roundPlayers.map(player => {
                     const totals = junkTotals[player.name] || {};
                     return (
-                        <div key={player.name} className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                        <div key={player.name} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                             <div className="font-bold text-gray-800 mb-2">{player.name}</div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                                 {selectedJunkTypes.map(junkId => {
@@ -1528,7 +1445,7 @@ const JunkTotals = ({
                                             <span className="text-gray-700">
                                                 {junkType.name}:
                                             </span>
-                                            <span className={`font-semibold ${isLosingDots ? 'text-red-600' : 'text-green-600'}`}>
+                                            <span className={`font-semibold ${isLosingDots ? 'text-red-600' : 'text-blue-600'}`}>
                                                 {data.count > 0 ? (
                                                     <span>
                                                         {data.count} × ${pointValue} = {isLosingDots ? '-' : '+'}${Math.abs(data.points).toFixed(0)}
@@ -1541,9 +1458,9 @@ const JunkTotals = ({
                                     );
                                 })}
                             </div>
-                            <div className="mt-2 pt-2 border-t border-orange-300 flex justify-between items-center">
+                            <div className="mt-2 pt-2 border-t border-gray-300 flex justify-between items-center">
                                 <span className="font-semibold text-gray-800">Total:</span>
-                                <span className={`text-lg font-bold ${totals.total >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                <span className={`text-lg font-bold ${totals.total >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                                     {totals.total >= 0 ? '+' : ''}${totals.total?.toFixed(0) || 0}
                                 </span>
                             </div>
@@ -1561,17 +1478,17 @@ const SkinsBetTracker = ({ skinsBets, skinsResults, calculatedScores }) => {
     const roundPlayers = calculatedScores.players || [];
     
     return (
-        <div className="p-5 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-2xl shadow-xl border-2 border-yellow-300 mb-6">
-            <h2 className="text-2xl font-bold text-yellow-800 mb-4 text-center">Skins Bet Tracker</h2>
+        <div className="p-5 bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl shadow-xl border-2 border-gray-300 mb-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">Skins Bet Tracker</h2>
             
             {skinsBets.map(bet => {
                 const result = skinsResults[bet.id];
                 if (!result) return null;
                 
                 return (
-                    <div key={bet.id} className="mb-4 p-4 bg-white rounded-xl border-2 border-yellow-200">
+                    <div key={bet.id} className="mb-4 p-4 bg-white rounded-xl border-2 border-gray-200">
                         <div className="text-center mb-3">
-                            <h3 className="text-lg font-bold text-yellow-700">{bet.name}</h3>
+                            <h3 className="text-lg font-bold text-gray-700">{bet.name}</h3>
                             <p className="text-sm text-gray-600">
                                 ${bet.amount} per skin {bet.carryOver !== false ? '(Carry Over)' : '(No Carry Over)'}
                             </p>
@@ -1592,7 +1509,7 @@ const SkinsBetTracker = ({ skinsBets, skinsResults, calculatedScores }) => {
                                         <div key={player.name} className="flex justify-between items-center text-sm">
                                             <span className="font-medium text-gray-700">{player.name}:</span>
                                             <div className="flex items-center space-x-4">
-                                                <span className="text-yellow-700 font-semibold">
+                                                <span className="text-gray-700 font-semibold">
                                                     {skinsWon} skin{skinsWon !== 1 ? 's' : ''}
                                                 </span>
                                                 {roundPlayers.length === 3 ? (
@@ -1600,12 +1517,12 @@ const SkinsBetTracker = ({ skinsBets, skinsResults, calculatedScores }) => {
                                                         <span className="text-gray-600 text-xs">
                                                             Gross: ${grossWinnings.toFixed(0)}
                                                         </span>
-                                                        <span className={`font-bold ${netWinnings >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                        <span className={`font-bold ${netWinnings >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                                                             Net: {netWinnings >= 0 ? '+' : ''}${netWinnings.toFixed(0)}
                                                         </span>
                                                     </>
                                                 ) : (
-                                                    <span className="text-green-600 font-bold">
+                                                    <span className="text-blue-600 font-bold">
                                                         ${netWinnings.toFixed(0)}
                                                     </span>
                                                 )}
@@ -1618,8 +1535,8 @@ const SkinsBetTracker = ({ skinsBets, skinsResults, calculatedScores }) => {
                         
                         {/* Current Carry Over Status */}
                         {bet.carryOver !== false && result.carryOverAmount > 0 && (
-                            <div className="mt-3 p-2 bg-yellow-100 rounded-lg border border-yellow-300">
-                                <div className="text-xs font-semibold text-yellow-800 text-center">
+                            <div className="mt-3 p-2 bg-gray-100 rounded-lg border border-gray-300">
+                                <div className="text-xs font-semibold text-gray-800 text-center">
                                     Carry Over: ${result.carryOverAmount.toFixed(0)} on next hole
                                 </div>
                             </div>
@@ -1639,18 +1556,28 @@ const NinePointBetTracker = ({ ninePointBets, ninePointResults, calculatedScores
     // Only show for 3 players
     if (roundPlayers.length !== 3) return null;
     
+    // Helper function to format name as "First Name Last Initial"
+    const formatNameShort = (fullName) => {
+        if (!fullName) return '';
+        const parts = fullName.trim().split(/\s+/);
+        if (parts.length === 0) return '';
+        if (parts.length === 1) return parts[0];
+        // First name + last initial
+        return `${parts[0]} ${parts[parts.length - 1].charAt(0).toUpperCase()}`;
+    };
+    
     return (
-        <div className="p-5 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl shadow-xl border-2 border-green-300 mb-6">
-            <h2 className="text-2xl font-bold text-green-800 mb-4 text-center">9 Point Bet Tracker</h2>
+        <div className="p-5 bg-gradient-to-r from-blue-50 to-blue-100 rounded-2xl shadow-xl border-2 border-blue-300 mb-6">
+            <h2 className="text-2xl font-bold text-blue-800 mb-4 text-center">9 Point Bet Tracker</h2>
             
             {ninePointBets.map(bet => {
                 const result = ninePointResults[bet.id];
                 if (!result) return null;
                 
                 return (
-                    <div key={bet.id} className="mb-4 p-4 bg-white rounded-xl border-2 border-green-200">
+                    <div key={bet.id} className="mb-4 p-4 bg-white rounded-xl border-2 border-blue-200">
                         <div className="text-center mb-3">
-                            <h3 className="text-lg font-bold text-green-700">{bet.name}</h3>
+                            <h3 className="text-lg font-bold text-blue-700">{bet.name}</h3>
                             <p className="text-sm text-gray-600">
                                 ${bet.amount} per point
                             </p>
@@ -1671,13 +1598,13 @@ const NinePointBetTracker = ({ ninePointBets, ninePointResults, calculatedScores
                                         <div key={player.name} className="flex justify-between items-center text-sm">
                                             <span className="font-medium text-gray-700">{player.name}:</span>
                                             <div className="flex items-center space-x-4">
-                                                <span className="text-green-700 font-semibold">
+                                                <span className="text-blue-700 font-semibold">
                                                     {pointsWon} point{pointsWon !== 1 ? 's' : ''}
                                                 </span>
                                                 <span className="text-gray-600 text-xs">
                                                     Gross: ${grossWinnings.toFixed(0)}
                                                 </span>
-                                                <span className={`font-bold ${netWinnings >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                <span className={`font-bold ${netWinnings >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                                                     Net: {netWinnings >= 0 ? '+' : ''}${netWinnings.toFixed(0)}
                                                 </span>
                                             </div>
@@ -1689,7 +1616,7 @@ const NinePointBetTracker = ({ ninePointBets, ninePointResults, calculatedScores
                         
                         {/* Hole-by-Hole Breakdown (Collapsible) */}
                         <details className="mt-3">
-                            <summary className="cursor-pointer text-sm font-semibold text-green-700 hover:text-green-800">
+                            <summary className="cursor-pointer text-sm font-semibold text-blue-700 hover:text-blue-800">
                                 Hole-by-Hole Breakdown
                             </summary>
                             <div className="mt-2 bg-gray-50 p-3 rounded-lg border border-gray-200 max-h-64 overflow-y-auto">
@@ -1706,9 +1633,10 @@ const NinePointBetTracker = ({ ninePointBets, ninePointResults, calculatedScores
                                                 <div className="col-span-2 text-gray-700">
                                                     {roundPlayers.map((player, idx) => {
                                                         const points = holePoints[player.name] || 0;
+                                                        const shortName = formatNameShort(player.name);
                                                         return (
                                                             <span key={player.name} className={idx > 0 ? 'ml-3' : ''}>
-                                                                {player.name}: <span className="font-semibold text-green-700">{points}</span>
+                                                                {shortName}: <span className="font-semibold text-blue-700">{points}</span>
                                                             </span>
                                                         );
                                                     })}
@@ -1734,7 +1662,7 @@ const MatchPlayBetTracker = ({ matchPlayBets, matchPlayResults, calculatedScores
     const teams = activeRound?.teams || [];
     
     return (
-        <div className="p-5 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl shadow-xl border-2 border-blue-300 mb-6">
+        <div className="p-5 bg-gradient-to-r from-blue-50 to-blue-50 rounded-2xl shadow-xl border-2 border-blue-300 mb-6">
             <h2 className="text-2xl font-bold text-blue-800 mb-4 text-center">Match Play Tracker</h2>
             
             {matchPlayBets.map(bet => {
@@ -1845,7 +1773,7 @@ const MatchPlayBetTracker = ({ matchPlayBets, matchPlayResults, calculatedScores
                                                 <div key={player.name} className="flex justify-between items-center">
                                                     <span className="font-medium text-gray-700">{player.name}:</span>
                                                     <span className={`font-bold ${
-                                                        currentStatus > 0 ? 'text-green-600' : 
+                                                        currentStatus > 0 ? 'text-blue-600' : 
                                                         currentStatus < 0 ? 'text-red-600' : 
                                                         'text-gray-600'
                                                     }`}>
@@ -1872,7 +1800,7 @@ const MatchPlayBetTracker = ({ matchPlayBets, matchPlayResults, calculatedScores
                                         Object.entries(teamResults).map(([teamName, data]) => (
                                             <div key={teamName} className="flex justify-between items-center">
                                                 <span className="font-medium text-gray-700">{teamName}:</span>
-                                                <span className={`text-lg font-bold ${data.netWinnings >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                <span className={`text-lg font-bold ${data.netWinnings >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                                                     {data.netWinnings >= 0 ? '+' : ''}${data.netWinnings.toFixed(0)}
                                                 </span>
                                             </div>
@@ -1883,7 +1811,7 @@ const MatchPlayBetTracker = ({ matchPlayBets, matchPlayResults, calculatedScores
                                             return (
                                                 <div key={player.name} className="flex justify-between items-center">
                                                     <span className="font-medium text-gray-700">{player.name}:</span>
-                                                    <span className={`text-lg font-bold ${net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    <span className={`text-lg font-bold ${net >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                                                         {net >= 0 ? '+' : ''}${net.toFixed(0)}
                                                     </span>
                                                 </div>
@@ -1906,17 +1834,17 @@ const NassauBetTracker = ({ nassauBets, nassauResults, calculatedScores }) => {
     const roundPlayers = calculatedScores.players || [];
     
     return (
-        <div className="p-5 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl shadow-xl border-2 border-purple-300 mb-6">
-            <h2 className="text-2xl font-bold text-purple-800 mb-4 text-center">Nassau Bet Tracker</h2>
+        <div className="p-5 bg-gradient-to-r from-blue-50 to-blue-50 rounded-2xl shadow-xl border-2 border-blue-300 mb-6">
+            <h2 className="text-2xl font-bold text-blue-800 mb-4 text-center">Nassau Bet Tracker</h2>
             
             {nassauBets.map(bet => {
                 const result = nassauResults[bet.id];
                 if (!result) return null;
                 
                 return (
-                    <div key={bet.id} className="mb-4 p-4 bg-white rounded-xl border-2 border-purple-200">
+                    <div key={bet.id} className="mb-4 p-4 bg-white rounded-xl border-2 border-blue-200">
                         <div className="text-center mb-3">
-                            <h3 className="text-lg font-bold text-purple-700">{bet.name}</h3>
+                            <h3 className="text-lg font-bold text-blue-700">{bet.name}</h3>
                             <p className="text-sm text-gray-600">${bet.amount} per side</p>
                         </div>
                         
@@ -1926,39 +1854,39 @@ const NassauBetTracker = ({ nassauBets, nassauResults, calculatedScores }) => {
                                 {/* Summary Winners */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                                     {/* Front 9 */}
-                                    <div className="bg-teal-50 p-3 rounded-lg border border-teal-200">
-                                        <div className="text-xs font-semibold text-teal-700 uppercase mb-1">Front 9 Winner</div>
-                                        <div className="text-lg font-bold text-teal-800">
+                                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                        <div className="text-xs font-semibold text-blue-700 uppercase mb-1">Front 9 Winner</div>
+                                        <div className="text-lg font-bold text-blue-800">
                                             {result.front9Winner || '—'}
                                         </div>
                                         {result.front9Winner && result.front9Winner !== 'Tie' && result.front9NetWinnings && (
-                                            <div className="text-xs text-teal-600 mt-1">
+                                            <div className="text-xs text-blue-600 mt-1">
                                                 Net: {result.front9NetWinnings[result.front9Winner] >= 0 ? '+' : ''}${(result.front9NetWinnings[result.front9Winner] || 0).toFixed(0)}
                                             </div>
                                         )}
                                     </div>
                                     
                                     {/* Back 9 */}
-                                    <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-200">
-                                        <div className="text-xs font-semibold text-indigo-700 uppercase mb-1">Back 9 Winner</div>
-                                        <div className="text-lg font-bold text-indigo-800">
+                                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                        <div className="text-xs font-semibold text-blue-700 uppercase mb-1">Back 9 Winner</div>
+                                        <div className="text-lg font-bold text-blue-800">
                                             {result.back9Winner || '—'}
                                         </div>
                                         {result.back9Winner && result.back9Winner !== 'Tie' && result.back9NetWinnings && (
-                                            <div className="text-xs text-indigo-600 mt-1">
+                                            <div className="text-xs text-blue-600 mt-1">
                                                 Net: {result.back9NetWinnings[result.back9Winner] >= 0 ? '+' : ''}${(result.back9NetWinnings[result.back9Winner] || 0).toFixed(0)}
                                             </div>
                                         )}
                                     </div>
                                     
                                     {/* Total */}
-                                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                                        <div className="text-xs font-semibold text-purple-700 uppercase mb-1">Total Winner</div>
-                                        <div className="text-lg font-bold text-purple-800">
+                                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                        <div className="text-xs font-semibold text-blue-700 uppercase mb-1">Total Winner</div>
+                                        <div className="text-lg font-bold text-blue-800">
                                             {result.totalWinner || '—'}
                                         </div>
                                         {result.totalWinner && result.totalWinner !== 'Tie' && result.totalNetWinnings && (
-                                            <div className="text-xs text-purple-600 mt-1">
+                                            <div className="text-xs text-blue-600 mt-1">
                                                 Net: {result.totalNetWinnings[result.totalWinner] >= 0 ? '+' : ''}${(result.totalNetWinnings[result.totalWinner] || 0).toFixed(0)}
                                             </div>
                                         )}
@@ -1972,9 +1900,9 @@ const NassauBetTracker = ({ nassauBets, nassauResults, calculatedScores }) => {
                                         const segmentKey = segment.toLowerCase().replace(' ', '');
                                         const matchups = result[`${segmentKey}Matchups`] || {};
                                         const netWinnings = result[`${segmentKey}NetWinnings`] || {};
-                                        const bgColors = ['bg-teal-50', 'bg-indigo-50', 'bg-purple-50'];
-                                        const borderColors = ['border-teal-200', 'border-indigo-200', 'border-purple-200'];
-                                        const textColors = ['text-teal-700', 'text-indigo-700', 'text-purple-700'];
+                                        const bgColors = ['bg-blue-50', 'bg-blue-50', 'bg-blue-50'];
+                                        const borderColors = ['border-blue-200', 'border-blue-200', 'border-blue-200'];
+                                        const textColors = ['text-blue-700', 'text-blue-700', 'text-blue-700'];
                                         
                                         return (
                                             <div key={segment} className={`${bgColors[idx]} p-3 rounded-lg border ${borderColors[idx]} mb-2`}>
@@ -1991,7 +1919,7 @@ const NassauBetTracker = ({ nassauBets, nassauResults, calculatedScores }) => {
                                                         }
                                                         return (
                                                             <div key={key} className="text-gray-700">
-                                                                {playerA} vs {playerB}: <span className="font-bold text-green-600">{matchup.winner}</span> wins ${bet.amount}
+                                                                {playerA} vs {playerB}: <span className="font-bold text-blue-600">{matchup.winner}</span> wins ${bet.amount}
                                                             </div>
                                                         );
                                                     })}
@@ -2004,7 +1932,7 @@ const NassauBetTracker = ({ nassauBets, nassauResults, calculatedScores }) => {
                                                             return (
                                                                 <div key={player.name} className="flex justify-between">
                                                                     <span>{player.name}:</span>
-                                                                    <span className={`font-bold ${net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                                    <span className={`font-bold ${net >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                                                                         {net >= 0 ? '+' : ''}${net.toFixed(0)}
                                                                     </span>
                                                                 </div>
@@ -2027,7 +1955,7 @@ const NassauBetTracker = ({ nassauBets, nassauResults, calculatedScores }) => {
                                                 return (
                                                     <div key={player.name} className="flex justify-between items-center">
                                                         <span className="font-medium text-gray-700">{player.name}:</span>
-                                                        <span className={`text-lg font-bold ${totalNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                        <span className={`text-lg font-bold ${totalNet >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                                                             {totalNet >= 0 ? '+' : ''}${totalNet.toFixed(0)}
                                                         </span>
                                                     </div>
@@ -2041,39 +1969,39 @@ const NassauBetTracker = ({ nassauBets, nassauResults, calculatedScores }) => {
                             // 2-Player Display (Original)
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                                 {/* Front 9 */}
-                                <div className="bg-teal-50 p-3 rounded-lg border border-teal-200">
-                                    <div className="text-xs font-semibold text-teal-700 uppercase mb-1">Front 9</div>
-                                    <div className="text-lg font-bold text-teal-800">
+                                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                    <div className="text-xs font-semibold text-blue-700 uppercase mb-1">Front 9</div>
+                                    <div className="text-lg font-bold text-blue-800">
                                         {result.front9Winner || '—'}
                                     </div>
                                     {result.front9Winner && result.front9Winner !== 'Tie' && (
-                                        <div className="text-xs text-teal-600 mt-1">
+                                        <div className="text-xs text-blue-600 mt-1">
                                             {calculatedScores.playerTotals[result.front9Winner]?.front9Net || 0} net
                                         </div>
                                     )}
                                 </div>
                                 
                                 {/* Back 9 */}
-                                <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-200">
-                                    <div className="text-xs font-semibold text-indigo-700 uppercase mb-1">Back 9</div>
-                                    <div className="text-lg font-bold text-indigo-800">
+                                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                    <div className="text-xs font-semibold text-blue-700 uppercase mb-1">Back 9</div>
+                                    <div className="text-lg font-bold text-blue-800">
                                         {result.back9Winner || '—'}
                                     </div>
                                     {result.back9Winner && result.back9Winner !== 'Tie' && (
-                                        <div className="text-xs text-indigo-600 mt-1">
+                                        <div className="text-xs text-blue-600 mt-1">
                                             {calculatedScores.playerTotals[result.back9Winner]?.back9Net || 0} net
                                         </div>
                                     )}
                                 </div>
                                 
                                 {/* Total */}
-                                <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                                    <div className="text-xs font-semibold text-purple-700 uppercase mb-1">Total</div>
-                                    <div className="text-lg font-bold text-purple-800">
+                                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                    <div className="text-xs font-semibold text-blue-700 uppercase mb-1">Total</div>
+                                    <div className="text-lg font-bold text-blue-800">
                                         {result.totalWinner || '—'}
                                     </div>
                                     {result.totalWinner && result.totalWinner !== 'Tie' && (
-                                        <div className="text-xs text-purple-600 mt-1">
+                                        <div className="text-xs text-blue-600 mt-1">
                                             {calculatedScores.playerTotals[result.totalWinner]?.netTotal || 0} net
                                         </div>
                                     )}
@@ -2099,17 +2027,17 @@ const NassauBetTracker = ({ nassauBets, nassauResults, calculatedScores }) => {
                                             <span className="font-medium text-gray-700">{player.name}:</span>
                                             <div className="flex space-x-3 text-xs">
                                                 {front9UpBy !== undefined && (
-                                                    <span className={front9UpBy > 0 ? 'text-green-600 font-bold' : front9UpBy < 0 ? 'text-red-600' : 'text-gray-600'}>
+                                                    <span className={front9UpBy > 0 ? 'text-blue-600 font-bold' : front9UpBy < 0 ? 'text-red-600' : 'text-gray-600'}>
                                                         F9: {front9UpBy > 0 ? `+${front9UpBy}` : front9UpBy < 0 ? `${front9UpBy}` : 'AS'}
                                                     </span>
                                                 )}
                                                 {back9UpBy !== undefined && (
-                                                    <span className={back9UpBy > 0 ? 'text-green-600 font-bold' : back9UpBy < 0 ? 'text-red-600' : 'text-gray-600'}>
+                                                    <span className={back9UpBy > 0 ? 'text-blue-600 font-bold' : back9UpBy < 0 ? 'text-red-600' : 'text-gray-600'}>
                                                         B9: {back9UpBy > 0 ? `+${back9UpBy}` : back9UpBy < 0 ? `${back9UpBy}` : 'AS'}
                                                     </span>
                                                 )}
                                                 {totalUpBy !== undefined && (
-                                                    <span className={totalUpBy > 0 ? 'text-green-600 font-bold' : totalUpBy < 0 ? 'text-red-600' : 'text-gray-600'}>
+                                                    <span className={totalUpBy > 0 ? 'text-blue-600 font-bold' : totalUpBy < 0 ? 'text-red-600' : 'text-gray-600'}>
                                                         Tot: {totalUpBy > 0 ? `+${totalUpBy}` : totalUpBy < 0 ? `${totalUpBy}` : 'AS'}
                                                     </span>
                                                 )}
@@ -2756,43 +2684,43 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                                 <div className="grid grid-cols-2 md:grid-cols-7 gap-2 text-xs">
                                     <div>
                                         <div className="text-gray-600 font-semibold">Manual</div>
-                                        <div className="font-bold text-green-600">
+                                        <div className="font-bold text-blue-600">
                                             ${breakdown.manual.toFixed(0)}
                                         </div>
                                     </div>
                                     <div>
                                         <div className="text-gray-600 font-semibold">Nassau</div>
-                                        <div className="font-bold text-green-600">
+                                        <div className="font-bold text-blue-600">
                                             ${breakdown.nassau.toFixed(0)}
                                         </div>
                                     </div>
                                     <div>
                                         <div className="text-gray-600 font-semibold">Skins</div>
-                                        <div className="font-bold text-green-600">
+                                        <div className="font-bold text-blue-600">
                                             ${breakdown.skins.toFixed(0)}
                                         </div>
                                     </div>
                                     <div>
                                         <div className="text-gray-600 font-semibold">Match Play</div>
-                                        <div className="font-bold text-green-600">
+                                        <div className="font-bold text-blue-600">
                                             ${breakdown.matchPlay.toFixed(0)}
                                         </div>
                                     </div>
                                     <div>
                                         <div className="text-gray-600 font-semibold">9 Point</div>
-                                        <div className="font-bold text-green-600">
+                                        <div className="font-bold text-blue-600">
                                             ${breakdown.ninePoint.toFixed(0)}
                                         </div>
                                     </div>
                                     <div>
                                         <div className="text-gray-600 font-semibold">Junk</div>
-                                        <div className="font-bold text-green-600">
+                                        <div className="font-bold text-blue-600">
                                             ${breakdown.junk.toFixed(0)}
                                         </div>
                                     </div>
                                     <div>
                                         <div className="text-gray-600 font-semibold">Total Gross</div>
-                                        <div className="font-bold text-lg text-green-600">
+                                        <div className="font-bold text-lg text-blue-600">
                                             ${breakdown.total.toFixed(0)}
                                         </div>
                                     </div>
@@ -2805,8 +2733,8 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
             
             {/* Zero-Sum Settlement Summary - At the Very Top */}
             {settlements.length > 0 && (
-                <div className="mb-6 p-4 rounded-xl border-2 border-emerald-400 bg-emerald-50">
-                    <h4 className="text-lg font-bold text-emerald-800 mb-3 text-center">
+                <div className="mb-6 p-4 rounded-xl border-2 border-blue-400 bg-blue-50">
+                    <h4 className="text-lg font-bold text-blue-800 mb-3 text-center">
                         💰 Settlement Summary {isTeamMode ? '(Teams)' : '(Singles)'}
                     </h4>
                     <div className="space-y-3">
@@ -2820,14 +2748,14 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                             const amountPerPlayer = settlement.amount / fromTeamPlayerCount;
                             
                             return (
-                                <div key={idx} className="bg-white p-3 rounded-lg border border-emerald-300">
-                                    <p className="text-center font-semibold text-emerald-900 mb-2">
-                                        <span className="text-red-600">{settlement.from}</span> owes <span className="text-green-600">{settlement.to}</span> <span className="text-emerald-800">${settlement.amount.toFixed(2)}</span>
+                                <div key={idx} className="bg-white p-3 rounded-lg border border-blue-300">
+                                    <p className="text-center font-semibold text-blue-900 mb-2">
+                                        <span className="text-red-600">{settlement.from}</span> owes <span className="text-blue-600">{settlement.to}</span> <span className="text-blue-800">${settlement.amount.toFixed(2)}</span>
                                     </p>
                                     {isTeamMode && fromTeam && (
-                                        <div className="mt-2 pt-2 border-t border-emerald-200">
-                                            <div className="text-xs font-semibold text-emerald-700 mb-2">Team Total Net Due: ${settlement.amount.toFixed(2)}</div>
-                                            <div className="text-xs text-emerald-600 space-y-1">
+                                        <div className="mt-2 pt-2 border-t border-blue-200">
+                                            <div className="text-xs font-semibold text-blue-700 mb-2">Team Total Net Due: ${settlement.amount.toFixed(2)}</div>
+                                            <div className="text-xs text-blue-600 space-y-1">
                                                 <div className="font-semibold mb-1">Individual Team Member Breakdown:</div>
                                                 {fromTeam.playerIds.map(playerId => {
                                                     const savedPlayer = savedPlayers.find(sp => sp.id === playerId);
@@ -2851,19 +2779,19 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
             
             {/* Two-Player Bet Settlements - Separate from Overall Settlement */}
             {twoPlayerSettlements.length > 0 && (
-                <div className="mb-6 p-4 rounded-xl border-2 border-purple-400 bg-purple-50">
-                    <h4 className="text-lg font-bold text-purple-800 mb-3 text-center">
+                <div className="mb-6 p-4 rounded-xl border-2 border-blue-400 bg-blue-50">
+                    <h4 className="text-lg font-bold text-blue-800 mb-3 text-center">
                         🎯 Two-Player Bet Settlements
                     </h4>
-                    <p className="text-xs text-purple-700 mb-3 text-center italic">
+                    <p className="text-xs text-blue-700 mb-3 text-center italic">
                         These bets are settled separately between the two players involved
                     </p>
                     <div className="space-y-3">
                         {twoPlayerSettlements.map((settlement, idx) => (
-                            <div key={idx} className="bg-white p-3 rounded-lg border border-purple-300">
-                                <p className="text-xs text-purple-700 mb-1 font-semibold">{settlement.betName}</p>
-                                <p className="text-center font-semibold text-purple-900">
-                                    <span className="text-red-600">{settlement.from}</span> owes <span className="text-green-600">{settlement.to}</span> <span className="text-purple-800">${settlement.amount.toFixed(2)}</span>
+                            <div key={idx} className="bg-white p-3 rounded-lg border border-blue-300">
+                                <p className="text-xs text-blue-700 mb-1 font-semibold">{settlement.betName}</p>
+                                <p className="text-center font-semibold text-blue-900">
+                                    <span className="text-red-600">{settlement.from}</span> owes <span className="text-blue-600">{settlement.to}</span> <span className="text-blue-800">${settlement.amount.toFixed(2)}</span>
                                 </p>
                             </div>
                         ))}
@@ -2875,13 +2803,13 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
 
             {/* Previous Winners Block */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div className="p-4 bg-teal-100 rounded-xl shadow-md border border-teal-300">
-                    <p className="text-sm font-semibold text-teal-800 uppercase">Gross Score Winner</p>
-                    <p className="text-2xl font-extrabold text-teal-900 mt-1">{results.grossWinner || 'N/A'}</p>
+                <div className="p-4 bg-blue-100 rounded-xl shadow-md border border-blue-300">
+                    <p className="text-sm font-semibold text-blue-800 uppercase">Gross Score Winner</p>
+                    <p className="text-2xl font-extrabold text-blue-900 mt-1">{results.grossWinner || 'N/A'}</p>
                 </div>
-                <div className="p-4 bg-indigo-100 rounded-xl shadow-md border border-indigo-300">
-                    <p className="text-sm font-semibold text-indigo-800 uppercase">Net Score Winner</p>
-                    <p className="text-2xl font-extrabold text-indigo-900 mt-1">{results.netWinner || 'N/A'}</p>
+                <div className="p-4 bg-blue-100 rounded-xl shadow-md border border-blue-300">
+                    <p className="text-sm font-semibold text-blue-800 uppercase">Net Score Winner</p>
+                    <p className="text-2xl font-extrabold text-blue-900 mt-1">{results.netWinner || 'N/A'}</p>
                 </div>
             </div>
 
@@ -2913,8 +2841,8 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-md text-center text-blue-700 font-bold">{player.front9Gross || '-'}</td>
                                     <td className="px-4 py-3 whitespace-nowrap text-md text-center text-blue-700 font-bold">{player.back9Gross || '-'}</td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-md text-center text-teal-700 font-bold">{player.gross || '-'}</td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-md text-center text-indigo-700 font-extrabold bg-red-100/70">{player.net || '-'}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-md text-center text-blue-700 font-bold">{player.gross || '-'}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-md text-center text-blue-700 font-extrabold bg-red-100/70">{player.net || '-'}</td>
                                 </tr>
                             );
                         })}
@@ -2938,34 +2866,34 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                     const amount = bet.amount || 0;
                     
                     return (
-                        <div key={bet.id} className="p-4 bg-purple-50 rounded-lg border-2 border-purple-200">
-                            <h5 className="text-lg font-bold text-purple-800 mb-3">{bet.name} - ${amount} per side</h5>
+                        <div key={bet.id} className="p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+                            <h5 className="text-lg font-bold text-blue-800 mb-3">{bet.name} - ${amount} per side</h5>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <div className="bg-white p-3 rounded border border-purple-300">
-                                    <div className="text-xs font-semibold text-purple-700 uppercase mb-1">Front 9</div>
-                                    <div className="text-sm font-bold text-purple-900">
+                                <div className="bg-white p-3 rounded border border-blue-300">
+                                    <div className="text-xs font-semibold text-blue-700 uppercase mb-1">Front 9</div>
+                                    <div className="text-sm font-bold text-blue-900">
                                         {front9Winner && front9Winner !== 'Tie' ? (
-                                            <span>{front9Winner}: <span className="text-green-600">+${amount}</span></span>
+                                            <span>{front9Winner}: <span className="text-blue-600">+${amount}</span></span>
                                         ) : (
                                             <span className="text-gray-500">No Winner</span>
                                         )}
                                     </div>
                                 </div>
-                                <div className="bg-white p-3 rounded border border-purple-300">
-                                    <div className="text-xs font-semibold text-purple-700 uppercase mb-1">Back 9</div>
-                                    <div className="text-sm font-bold text-purple-900">
+                                <div className="bg-white p-3 rounded border border-blue-300">
+                                    <div className="text-xs font-semibold text-blue-700 uppercase mb-1">Back 9</div>
+                                    <div className="text-sm font-bold text-blue-900">
                                         {back9Winner && back9Winner !== 'Tie' ? (
-                                            <span>{back9Winner}: <span className="text-green-600">+${amount}</span></span>
+                                            <span>{back9Winner}: <span className="text-blue-600">+${amount}</span></span>
                                         ) : (
                                             <span className="text-gray-500">No Winner</span>
                                         )}
                                     </div>
                                 </div>
-                                <div className="bg-white p-3 rounded border border-purple-300">
-                                    <div className="text-xs font-semibold text-purple-700 uppercase mb-1">Total</div>
-                                    <div className="text-sm font-bold text-purple-900">
+                                <div className="bg-white p-3 rounded border border-blue-300">
+                                    <div className="text-xs font-semibold text-blue-700 uppercase mb-1">Total</div>
+                                    <div className="text-sm font-bold text-blue-900">
                                         {totalWinner && totalWinner !== 'Tie' ? (
-                                            <span>{totalWinner}: <span className="text-green-600">+${amount}</span></span>
+                                            <span>{totalWinner}: <span className="text-blue-600">+${amount}</span></span>
                                         ) : (
                                             <span className="text-gray-500">No Winner</span>
                                         )}
@@ -2988,10 +2916,10 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                     const carryOver = bet.carryOver !== false; // Default to true if not specified
                     
                     return (
-                        <div key={bet.id} className="p-4 bg-yellow-50 rounded-lg border-2 border-yellow-200">
+                        <div key={bet.id} className="p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
                             <div className="flex items-center justify-between mb-3">
-                                <h5 className="text-lg font-bold text-yellow-800">{bet.name} - ${amount} per skin</h5>
-                                <span className="text-sm font-semibold text-yellow-700 bg-yellow-100 px-3 py-1 rounded-full">
+                                <h5 className="text-lg font-bold text-gray-800">{bet.name} - ${amount} per skin</h5>
+                                <span className="text-sm font-semibold text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
                                     {carryOver ? 'Carry Over' : 'No Carry Over'}
                                 </span>
                             </div>
@@ -3002,10 +2930,10 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                                         const winnings = totalWinnings[player.name] || 0;
                                         if (count === 0) return null;
                                         return (
-                                            <div key={player.name} className="bg-white p-2 rounded border border-yellow-300 flex justify-between items-center">
+                                            <div key={player.name} className="bg-white p-2 rounded border border-gray-300 flex justify-between items-center">
                                                 <span className="font-medium text-gray-800">{player.name}</span>
                                                 <span className="text-sm text-gray-700">
-                                                    {count} skin{count !== 1 ? 's' : ''} × ${amount} = <span className="text-green-600 font-bold">${winnings.toFixed(0)}</span>
+                                                    {count} skin{count !== 1 ? 's' : ''} × ${amount} = <span className="text-blue-600 font-bold">${winnings.toFixed(0)}</span>
                                                 </span>
                                             </div>
                                         );
@@ -3020,8 +2948,8 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                 
                 {/* Junk/Side Bets */}
                 {activeRound.selectedJunkTypes && activeRound.selectedJunkTypes.length > 0 && (
-                    <div className="p-4 bg-orange-50 rounded-lg border-2 border-orange-200">
-                        <h5 className="text-lg font-bold text-orange-800 mb-3">Junk / Side Bets</h5>
+                    <div className="p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
+                        <h5 className="text-lg font-bold text-gray-800 mb-3">Junk / Side Bets</h5>
                         <div className="space-y-3">
                             {activeRound.selectedJunkTypes.map(junkId => {
                                 const junkType = JUNK_TYPES.find(j => j.id === junkId);
@@ -3049,13 +2977,13 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                                 if (Object.keys(typeWinnings).length === 0) return null;
                                 
                                 return (
-                                    <div key={junkId} className="bg-white p-3 rounded border border-orange-300">
-                                        <div className="font-semibold text-orange-700 mb-2">{junkType.name} (${pointValue} per event)</div>
+                                    <div key={junkId} className="bg-white p-3 rounded border border-gray-300">
+                                        <div className="font-semibold text-gray-700 mb-2">{junkType.name} (${pointValue} per event)</div>
                                         <div className="space-y-1">
                                             {Object.entries(typeWinnings).map(([playerName, data]) => (
                                                 <div key={playerName} className="flex justify-between items-center text-sm">
                                                     <span className="text-gray-700">{playerName}</span>
-                                                    <span className={data.points >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                                    <span className={data.points >= 0 ? 'text-blue-600' : 'text-red-600'}>
                                                         {data.count} × ${pointValue} = {data.points >= 0 ? '+' : ''}${data.points.toFixed(0)}
                                                     </span>
                                                 </div>
@@ -3141,7 +3069,7 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                                 <div className="text-xs font-semibold text-blue-700 uppercase mb-1">Match Winner</div>
                                 <div className="text-lg font-bold text-blue-900">
                                     {displayMatchWinner && displayMatchWinner !== 'Tie' ? (
-                                        <span>{displayMatchWinner}: <span className="text-green-600">+${amount}</span></span>
+                                        <span>{displayMatchWinner}: <span className="text-blue-600">+${amount}</span></span>
                                     ) : (
                                         <span className="text-gray-500">No Winner / Tie</span>
                                     )}
@@ -3161,7 +3089,7 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                                         {Object.entries(displayWinnings).map(([name, net]) => (
                                             <div key={name} className="flex justify-between items-center text-sm">
                                                 <span className="text-gray-700 font-semibold">{name}</span>
-                                                <span className={`font-bold ${net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                <span className={`font-bold ${net >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                                                     {net >= 0 ? '+' : ''}${net.toFixed(0)}
                                                 </span>
                                             </div>
@@ -3184,16 +3112,16 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                     if (betsWithWinners.length === 0) return null;
                     
                     return (
-                        <div className="p-4 bg-indigo-50 rounded-lg border-2 border-indigo-200">
-                            <h5 className="text-lg font-bold text-indigo-800 mb-3">Manual Bets</h5>
+                        <div className="p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+                            <h5 className="text-lg font-bold text-blue-800 mb-3">Manual Bets</h5>
                             <div className="space-y-2">
                                 {betsWithWinners.map(bet => {
                                     const winner = betSelections[bet.name];
                                     return (
-                                        <div key={bet.id} className="bg-white p-2 rounded border border-indigo-300 flex justify-between items-center">
+                                        <div key={bet.id} className="bg-white p-2 rounded border border-blue-300 flex justify-between items-center">
                                             <span className="font-medium text-gray-800">{bet.name}</span>
                                             <span className="text-sm text-gray-700">
-                                                {winner}: <span className="text-green-600 font-bold">+${bet.amount.toFixed(0)}</span>
+                                                {winner}: <span className="text-blue-600 font-bold">+${bet.amount.toFixed(0)}</span>
                                             </span>
                                         </div>
                                     );
@@ -3331,8 +3259,8 @@ const Scorecard = ({
             <div className="overflow-x-auto">
                 <table className="min-w-full border-collapse border-2 border-gray-300 bg-white">
                     <thead>
-                        <tr className="bg-emerald-600 text-white">
-                            <th className="border border-gray-300 px-3 py-2 text-left font-bold sticky left-0 z-10 bg-emerald-600">Player</th>
+                        <tr className="bg-blue-600 text-white">
+                            <th className="border border-gray-300 px-3 py-2 text-left font-bold sticky left-0 z-10 bg-blue-600">Player</th>
                             {holes.map(h => {
                                 const par = holeData[`hole${h}`]?.par || 4;
                                 return (
@@ -3342,7 +3270,7 @@ const Scorecard = ({
                                     </th>
                                 );
                             })}
-                            <th className="border border-gray-300 px-3 py-2 text-center font-bold bg-emerald-700">
+                            <th className="border border-gray-300 px-3 py-2 text-center font-bold bg-blue-700">
                                 {sectionName === 'front9' ? 'Out' : 'In'}
                             </th>
                         </tr>
@@ -3392,7 +3320,7 @@ const Scorecard = ({
                                                             min="1"
                                                             value={score}
                                                             onChange={(e) => handleScoreChange(player.name, h, e.target.value)}
-                                                            className="w-12 h-10 text-center text-lg font-bold border-2 border-emerald-300 rounded focus:border-emerald-600 focus:outline-none"
+                                                            className="w-12 h-10 text-center text-lg font-bold border-2 border-blue-300 rounded focus:border-blue-600 focus:outline-none"
                                                         />
                                                         {strokes !== 0 && (
                                                             <div className={`text-xs font-bold mt-0.5 ${strokes > 0 ? 'text-red-600' : 'text-blue-600'}`}>
@@ -3404,7 +3332,7 @@ const Scorecard = ({
                                             </td>
                                         );
                                     })}
-                                    <td className="border border-gray-300 px-2 py-2 text-center font-bold bg-emerald-100 align-top">
+                                    <td className="border border-gray-300 px-2 py-2 text-center font-bold bg-blue-100 align-top">
                                         <div className="text-xs font-semibold text-gray-700">
                                             {sectionGross}/{sectionNet}
                                         </div>
@@ -3428,8 +3356,8 @@ const Scorecard = ({
                     players={players}
                 />
                 {/* Full Scorecard in Read-Only Mode */}
-                <div className="p-5 bg-white rounded-2xl shadow-2xl border-4 border-emerald-500 mt-6">
-                    <h2 className="text-xl font-bold text-center text-emerald-800 mb-1">Final Scorecard</h2>
+                <div className="p-5 bg-white rounded-2xl shadow-2xl border-4 border-blue-500 mt-6">
+                    <h2 className="text-xl font-bold text-center text-blue-800 mb-1">Final Scorecard</h2>
                     <h3 className="text-sm text-center text-gray-700 mb-1">
                         {activeRound.courseName || 'Current Round'} • Par {coursePar}
                     </h3>
@@ -3443,13 +3371,13 @@ const Scorecard = ({
 
                     {/* Front 9 */}
                     <div className="mb-6">
-                        <h4 className="text-xl font-bold text-emerald-700 mb-2">Front 9</h4>
+                        <h4 className="text-xl font-bold text-blue-700 mb-2">Front 9</h4>
                         {renderScorecardTable([1, 2, 3, 4, 5, 6, 7, 8, 9], 'front9')}
                     </div>
 
                     {/* Back 9 */}
                     <div className="mb-6">
-                        <h4 className="text-xl font-bold text-emerald-700 mb-2">Back 9</h4>
+                        <h4 className="text-xl font-bold text-blue-700 mb-2">Back 9</h4>
                         {renderScorecardTable([10, 11, 12, 13, 14, 15, 16, 17, 18], 'back9')}
                     </div>
 
@@ -3458,16 +3386,16 @@ const Scorecard = ({
                         {roundPlayers.map(player => {
                             const totals = calculatedScores.playerTotals[player.name] || { grossTotal: 0, netTotal: 0 };
                             return (
-                                <div key={player.name} className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl p-4">
+                                <div key={player.name} className="bg-gradient-to-r from-blue-50 to-blue-50 rounded-xl p-4">
                                     <div className="font-bold text-gray-800 mb-2">{player.name}</div>
                                     <div className="grid grid-cols-2 gap-2 text-sm">
                                         <div>
                                             <span className="text-gray-600">Gross: </span>
-                                            <span className="font-bold text-teal-800">{totals.grossTotal || '-'}</span>
+                                            <span className="font-bold text-blue-800">{totals.grossTotal || '-'}</span>
                                         </div>
                                         <div>
                                             <span className="text-gray-600">Net: </span>
-                                            <span className="font-bold text-indigo-800">{totals.netTotal || '-'}</span>
+                                            <span className="font-bold text-blue-800">{totals.netTotal || '-'}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -3520,8 +3448,8 @@ const Scorecard = ({
             </div>
         )}
 
-        <div className="p-5 bg-white rounded-2xl shadow-2xl border-4 border-emerald-500 mb-6">
-            <h2 className="text-xl font-bold text-center text-emerald-800 mb-1">Scorecard</h2>
+        <div className="p-5 bg-white rounded-2xl shadow-2xl border-4 border-blue-500 mb-6">
+            <h2 className="text-xl font-bold text-center text-blue-800 mb-1">Scorecard</h2>
 
             <h3 className="text-sm text-center text-gray-700 mb-1">
                 {activeRound.courseName || 'Current Round'} • Par {coursePar}
@@ -3540,7 +3468,7 @@ const Scorecard = ({
                     onClick={() => setActiveSection('front9')}
                     className={`px-6 py-2 font-semibold rounded-lg transition ${
                         activeSection === 'front9'
-                            ? 'bg-emerald-600 text-white'
+                            ? 'bg-blue-600 text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                 >
@@ -3550,7 +3478,7 @@ const Scorecard = ({
                     onClick={() => setActiveSection('back9')}
                     className={`px-6 py-2 font-semibold rounded-lg transition ${
                         activeSection === 'back9'
-                            ? 'bg-emerald-600 text-white'
+                            ? 'bg-blue-600 text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                 >
@@ -3741,8 +3669,8 @@ const Scorecard = ({
                     
                     {/* Show if viewing shared round */}
                     {isViewingSharedRound && (
-                        <div className="mt-4 p-3 bg-yellow-100 border-2 border-yellow-400 rounded-lg">
-                            <p className="text-sm font-semibold text-yellow-800 text-center">
+                        <div className="mt-4 p-3 bg-gray-100 border-2 border-gray-400 rounded-lg">
+                            <p className="text-sm font-semibold text-gray-800 text-center">
                                 📖 Viewing Shared Round (Read-Only)
                             </p>
                             <button
@@ -3771,7 +3699,7 @@ const Scorecard = ({
                     const front9 = getFront9Total(player.name);
                     const back9 = getBack9Total(player.name);
                     return (
-                        <div key={player.name} className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl p-4">
+                        <div key={player.name} className="bg-gradient-to-r from-blue-50 to-blue-50 rounded-xl p-4">
                             <div className="font-bold text-gray-800 mb-2">{player.name}</div>
                             <div className="grid grid-cols-4 gap-2 text-sm">
                                 <div>
@@ -3784,11 +3712,11 @@ const Scorecard = ({
                                 </div>
                                 <div>
                                     <div className="text-xs text-gray-600">Gross</div>
-                                    <div className="font-bold text-teal-800">{totals.grossTotal || '-'}</div>
+                                    <div className="font-bold text-blue-800">{totals.grossTotal || '-'}</div>
                                 </div>
                                 <div>
                                     <div className="text-xs text-gray-600">Net</div>
-                                    <div className="font-bold text-indigo-800">{totals.netTotal || '-'}</div>
+                                    <div className="font-bold text-blue-800">{totals.netTotal || '-'}</div>
                                 </div>
                             </div>
                         </div>
@@ -3851,6 +3779,8 @@ const App = () => {
     const [isViewingSharedRound, setIsViewingSharedRound] = useState(false);
     const [shareCodeToDisplay, setShareCodeToDisplay] = useState(null);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [isShareCodeErrorModalOpen, setIsShareCodeErrorModalOpen] = useState(false);
+    const [sharedRoundCustomBets, setSharedRoundCustomBets] = useState([]);
     
     // View state for bottom navigation
     const [currentView, setCurrentView] = useState('play'); // 'play', 'rounds', or 'management'
@@ -3904,6 +3834,29 @@ const App = () => {
         };
     }, [isViewingSharedRound, sharedRoundId, db, sharedRoundOwnerId]);
     
+    // Fetch master user's custom bets when viewing shared round
+    useEffect(() => {
+        if (!isViewingSharedRound || !db || !sharedRoundOwnerId) {
+            setSharedRoundCustomBets([]);
+            return;
+        }
+        
+        const betQuery = collection(db, getBetCollectionPath(sharedRoundOwnerId));
+        const unsubscribeBets = onSnapshot(betQuery, (snapshot) => {
+            const betList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const cleanedBetList = betList.map(b => ({
+                ...b,
+                amount: parseFloat(b.amount) || 0,
+            }));
+            setSharedRoundCustomBets(cleanedBetList);
+        }, (error) => {
+            console.error("Error fetching shared round custom bets:", error);
+            setSharedRoundCustomBets([]);
+        });
+        
+        return () => unsubscribeBets();
+    }, [isViewingSharedRound, db, sharedRoundOwnerId]);
+    
     // Junk/Side Bets State
     const [selectedJunkTypes, setSelectedJunkTypes] = useState([]);
     
@@ -3942,7 +3895,9 @@ const App = () => {
         }
         return rounds.find(r => r.id === activeRoundId);
     }, [rounds, activeRoundId, isViewingSharedRound, sharedRound]);
-    const allAvailableBets = customBets;
+    
+    // Use master user's custom bets when viewing shared round, otherwise use viewer's custom bets
+    const allAvailableBets = isViewingSharedRound ? sharedRoundCustomBets : customBets;
     
     // Debounce refs for Firestore writes
     const junkEventSaveTimeoutRef = useRef(null);
@@ -4924,11 +4879,22 @@ const App = () => {
 
         if (!db || !userId || rosterPlayers.length === 0) {
              console.log("Cannot start round: Player list is empty.");
+             alert("Please add at least one player to start a new round.");
+             return;
+        }
+        
+        if (!selectedCourseId) {
+             console.log("Cannot start round: Course selection is required.");
+             alert("Please select a course to start a new round.");
              return;
         }
 
         try {
-            // 1. Generate fresh data structures
+            // 1. Get course name from selected course
+            const selectedCourse = courses.find(c => c.id === selectedCourseId);
+            const courseName = selectedCourse ? selectedCourse.name : 'Unspecified Course';
+            
+            // 2. Generate fresh data structures
             const initialRoundBetWinners = generateInitialBetSelections(allAvailableBets);
             const initialRoundScores = generateInitialScores(rosterPlayers);
             // Use current holeDataEdit if available (from selected course or previous edits), otherwise use default
@@ -4937,13 +4903,13 @@ const App = () => {
                 ? holeDataEdit 
                 : generateDefaultHoleData();
 
-            // 2. Generate share code
+            // 3. Generate share code
             const shareCode = generateShareCode();
             
-            // 3. Create New Round
+            // 4. Create New Round
             const newRoundRef = await addDoc(collection(db, getRoundCollectionPath(userId)), {
                 date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-                courseName: newRoundCourseName.trim() || 'Unspecified Course',
+                courseName: courseName,
                 players: rosterPlayers.map(p => ({ name: p.name, handicap: p.handicap || 0 })),
                 status: 'Active',
                 betSelections: initialRoundBetWinners,
@@ -4959,7 +4925,7 @@ const App = () => {
                 createdAt: serverTimestamp(),
             });
             
-            // 4. Create shared round entry for code lookup
+            // 5. Create shared round entry for code lookup
             await addDoc(collection(db, SHARED_ROUNDS_COLLECTION), {
                 shareCode: shareCode,
                 userId: userId,
@@ -4967,13 +4933,12 @@ const App = () => {
                 createdAt: serverTimestamp(),
             });
 
-            // 3. Update local state
+            // 6. Update local state
             setActiveRoundId(newRoundRef.id);
             setBetSelections(initialRoundBetWinners);
             setScores(initialRoundScores);
             setHoleDataEdit(initialHoleData);
             setJunkEvents({}); // Clear junk checkboxes
-            setNewRoundCourseName('');
             setSelectedCourseId(''); // Clear course selection
             setLastLoadedScoresRoundId(newRoundRef.id);
             // Reset teams when starting new round
@@ -4994,6 +4959,8 @@ const App = () => {
         setSharedRound(null);
         setSharedRoundId(null);
         setSharedRoundOwnerId(null);
+        // Scroll to top of the page
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
     
     // Handle entering share code to view shared round
@@ -5015,7 +4982,7 @@ const App = () => {
             const querySnapshot = await getDocs(sharedRoundsQuery);
             
             if (querySnapshot.empty) {
-                alert('Share code not found. Please check the code and try again.');
+                setIsShareCodeErrorModalOpen(true);
                 return;
             }
             
@@ -5028,7 +4995,7 @@ const App = () => {
             const roundDoc = await getDoc(roundRef);
             
             if (!roundDoc.exists()) {
-                alert('Round not found. It may have been deleted.');
+                setIsShareCodeErrorModalOpen(true);
                 return;
             }
             
@@ -5472,8 +5439,8 @@ const App = () => {
     // Custom Bet Management
     const handleAddBet = async () => {
         setBetError(null);
-        // For Nassau/Skins, use the type name if not provided
-        const betName = (newBetType === 'Nassau' || newBetType === 'Skins' || newBetType === 'Match Play' || newBetType === '9 Point') ? newBetType : newBetName.trim();
+        // For non-Side Bet types, use the type name; for Side Bet, use the custom name
+        const betName = newBetType === 'Side Bet' ? newBetName.trim() : newBetType;
         
         if (!db || !userId || !betName || isNaN(parseFloat(newBetAmount)) || parseFloat(newBetAmount) < 0) {
             setBetError(new Error("Invalid bet name or amount."));
@@ -5556,8 +5523,6 @@ const App = () => {
             if (selectedCourse && selectedCourse.holeData) {
                 // Load the course's hole data
                 setHoleDataEdit(selectedCourse.holeData);
-                // Also set the course name in the input field
-                setNewRoundCourseName(selectedCourse.name);
             }
         } else {
             // Clear selection - reset to default hole data
@@ -5874,7 +5839,7 @@ const App = () => {
     // --- Main App Render ---
 
     return (
-        <div className="min-h-screen bg-gray-100 p-4 sm:p-8 font-sans">
+        <div className="min-h-screen bg-gray-100 p-2 sm:p-3 font-sans">
             <script src="https://cdn.tailwindcss.com"></script>
             <style jsx="true">{`
                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
@@ -5900,7 +5865,45 @@ const App = () => {
                 </h1>
             </header>
 
-            <div className="w-full px-4" style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
+            <div className="w-full px-2" style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
+                {/* Share Code Error Modal */}
+                {isShareCodeErrorModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+                        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 relative">
+                            <button
+                                type="button"
+                                onClick={() => setIsShareCodeErrorModalOpen(false)}
+                                className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-2xl leading-none"
+                                aria-label="Close"
+                            >
+                                &times;
+                            </button>
+                            <div className="text-center">
+                                <div className="mb-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <h2 className="text-2xl font-bold text-red-600 mb-3">
+                                    Incorrect Code
+                                </h2>
+                                <p className="text-gray-700 mb-6">
+                                    The share code you entered was not found. Please check the code and try again.
+                                </p>
+                                <button
+                                    onClick={() => {
+                                        setIsShareCodeErrorModalOpen(false);
+                                        setShareCodeInput('');
+                                    }}
+                                    className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition"
+                                >
+                                    Try Again
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
                 {/* Round End Modal */}
                 {isRoundEndModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
@@ -5913,22 +5916,22 @@ const App = () => {
                             >
                                 &times;
                             </button>
-                            <h2 className="text-2xl font-bold text-center text-emerald-700 mb-3">
+                            <h2 className="text-2xl font-bold text-center text-blue-700 mb-3">
                                 Round Complete!
                             </h2>
                             <p className="text-center text-gray-700 mb-4">
                                 Round ended successfully. Scroll down to view the full results and final scorecard.
                             </p>
                             {calculatedScores && (
-                                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4">
+                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
                                     <p className="text-sm text-gray-700 mb-2 text-center">
-                                        <span className="font-semibold text-emerald-800">Gross Winner:</span>{' '}
+                                        <span className="font-semibold text-blue-800">Gross Winner:</span>{' '}
                                         <span className="font-bold text-gray-900">
                                             {calculatedScores.grossWinner || 'N/A'}
                                         </span>
                                     </p>
                                     <p className="text-sm text-gray-700 text-center mb-2">
-                                        <span className="font-semibold text-emerald-800">Net Winner:</span>{' '}
+                                        <span className="font-semibold text-blue-800">Net Winner:</span>{' '}
                                         <span className="font-bold text-gray-900">
                                             {calculatedScores.netWinner || 'N/A'}
                                         </span>
@@ -5951,7 +5954,7 @@ const App = () => {
 
                                             if (netAmount > 0) {
                                                 return (
-                                                    <p className="text-sm font-semibold text-emerald-900 text-center mt-2">
+                                                    <p className="text-sm font-semibold text-blue-900 text-center mt-2">
                                                         Congrats {maxPlayer.name}, {minPlayer.name} owes you ${netAmount.toFixed(0)}
                                                     </p>
                                                 );
@@ -5976,7 +5979,7 @@ const App = () => {
                                         }
                                     }, 150);
                                 }}
-                                className="mt-2 w-full py-3 bg-emerald-600 text-white font-semibold rounded-xl shadow-md hover:bg-emerald-700"
+                                className="mt-2 w-full py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
                             >
                                 View Results
                             </button>
@@ -5988,6 +5991,22 @@ const App = () => {
                 {currentView === 'play' && (
                     <>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                            <RoundSelector
+                                dbReady={dbReady}
+                                playersCount={roundPlayerIds.length > 0 ? roundPlayerIds.length : players.length}
+                                rounds={rounds}
+                                courses={courses}
+                                activeRoundId={activeRoundId}
+                                handleStartNewRound={handleStartNewRound}
+                                handleSelectRound={handleSelectRound}
+                                newRoundCourseName={newRoundCourseName}
+                                setNewRoundCourseName={setNewRoundCourseName}
+                                selectedCourseId={selectedCourseId}
+                                setSelectedCourseId={setSelectedCourseId}
+                                handleCourseSelect={handleCourseSelect}
+                                handicapMode={handicapMode}
+                                setHandicapMode={setHandicapMode}
+                            />
                             <PlayerManager
                                 dbReady={dbReady}
                                 newPlayerFirstName={newPlayerFirstName}
@@ -6034,22 +6053,36 @@ const App = () => {
                             junkPointValues={junkPointValues}
                             setJunkPointValues={setJunkPointValues}
                         />
-                        <RoundSelector
-                            dbReady={dbReady}
-                            playersCount={roundPlayerIds.length > 0 ? roundPlayerIds.length : players.length}
-                            rounds={rounds}
-                            courses={courses}
-                            activeRoundId={activeRoundId}
-                            handleStartNewRound={handleStartNewRound}
-                            handleSelectRound={handleSelectRound}
-                            newRoundCourseName={newRoundCourseName}
-                            setNewRoundCourseName={setNewRoundCourseName}
-                            selectedCourseId={selectedCourseId}
-                            setSelectedCourseId={setSelectedCourseId}
-                            handleCourseSelect={handleCourseSelect}
-                            handicapMode={handicapMode}
-                            setHandicapMode={setHandicapMode}
-                        />
+                    </div>
+                    
+                    {/* Start New Round Button - At bottom of Play page */}
+                    <div className="mt-6 mb-6">
+                        {(() => {
+                            const playerCount = roundPlayerIds.length > 0 ? roundPlayerIds.length : players.length;
+                            return (
+                                <>
+                                    {playerCount === 0 && (
+                                        <div className="p-3 mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm font-medium">
+                                            Please add at least one player to start a new round.
+                                        </div>
+                                    )}
+                                    
+                                    {!selectedCourseId && (
+                                        <div className="p-3 mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm font-medium">
+                                            Please select a course to start a new round.
+                                        </div>
+                                    )}
+                                    
+                                    <button
+                                        onClick={handleStartNewRound}
+                                        className="w-full px-6 py-4 bg-blue-600 text-white font-bold text-lg rounded-lg hover:bg-blue-700 transition duration-150 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                        disabled={!dbReady || playerCount === 0 || !selectedCourseId}
+                                    >
+                                        Start New Round
+                                    </button>
+                                </>
+                            );
+                        })()}
                     </div>
                     </>
                 )}
@@ -6108,10 +6141,7 @@ const App = () => {
                             />
                         ) : (
                             <div className="p-8 bg-white rounded-2xl shadow-xl border-2 border-gray-200">
-                                <div className="text-center mb-6">
-                                    <p className="text-gray-600 text-lg mb-2">No round selected</p>
-                                    <p className="text-gray-500 text-sm mb-6">Go to the "Play" tab to start a new round, select an existing round, or enter a share code below</p>
-                                </div>
+                              
                                 
                                 {/* Share Code Entry */}
                                 <div className="max-w-md mx-auto">
@@ -6122,7 +6152,7 @@ const App = () => {
                                         type="text"
                                         value={shareCodeInput}
                                         onChange={(e) => setShareCodeInput(e.target.value.toUpperCase().slice(0, 4))}
-                                        placeholder="ABCD"
+                                        placeholder="Enter Code"
                                         maxLength={4}
                                         className="w-full px-4 py-3 border-2 border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-xl font-bold tracking-widest uppercase mb-2"
                                     />
@@ -6143,6 +6173,63 @@ const App = () => {
                                 </div>
                             </div>
                         )}
+                        
+                        {/* Rounds List - Always shown at bottom of Rounds page */}
+                        <div className="mt-8 p-6 bg-white rounded-2xl shadow-xl border-2 border-gray-200">
+                            <h3 className="text-lg font-medium mb-3 text-gray-700 text-center">
+                                Current Active or Past Rounds ({rounds.length})
+                            </h3>
+                            <ul className="space-y-2 max-h-96 overflow-y-auto">
+                                {rounds
+                                    .slice()
+                                    .sort((a, b) => {
+                                        // First sort by status: Active rounds before Ended (and others)
+                                        const statusOrder = (status) => {
+                                            if (status === 'Active') return 0;
+                                            if (status === 'Ended') return 1;
+                                            return 2;
+                                        };
+
+                                        const statusDiff = statusOrder(a.status) - statusOrder(b.status);
+                                        if (statusDiff !== 0) return statusDiff;
+
+                                        // Within same status, sort by date/createdAt descending (latest first)
+                                        const getDate = (round) => {
+                                            if (round.createdAt?.toDate) return round.createdAt.toDate();
+                                            if (round.date) return new Date(round.date);
+                                            return 0;
+                                        };
+
+                                        const dateA = getDate(a);
+                                        const dateB = getDate(b);
+
+                                        return dateB - dateA;
+                                    })
+                                    .map(round => {
+                                        const isTeamRound = round.teamMode === 'teams';
+                                        const playerCount = isTeamRound && round.teams 
+                                            ? round.teams.reduce((total, team) => total + (team.playerIds?.length || 0), 0)
+                                            : (round.players?.length || 0);
+                                        
+                                        return (
+                                            <li key={round.id}
+                                                onClick={() => handleSelectRound(round.id)}
+                                                className={`p-3 rounded-lg cursor-pointer transition duration-150 border ${activeRoundId === round.id ? 'bg-blue-100 border-blue-500 text-blue-800 font-semibold' : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-700'}`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <span className="font-semibold">{round.courseName || 'Unspecified'}</span>
+                                                        <span className="text-sm text-gray-500 ml-2">({round.date}) - {round.status}</span>
+                                                    </div>
+                                                    <div className="text-xs text-gray-500">
+                                                        {isTeamRound ? 'Team' : 'Single'} • {playerCount} {playerCount === 1 ? 'Player' : 'Players'}
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
+                            </ul>
+                        </div>
                     </>
                 )}
 
@@ -6198,7 +6285,7 @@ const App = () => {
                             onClick={() => setCurrentView('play')}
                             className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition ${
                                 currentView === 'play'
-                                    ? 'bg-emerald-600 text-white'
+                                    ? 'bg-blue-600 text-white'
                                     : 'text-gray-600 hover:bg-gray-100'
                             }`}
                         >
@@ -6214,7 +6301,7 @@ const App = () => {
                             onClick={() => setCurrentView('rounds')}
                             className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition ${
                                 currentView === 'rounds'
-                                    ? 'bg-emerald-600 text-white'
+                                    ? 'bg-blue-600 text-white'
                                     : 'text-gray-600 hover:bg-gray-100'
                             }`}
                         >
@@ -6229,7 +6316,7 @@ const App = () => {
                             onClick={() => setCurrentView('management')}
                             className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition ${
                                 currentView === 'management'
-                                    ? 'bg-emerald-600 text-white'
+                                    ? 'bg-blue-600 text-white'
                                     : 'text-gray-600 hover:bg-gray-100'
                             }`}
                         >
