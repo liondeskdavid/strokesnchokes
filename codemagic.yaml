@@ -21,6 +21,9 @@ workflows:
       node: latest
       xcode: latest
 
+    distribution_type: development # or: ad_hoc | development | enterprise
+    bundle_identifier: com.strokesnchokes.strokesnchokes
+        
     triggering:
       events:
         - push
