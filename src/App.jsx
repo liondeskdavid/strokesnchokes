@@ -766,7 +766,8 @@ const CourseManager = ({
     const [showImportModal, setShowImportModal] = useState(false);
     const [importedCourseName, setImportedCourseName] = useState('');
     
-    // API URLs
+    // API URLs and Key
+    const API_KEY = 'd75f6880-c25f-45f4-91b0-424de3b14c3e';
     const isDevelopment = import.meta.env.DEV;
     const API_BASE_URL = isDevelopment 
         ? '/api/golf/courses'
@@ -821,9 +822,18 @@ const CourseManager = ({
             });
             
             const url = `${COURSES_SEARCH_API_BASE_URL}?${params.toString()}`;
-            const response = await fetch(url, {
+            const fetchOptions = {
                 method: 'GET'
-            });
+            };
+            
+            // Add Authorization header in production (proxy handles it in development)
+            if (!isDevelopment) {
+                fetchOptions.headers = {
+                    'Authorization': `Bearer ${API_KEY}`
+                };
+            }
+            
+            const response = await fetch(url, fetchOptions);
 
             if (!response.ok) {
                 let errorBody = null;
@@ -874,9 +884,18 @@ const CourseManager = ({
 
         try {
             const url = `${API_BASE_URL}/${courseId}`;
-            const response = await fetch(url, {
+            const fetchOptions = {
                 method: 'GET'
-            });
+            };
+            
+            // Add Authorization header in production (proxy handles it in development)
+            if (!isDevelopment) {
+                fetchOptions.headers = {
+                    'Authorization': `Bearer ${API_KEY}`
+                };
+            }
+            
+            const response = await fetch(url, fetchOptions);
 
             if (!response.ok) {
                 throw new Error(`Failed to fetch course details: ${response.status} ${response.statusText}`);
@@ -926,14 +945,14 @@ const CourseManager = ({
             <div>
             {/* Search Courses by City */}
             <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Search Courses by City (30 mile radius)</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Search by City (30 mile radius)</h3>
                 <div className="flex gap-2 mb-3">
                     <input
                         type="text"
                         value={cityName}
                         onChange={(e) => setCityName(e.target.value)}
                         onKeyPress={handleCityKeyPress}
-                        placeholder="Enter city name (e.g., San Diego)"
+                        placeholder="Enter city name (Carlsbad)"
                         className="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     />
                     <button

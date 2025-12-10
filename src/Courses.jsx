@@ -6,6 +6,7 @@ import { auth, db } from './firebase';
 const getCourseCollectionPath = (userId) => `users/${userId}/courses`;
 
 // Use proxy in development (browser) to avoid CORS, direct URL in production (mobile app)
+const API_KEY = 'd75f6880-c25f-45f4-91b0-424de3b14c3e';
 const isDevelopment = import.meta.env.DEV;
 const API_BASE_URL = isDevelopment 
     ? '/api/golf/courses'  // Proxy through Vite dev server (matches curl command via proxy)
@@ -47,13 +48,23 @@ const Courses = () => {
             // Use curl-style GET request (matching: curl --location --request GET)
             // In development, proxy handles the request and adds Authorization header
             // The proxy forwards /api/golf/courses/:id to https://www.golfapi.io/api/v2.3/courses/:id
-            // In production, make direct request
+            // In production, make direct request with Authorization header
             // GET requests don't need Content-Type header (no request body)
             const url = `${API_BASE_URL}/${courseId}`;
             console.log('Fetching from:', url);
-            const response = await fetch(url, {
+            
+            const fetchOptions = {
                 method: 'GET'
-            });
+            };
+            
+            // Add Authorization header in production (proxy handles it in development)
+            if (!isDevelopment) {
+                fetchOptions.headers = {
+                    'Authorization': `Bearer ${API_KEY}`
+                };
+            }
+            
+            const response = await fetch(url, fetchOptions);
 
             if (!response.ok) {
                 // Try to get the full JSON response body
@@ -194,9 +205,18 @@ const Courses = () => {
         try {
             // First, fetch the full course details
             const url = `${API_BASE_URL}/${courseId}`;
-            const response = await fetch(url, {
+            const fetchOptions = {
                 method: 'GET'
-            });
+            };
+            
+            // Add Authorization header in production (proxy handles it in development)
+            if (!isDevelopment) {
+                fetchOptions.headers = {
+                    'Authorization': `Bearer ${API_KEY}`
+                };
+            }
+            
+            const response = await fetch(url, fetchOptions);
 
             if (!response.ok) {
                 throw new Error(`Failed to fetch course details: ${response.status} ${response.statusText}`);
@@ -252,9 +272,18 @@ const Courses = () => {
             const url = `${COURSES_SEARCH_API_BASE_URL}?${params.toString()}`;
             console.log('Fetching courses from:', url);
             
-            const response = await fetch(url, {
+            const fetchOptions = {
                 method: 'GET'
-            });
+            };
+            
+            // Add Authorization header in production (proxy handles it in development)
+            if (!isDevelopment) {
+                fetchOptions.headers = {
+                    'Authorization': `Bearer ${API_KEY}`
+                };
+            }
+            
+            const response = await fetch(url, fetchOptions);
 
             if (!response.ok) {
                 let errorBody = null;
@@ -310,9 +339,19 @@ const Courses = () => {
         try {
             const url = `${API_BASE_URL}/${selectedCourseId}`;
             console.log('Fetching course details from:', url);
-            const response = await fetch(url, {
+            
+            const fetchOptions = {
                 method: 'GET'
-            });
+            };
+            
+            // Add Authorization header in production (proxy handles it in development)
+            if (!isDevelopment) {
+                fetchOptions.headers = {
+                    'Authorization': `Bearer ${API_KEY}`
+                };
+            }
+            
+            const response = await fetch(url, fetchOptions);
 
             if (!response.ok) {
                 let errorBody = null;
