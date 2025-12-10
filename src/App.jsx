@@ -953,12 +953,12 @@ const CourseManager = ({
                         onChange={(e) => setCityName(e.target.value)}
                         onKeyPress={handleCityKeyPress}
                         placeholder="Enter city name (Carlsbad)"
-                        className="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm max-w-[65%]"
                     />
                     <button
                         onClick={searchCoursesByCity}
                         disabled={citySearchLoading || !cityName.trim()}
-                        className="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm whitespace-nowrap"
                     >
                         {citySearchLoading ? 'Searching...' : 'Search'}
                     </button>
@@ -1135,16 +1135,16 @@ const CourseManager = ({
                                                     <div className="inline-block min-w-full">
                                                         <table className="w-full text-center border-collapse text-xs">
                                                             <thead>
-                                                                <tr className="bg-gray-100">
-                                                                    <th className="p-1 border border-gray-300">Hole</th>
+                                                                <tr className="bg-gray-300">
+                                                                    <th className="p-1 border border-gray-400 font-bold">Hole</th>
                                                                     {HOLE_NUMBERS.map(h => (
-                                                                        <th key={h} className="p-1 border border-gray-300 w-10 text-xs font-bold">{h}</th>
+                                                                        <th key={h} className="p-1 border border-gray-400 w-10 text-xs font-bold">{h}</th>
                                                                     ))}
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
                                                                 <tr className="bg-white">
-                                                                    <td className="p-1 text-xs font-bold bg-gray-100 border border-gray-300">Par</td>
+                                                                    <td className="p-1 text-xs font-bold bg-gray-300 border border-gray-400">Par</td>
                                                                     {HOLE_NUMBERS.map(h => (
                                                                         <td key={`par-${h}`} className="p-1 border border-gray-300">
                                                                             <input
@@ -1162,13 +1162,13 @@ const CourseManager = ({
                                                                                         holeData: newHoleData
                                                                                     });
                                                                                 }}
-                                                                                className="w-10 h-8 text-center text-xs font-bold border border-gray-400 rounded focus:border-blue-600"
+                                                                                className="w-10 h-8 text-center text-xs font-bold border border-gray-400 rounded focus:border-blue-600 bg-white"
                                                                             />
                                                                         </td>
                                                                     ))}
                                                                 </tr>
                                                                 <tr className="bg-white">
-                                                                    <td className="p-1 text-xs font-bold bg-gray-100 border border-gray-300">Index</td>
+                                                                    <td className="p-1 text-xs font-bold bg-gray-300 border border-gray-400">Index</td>
                                                                     {HOLE_NUMBERS.map(h => (
                                                                         <td key={`index-${h}`} className="p-1 border border-gray-300">
                                                                             <input
@@ -1186,7 +1186,7 @@ const CourseManager = ({
                                                                                         holeData: newHoleData
                                                                                     });
                                                                                 }}
-                                                                                className="w-10 h-8 text-center text-xs font-bold border border-gray-400 rounded focus:border-blue-600"
+                                                                                className="w-10 h-8 text-center text-xs font-bold border border-gray-400 rounded focus:border-blue-600 bg-white"
                                                                             />
                                                                         </td>
                                                                     ))}
