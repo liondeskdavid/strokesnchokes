@@ -6273,7 +6273,10 @@ const App = () => {
     // --- Main App Render ---
 
     return (
-        <div className="min-h-screen bg-gray-100 p-2 sm:p-3 font-sans">
+        <div 
+            className="min-h-screen bg-gray-100 p-2 sm:p-3 font-sans"
+            style={{ paddingTop: 'calc(0.5rem + env(safe-area-inset-top, 0px))' }}
+        >
             <script src="https://cdn.tailwindcss.com"></script>
             <style jsx="true">{`
                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
@@ -6299,7 +6302,7 @@ const App = () => {
                 </h1>
             </header>
 
-            <div className="w-full px-2" style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
+            <div className="w-full px-2" style={{ paddingBottom: 'calc(75px + env(safe-area-inset-bottom, 0px))' }}>
                 {/* Share Code Error Modal */}
                 {isShareCodeErrorModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
