@@ -22,8 +22,8 @@ workflows:
       xcode: latest
       
       ios_signing:
-        distribution_type: development # or: ad_hoc | development | enterprise
-      #  bundle_identifier: com.strokesnchokes.strokesnchokes
+        distribution_type: app_store # or: ad_hoc | development | enterprise
+        bundle_identifier: com.snc.strokesnchokes
         
     triggering:
       events:
