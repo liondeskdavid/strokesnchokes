@@ -414,7 +414,7 @@ const ManagePlayers = ({
                         </p>
                     ) : (
                         <div className="space-y-2 max-h-52 overflow-y-auto">
-                            {players.map(player => {
+                            {[...players].sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(player => {
                                 const isEditing = editingPlayerId === player.id;
                                 
                                 return (
@@ -750,10 +750,171 @@ const CourseManager = ({
     editingCourseHoleData,
     setEditingCourseHoleData,
     handleEditCourse,
-    handleSaveEditedCourse
+    handleSaveEditedCourse,
+    userId,
+    db
 }) => {
     const [courseToDelete, setCourseToDelete] = useState(null);
     const editingCourse = editingCourseId ? courses.find(c => c.id === editingCourseId) : null;
+    
+    // Course search state
+    const [cityName, setCityName] = useState('');
+    const [citySearchResults, setCitySearchResults] = useState(null);
+    const [citySearchLoading, setCitySearchLoading] = useState(false);
+    const [citySearchError, setCitySearchError] = useState(null);
+    const [importingCourseId, setImportingCourseId] = useState(null);
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importedCourseName, setImportedCourseName] = useState('');
+    
+    // API URLs
+    const isDevelopment = import.meta.env.DEV;
+    const API_BASE_URL = isDevelopment 
+        ? '/api/golf/courses'
+        : 'https://www.golfapi.io/api/v2.3/courses';
+    const COURSES_SEARCH_API_BASE_URL = isDevelopment
+        ? '/api/golf/courses'
+        : 'https://www.golfapi.io/api/v2.3/courses';
+    
+    // Convert parsMen and indexesMen arrays to holeData format
+    const convertToHoleData = (parsMen, indexesMen) => {
+        const holeData = {};
+        for (let i = 1; i <= 18; i++) {
+            holeData[`hole${i}`] = {
+                par: parsMen && parsMen[i - 1] ? parsMen[i - 1] : 4,
+                index: indexesMen && indexesMen[i - 1] ? indexesMen[i - 1] : i
+            };
+        }
+        return holeData;
+    };
+
+    // Combine clubName and courseName for display
+    const getCourseDisplayName = (clubName, courseName) => {
+        const club = clubName ? clubName.trim() : '';
+        const course = courseName ? courseName.trim() : '';
+        
+        if (club && course) {
+            return `${club} - ${course}`;
+        } else if (club) {
+            return club;
+        } else if (course) {
+            return course;
+        }
+        return 'Unknown Course';
+    };
+    
+    // Search courses by city
+    const searchCoursesByCity = async () => {
+        if (!cityName.trim()) {
+            setCitySearchError('Please enter a city name');
+            return;
+        }
+
+        setCitySearchLoading(true);
+        setCitySearchError(null);
+        setCitySearchResults(null);
+
+        try {
+            const params = new URLSearchParams({
+                city: cityName.trim(),
+                country: 'usa',
+                measureUnit: 'mi'
+            });
+            
+            const url = `${COURSES_SEARCH_API_BASE_URL}?${params.toString()}`;
+            const response = await fetch(url, {
+                method: 'GET'
+            });
+
+            if (!response.ok) {
+                let errorBody = null;
+                try {
+                    errorBody = await response.json();
+                } catch (e) {
+                    try {
+                        errorBody = await response.text();
+                    } catch (e2) {
+                        errorBody = null;
+                    }
+                }
+
+                const errorMessage = errorBody 
+                    ? `Failed to fetch courses: ${response.status} ${response.statusText}\n\nFull Response:\n${JSON.stringify(errorBody, null, 2)}`
+                    : `Failed to fetch courses: ${response.status} ${response.statusText}`;
+
+                throw new Error(errorMessage);
+            }
+
+            const data = await response.json();
+            setCitySearchResults(data);
+        } catch (err) {
+            setCitySearchError(err.message || 'An error occurred while searching for courses');
+        } finally {
+            setCitySearchLoading(false);
+        }
+    };
+    
+    // Import course from search results
+    const handleImportCourseFromResults = async (courseId, e) => {
+        if (e) {
+            e.stopPropagation();
+        }
+
+        if (!courseId) {
+            setCitySearchError('No course ID available');
+            return;
+        }
+
+        if (!userId || !db) {
+            setCitySearchError('Please wait for authentication to complete');
+            return;
+        }
+
+        setImportingCourseId(courseId);
+        setCitySearchError(null);
+
+        try {
+            const url = `${API_BASE_URL}/${courseId}`;
+            const response = await fetch(url, {
+                method: 'GET'
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch course details: ${response.status} ${response.statusText}`);
+            }
+
+            const courseData = await response.json();
+
+            if (!courseData.clubName) {
+                throw new Error('Course data is missing club name');
+            }
+
+            if (!courseData.parsMen || !courseData.indexesMen) {
+                throw new Error('Course data is missing par or handicap information');
+            }
+
+            const holeData = convertToHoleData(courseData.parsMen, courseData.indexesMen);
+            const courseDisplayName = getCourseDisplayName(courseData.clubName, courseData.courseName);
+            
+            await addDoc(collection(db, getCourseCollectionPath(userId)), {
+                name: courseDisplayName,
+                holeData: holeData,
+                createdAt: serverTimestamp(),
+            });
+
+            setImportedCourseName(courseDisplayName);
+            setShowImportModal(true);
+        } catch (err) {
+            setCitySearchError(`Failed to import course: ${err.message}`);
+        } finally {
+            setImportingCourseId(null);
+        }
+    };
+    
+    const handleCityKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            searchCoursesByCity();
+        }
+    };
 
     return (
         <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-blue-200 w-full">
@@ -763,9 +924,120 @@ const CourseManager = ({
             </div>
             
             <div>
+            {/* Search Courses by City */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Search Courses by City (30 mile radius)</h3>
+                <div className="flex gap-2 mb-3">
+                    <input
+                        type="text"
+                        value={cityName}
+                        onChange={(e) => setCityName(e.target.value)}
+                        onKeyPress={handleCityKeyPress}
+                        placeholder="Enter city name (e.g., San Diego)"
+                        className="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    />
+                    <button
+                        onClick={searchCoursesByCity}
+                        disabled={citySearchLoading || !cityName.trim()}
+                        className="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                        {citySearchLoading ? 'Searching...' : 'Search'}
+                    </button>
+                </div>
+                {citySearchError && (
+                    <div className="mb-3 p-2 bg-red-50 border border-red-200 text-red-700 rounded text-sm">
+                        {citySearchError}
+                    </div>
+                )}
+                
+                {/* City Search Results */}
+                {citySearchResults && (
+                    <div className="mt-4 p-4 bg-white border border-gray-300 rounded-lg">
+                        <h4 className="text-md font-bold mb-3 text-gray-800">
+                            Courses Found ({Array.isArray(citySearchResults) ? citySearchResults.length : citySearchResults.courses?.length || 0})
+                        </h4>
+                        <div className="max-h-96 overflow-y-auto space-y-2">
+                            {Array.isArray(citySearchResults) ? (
+                                citySearchResults.map((course, index) => {
+                                    const courseId = course.courseID;
+                                    return (
+                                        <div
+                                            key={courseId || index}
+                                            className={`p-3 rounded-lg border transition ${
+                                                courseId 
+                                                    ? 'bg-gray-50 border-gray-300' 
+                                                    : 'bg-gray-100 border-gray-200'
+                                            }`}
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex-1">
+                                                    <div className="font-semibold text-gray-800">{course.clubName || course.name || 'Unknown Course'}</div>
+                                                    {course.courseName && (
+                                                        <div className="text-sm font-medium text-gray-700 mt-1">Course: {course.courseName}</div>
+                                                    )}
+                                                    {course.city && course.state && (
+                                                        <div className="text-sm text-gray-600">{course.city}, {course.state}</div>
+                                                    )}
+                                                </div>
+                                                {courseId && (
+                                                    <button
+                                                        onClick={(e) => handleImportCourseFromResults(courseId, e)}
+                                                        disabled={importingCourseId === courseId || !userId}
+                                                        className="ml-3 px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition whitespace-nowrap"
+                                                    >
+                                                        {importingCourseId === courseId ? 'Importing...' : 'Import'}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            ) : citySearchResults.courses ? (
+                                citySearchResults.courses.map((course, index) => {
+                                    const courseId = course.courseID;
+                                    return (
+                                        <div
+                                            key={courseId || index}
+                                            className={`p-3 rounded-lg border transition ${
+                                                courseId 
+                                                    ? 'bg-gray-50 border-gray-300' 
+                                                    : 'bg-gray-100 border-gray-200'
+                                            }`}
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex-1">
+                                                    <div className="font-semibold text-gray-800">{course.clubName || course.name || 'Unknown Course'}</div>
+                                                    {course.courseName && (
+                                                        <div className="text-sm font-medium text-gray-700 mt-1">Course: {course.courseName}</div>
+                                                    )}
+                                                    {course.city && course.state && (
+                                                        <div className="text-sm text-gray-600">{course.city}, {course.state}</div>
+                                                    )}
+                                                </div>
+                                                {courseId && (
+                                                    <button
+                                                        onClick={(e) => handleImportCourseFromResults(courseId, e)}
+                                                        disabled={importingCourseId === courseId || !userId}
+                                                        className="ml-3 px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition whitespace-nowrap"
+                                                    >
+                                                        {importingCourseId === courseId ? 'Importing...' : 'Import'}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="text-gray-500 text-center py-4">No courses found</div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+            
             {/* Add New Course Section */}
-            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Add New Course</h3>
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Add New Course Manually</h3>
                 <div className="flex space-x-2 mb-3">
                     <input
                         type="text"
@@ -796,7 +1068,7 @@ const CourseManager = ({
                     </p>
                 ) : (
                     <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {courses.map(course => {
+                        {[...courses].sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(course => {
                             const isEditing = editingCourseId === course.id;
                             
                             return (
@@ -970,6 +1242,41 @@ const CourseManager = ({
                     </div>
                 </div>
             )}
+
+            {/* Import Success Modal */}
+            {showImportModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all">
+                        <div className="flex items-center justify-center mb-4">
+                            <div className="bg-green-100 rounded-full p-3">
+                                <svg className="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                        </div>
+                        <h3 className="text-2xl font-bold text-gray-800 text-center mb-2">
+                            Course Imported!
+                        </h3>
+                        <p className="text-gray-600 text-center mb-4">
+                            <span className="font-semibold text-gray-800">{importedCourseName}</span> has been successfully added to your courses.
+                        </p>
+                        <p className="text-sm text-gray-500 text-center mb-4">
+                            You can find it in the "Existing Courses" section below.
+                        </p>
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-6">
+                            <p className="text-sm text-yellow-800 text-center">
+                                <span className="font-semibold">⚠️ Important:</span> Please double-check the handicap indexes to ensure they are correct.
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setShowImportModal(false)}
+                            className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition duration-150 shadow-md"
+                        >
+                            Got it!
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -1005,7 +1312,7 @@ const RoundSelector = ({
                         className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 mb-2 bg-white"
                     >
                         <option value="">-- Select Course --</option>
-                        {courses.map(course => (
+                        {[...courses].sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(course => (
                             <option key={course.id} value={course.id}>{course.name}</option>
                         ))}
                     </select>
@@ -6293,6 +6600,8 @@ const App = () => {
                             setEditingCourseHoleData={setEditingCourseHoleData}
                             handleEditCourse={handleEditCourse}
                             handleSaveEditedCourse={handleSaveEditedCourse}
+                            userId={userId}
+                            db={db}
                         />
                         <ManagePlayers
                             dbReady={dbReady}
@@ -6375,21 +6684,6 @@ const App = () => {
                             <span className="text-xs font-semibold">Manage</span>
                         </button>
 
-                        {/* Courses View */}
-                        <button
-                            onClick={() => setCurrentView('courses')}
-                            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition ${
-                                currentView === 'courses'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'text-gray-600 hover:bg-gray-100'
-                            }`}
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <span className="text-xs font-semibold">Courses</span>
-                        </button>
                     </div>
                 </div>
             </div>
