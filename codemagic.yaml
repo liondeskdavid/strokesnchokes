@@ -52,10 +52,33 @@ workflows:
         script: |
           npx cap sync ios
 
+      - name: Update iOS Deployment Target
+        script: |
+          # Ensure Podfile has correct deployment target (macOS sed syntax)
+          # Capacitor 8.0 requires iOS 15.0+, but using 16.0 for better compatibility
+          cd ios/App
+          sed -i '' "s/platform :ios, '[^']*'/platform :ios, '16.0'/g" Podfile
+          
+          # Update Xcode project deployment target for all configurations
+          cd App.xcodeproj
+          sed -i '' "s/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*/IPHONEOS_DEPLOYMENT_TARGET = 16.0/g" project.pbxproj
+          cd ..
+          
+          # Verify changes
+          echo "--- Podfile deployment target ---"
+          grep "platform :ios" Podfile || echo "Warning: Could not find platform in Podfile"
+          echo "--- Xcode project deployment targets ---"
+          grep "IPHONEOS_DEPLOYMENT_TARGET" App.xcodeproj/project.pbxproj | head -5
+          cd ../..
+
       - name: Install CocoaPods and Verify Workspace
         script: |
-          # 1. Install CocoaPods dependencies inside the iOS project folder
+          # 1. Clean CocoaPods cache to avoid stale dependencies
+          pod cache clean --all || true
+          
+          # 2. Install CocoaPods dependencies inside the iOS project folder
           cd ios/App
+          rm -rf Pods Podfile.lock
           pod install --repo-update
           
           # 2. Crucial diagnostic step: List contents of ios/App to confirm workspace existence
