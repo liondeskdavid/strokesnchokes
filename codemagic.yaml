@@ -9,6 +9,7 @@ workflows:
       vars:
         # REQUIRED FOR THE API BLOCK BELOW
         BUNDLE_ID: "com.strokesnchokes.strokesnchokes"
+        IOS_SCHEME: "App"  # Xcode scheme name (typically matches the target name)
         ASC_KEY_ID: "FKNBK58HF2"  # ← Your 10-char Key ID
         APP_STORE_CONNECT_KEY_IDENTIFIER: "FKNBK58HF2"
         ASC_ISSUER_ID: "6c57ab02-4757-49f6-b5d2-462bcca62124"  # ← Your Issuer ID
@@ -113,6 +114,13 @@ workflows:
           echo "--- Diagnostic complete. Proceeding to build... ---"
       # ---------------------------
       
+      - name: List Available Schemes
+        script: |
+          cd ios/App
+          echo "--- Available schemes in workspace ---"
+          xcodebuild -workspace App.xcworkspace -list
+          cd ../..
+
       - name: Prepare and Build IPA for TestFlight
         script: |
         
@@ -121,7 +129,16 @@ workflows:
           ARCHIVE_PATH="build/strokesnchokes.xcarchive"
           EXPORT_PLIST_PATH="$CM_BUILD_DIR/ios/exportOptions.plist"
           
+          # Set default scheme if not provided
+          IOS_SCHEME="${IOS_SCHEME:-App}"
+          
+          # Create build directory
+          mkdir -p build
+          mkdir -p build/ios/ipa
+          
           echo "Using workspace path: $WORKSPACE_PATH"
+          echo "Using scheme: $IOS_SCHEME"
+          echo "Archive will be saved to: $ARCHIVE_PATH"
 
           # 1. Increment the build number
           (
@@ -136,14 +153,33 @@ workflows:
             -scheme "$IOS_SCHEME" \
             -configuration Release \
             -destination generic/platform=iOS \
-            -archivePath "$ARCHIVE_PATH" | xcpretty
+            -archivePath "$ARCHIVE_PATH" || {
+              echo "Archive failed. Checking workspace and scheme..."
+              cd ios/App
+              xcodebuild -workspace App.xcworkspace -list
+              exit 1
+            }
+          
+          # Verify archive was created
+          if [ ! -d "$ARCHIVE_PATH" ]; then
+            echo "Error: Archive was not created at $ARCHIVE_PATH"
+            exit 1
+          fi
+          echo "Archive created successfully at $ARCHIVE_PATH"
 
           # 3. EXPORT IPA using xcodebuild
           echo "--- Starting xcodebuild export ---"
           xcodebuild -exportArchive \
             -archivePath "$ARCHIVE_PATH" \
             -exportOptionsPlist "$EXPORT_PLIST_PATH" \
-            -exportPath "build/ios/ipa" | xcpretty
+            -exportPath "build/ios/ipa" || {
+              echo "Export failed. Checking export options plist..."
+              cat "$EXPORT_PLIST_PATH"
+              exit 1
+            }
+          
+          echo "--- IPA export completed ---"
+          ls -lh build/ios/ipa/*.ipa
 
     artifacts:
       - build/ios/ipa/*.ipa
