@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import {
     getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc,
-    serverTimestamp, query, where, getDocs, getDoc,
+    serverTimestamp, query, where, getDocs, getDoc, setDoc,
 } from 'firebase/firestore';
 import Courses from './Courses';
 
@@ -22,6 +22,7 @@ const getPlayerCollectionPath = (userId) => `users/${userId}/players`;
 const getRoundCollectionPath = (userId) => `users/${userId}/rounds`;
 const getBetCollectionPath = (userId) => `users/${userId}/custom_bets`;  // Fixed: was missing!
 const getCourseCollectionPath = (userId) => `users/${userId}/courses`;
+const getUserDocumentPath = (userId) => `users/${userId}`;
 const SHARED_ROUNDS_COLLECTION = 'shared_rounds'; // Collection for mapping share codes to rounds
 
 // --- Constants ---
@@ -111,6 +112,7 @@ const PlayerManager = ({
     setSelectedExistingPlayerId,
     roundPlayerIds,
     setRoundPlayerIds,
+    myPlayerId,
 }) => {
     // Helper to parse name into first and last
     const parseName = (fullName) => {
@@ -201,9 +203,14 @@ const PlayerManager = ({
                     .filter(player => roundPlayerIds.includes(player.id))
                     .map(player => (
                         <div key={player.id} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg border border-gray-200">
-                            <span className="font-medium text-gray-700">
-                                {player.name} (HCP: {player.handicap || 0})
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="font-medium text-gray-700">
+                                    {player.name} (HCP: {player.handicap || 0})
+                                </span>
+                                {myPlayerId === player.id && (
+                                    <span className="text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded font-semibold">Me</span>
+                                )}
+                            </div>
                             <button
                                 type="button"
                                 onClick={() => {
@@ -381,6 +388,8 @@ const ManagePlayers = ({
     setEditingPlayerHandicap,
     handleEditPlayer,
     handleSaveEditedPlayer,
+    myPlayerId,
+    handleSetMePlayer,
 }) => {
     const [playerToDelete, setPlayerToDelete] = useState(null);
     
@@ -425,7 +434,18 @@ const ManagePlayers = ({
                                                 <span className="font-medium text-gray-700">
                                                     {player.name} (HCP: {player.handicap || 0})
                                                 </span>
-                                                <div className="flex space-x-2">
+                                                <div className="flex items-center space-x-2">
+                                                    <button
+                                                        onClick={() => handleSetMePlayer(player.id)}
+                                                        disabled={!dbReady}
+                                                        className={`px-2 py-1 text-xs font-medium rounded-lg transition duration-150 disabled:opacity-50 ${
+                                                            myPlayerId === player.id
+                                                                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                        }`}
+                                                    >
+                                                        {myPlayerId === player.id ? 'Me ✓' : 'Me'}
+                                                    </button>
                                                     <button
                                                         onClick={() => handleEditPlayer(player.id)}
                                                         disabled={!dbReady}
@@ -3549,7 +3569,8 @@ const Scorecard = ({
     newRoundBetPlayer1 = '',
     setNewRoundBetPlayer1,
     newRoundBetPlayer2 = '',
-    setNewRoundBetPlayer2
+    setNewRoundBetPlayer2,
+    myPlayerId
 }) => {
     const [activeSection, setActiveSection] = useState('front9'); // 'front9' or 'back9'
     
@@ -3653,7 +3674,12 @@ const Scorecard = ({
                                 <tr key={player.name} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
                                     <td className={`border border-gray-300 px-3 py-2 font-bold text-gray-800 align-top sticky left-0 z-10 ${idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
                                         <div className="flex flex-col">
-                                            <span className="text-sm font-bold">{getInitials(player.name)}</span>
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-sm font-bold">{getInitials(player.name)}</span>
+                                                {myPlayerId && players.find(p => p.id === myPlayerId)?.name === player.name && (
+                                                    <span className="text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded font-semibold">Me</span>
+                                                )}
+                                            </div>
                                             <span className="text-xs text-gray-500">HCP {player.handicap || 0}</span>
                                         </div>
                                     </td>
@@ -4121,6 +4147,9 @@ const App = () => {
     const [editingPlayerFirstName, setEditingPlayerFirstName] = useState('');
     const [editingPlayerLastName, setEditingPlayerLastName] = useState('');
     const [editingPlayerHandicap, setEditingPlayerHandicap] = useState('');
+    
+    // "Me" player selection
+    const [myPlayerId, setMyPlayerId] = useState(null);
 
     // Input States
     const [newPlayerFirstName, setNewPlayerFirstName] = useState('');
@@ -5238,6 +5267,23 @@ const App = () => {
         };
     }, [isAuthReady, userId, db, activeRoundId, lastLoadedScoresRoundId]);
 
+    // Load user settings (including myPlayerId)
+    useEffect(() => {
+        if (!isAuthReady || !userId || !db) return;
+
+        const userRef = doc(db, getUserDocumentPath(userId));
+        getDoc(userRef).then((docSnap) => {
+            if (docSnap.exists()) {
+                const userData = docSnap.data();
+                if (userData.myPlayerId) {
+                    setMyPlayerId(userData.myPlayerId);
+                }
+            }
+        }).catch((error) => {
+            handleError("Error loading user settings:", error);
+        });
+    }, [isAuthReady, userId, db]);
+
 
     // --- Round Management and Finalization ---
 
@@ -5802,6 +5848,25 @@ const App = () => {
             setEditingPlayerHandicap('');
         } catch (error) {
             handleError("Failed to update player:", error);
+        }
+    };
+
+    const handleSetMePlayer = async (playerId) => {
+        if (!db || !userId) return;
+        try {
+            const userRef = doc(db, getUserDocumentPath(userId));
+            
+            // If clicking the same player, unset it. Otherwise, set the new one.
+            const newMyPlayerId = myPlayerId === playerId ? null : playerId;
+            
+            await setDoc(userRef, {
+                myPlayerId: newMyPlayerId,
+                lastUpdated: serverTimestamp(),
+            }, { merge: true });
+            
+            setMyPlayerId(newMyPlayerId);
+        } catch (error) {
+            handleError("Failed to save 'Me' player selection:", error);
         }
     };
 
@@ -6390,6 +6455,7 @@ const App = () => {
                                 setSelectedExistingPlayerId={setSelectedExistingPlayerId}
                                 roundPlayerIds={roundPlayerIds}
                                 setRoundPlayerIds={setRoundPlayerIds}
+                                myPlayerId={myPlayerId}
                             />
                             <TeamsManager
                                 dbReady={dbReady}
@@ -6507,6 +6573,7 @@ const App = () => {
                                 setNewRoundBetPlayer1={setNewRoundBetPlayer1}
                                 newRoundBetPlayer2={newRoundBetPlayer2}
                                 setNewRoundBetPlayer2={setNewRoundBetPlayer2}
+                                myPlayerId={myPlayerId}
                             />
                         ) : (
                             <div className="p-8 bg-white rounded-2xl shadow-xl border-2 border-gray-200">
@@ -6636,6 +6703,8 @@ const App = () => {
                             setEditingPlayerHandicap={setEditingPlayerHandicap}
                             handleEditPlayer={handleEditPlayer}
                             handleSaveEditedPlayer={handleSaveEditedPlayer}
+                            myPlayerId={myPlayerId}
+                            handleSetMePlayer={handleSetMePlayer}
                         />
                     </div>
                 )}
