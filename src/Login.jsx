@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-    signInWithPhoneNumber
+    signInWithPhoneNumber,
+    RecaptchaVerifier
 } from 'firebase/auth';
 
 const Login = ({ auth, onLoginSuccess }) => {
@@ -10,6 +11,68 @@ const Login = ({ auth, onLoginSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [step, setStep] = useState('phone'); // 'phone' or 'code'
+    const recaptchaVerifierRef = useRef(null);
+    const recaptchaContainerRef = useRef(null);
+
+    // Initialize reCAPTCHA verifier when component mounts
+    useEffect(() => {
+        if (!auth) return;
+
+        // Clean up on unmount
+        return () => {
+            if (recaptchaVerifierRef.current) {
+                try {
+                    recaptchaVerifierRef.current.clear();
+                } catch (err) {
+                    // Ignore cleanup errors
+                }
+                recaptchaVerifierRef.current = null;
+            }
+        };
+    }, [auth]);
+
+    const initializeRecaptcha = () => {
+        // Clear existing verifier if any
+        if (recaptchaVerifierRef.current) {
+            try {
+                recaptchaVerifierRef.current.clear();
+            } catch (err) {
+                // Ignore cleanup errors
+            }
+            recaptchaVerifierRef.current = null;
+        }
+
+        // Wait for DOM to be ready
+        setTimeout(() => {
+            try {
+                recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                    size: 'invisible', // Use invisible reCAPTCHA
+                    callback: () => {
+                        // reCAPTCHA solved automatically
+                    },
+                    'expired-callback': () => {
+                        setError('Verification expired. Please try again.');
+                        if (recaptchaVerifierRef.current) {
+                            try {
+                                recaptchaVerifierRef.current.clear();
+                            } catch (err) {
+                                // Ignore
+                            }
+                            recaptchaVerifierRef.current = null;
+                        }
+                    }
+                });
+                // Render the invisible reCAPTCHA
+                recaptchaVerifierRef.current.render().catch((err) => {
+                    console.error('reCAPTCHA render error:', err);
+                    setError('Failed to initialize verification. Please refresh the page.');
+                });
+            } catch (err) {
+                console.error('Error setting up reCAPTCHA:', err);
+                setError('Failed to initialize verification. Please refresh the page.');
+            }
+        }, 100);
+    };
 
     const formatPhoneNumber = (value) => {
         // Remove all non-digit characters
@@ -43,11 +106,20 @@ const Login = ({ auth, onLoginSuccess }) => {
                 formattedPhone = '+' + formattedPhone;
             }
 
-            // Send verification code
-            // On Android, Firebase uses Play Integrity API for automatic verification
-            // On web, reCAPTCHA may be required, but we'll try without it first
-            // If this fails with captcha-check-failed error, reCAPTCHA may be needed
-            const confirmation = await signInWithPhoneNumber(auth, formattedPhone);
+            // Initialize reCAPTCHA if not already initialized
+            if (!recaptchaVerifierRef.current) {
+                initializeRecaptcha();
+                // Wait a moment for reCAPTCHA to initialize
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            if (!recaptchaVerifierRef.current) {
+                throw new Error('Verification not initialized. Please try again.');
+            }
+
+            // Send verification code with reCAPTCHA verifier
+            // The invisible reCAPTCHA will be solved automatically
+            const confirmation = await signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifierRef.current);
             setConfirmationResult(confirmation);
             setStep('code');
             setLoading(false);
@@ -61,8 +133,28 @@ const Login = ({ auth, onLoginSuccess }) => {
                 errorMessage = 'Too many requests. Please try again later.';
             } else if (err.code === 'auth/captcha-check-failed') {
                 errorMessage = 'Verification failed. Please try again.';
+                // Reset reCAPTCHA on failure
+                if (recaptchaVerifierRef.current) {
+                    try {
+                        recaptchaVerifierRef.current.clear();
+                    } catch (clearErr) {
+                        // Ignore
+                    }
+                    recaptchaVerifierRef.current = null;
+                }
+            } else if (err.code === 'auth/argument-error') {
+                errorMessage = 'Invalid phone number format. Please include country code (e.g., +1 for US).';
             } else if (err.code === 'auth/internal-error') {
                 errorMessage = 'Internal error. Please refresh the page and try again.';
+                // Reset reCAPTCHA on internal error
+                if (recaptchaVerifierRef.current) {
+                    try {
+                        recaptchaVerifierRef.current.clear();
+                    } catch (clearErr) {
+                        // Ignore
+                    }
+                    recaptchaVerifierRef.current = null;
+                }
             } else if (err.message) {
                 errorMessage = err.message;
             }
@@ -107,6 +199,15 @@ const Login = ({ auth, onLoginSuccess }) => {
         setVerificationCode('');
         setError('');
         setConfirmationResult(null);
+        // Clear reCAPTCHA - will be reinitialized on next submit
+        if (recaptchaVerifierRef.current) {
+            try {
+                recaptchaVerifierRef.current.clear();
+            } catch (err) {
+                // Ignore cleanup errors
+            }
+            recaptchaVerifierRef.current = null;
+        }
     };
 
     return (
@@ -148,6 +249,9 @@ const Login = ({ auth, onLoginSuccess }) => {
                                     Include country code (e.g., +1 for US)
                                 </p>
                             </div>
+
+                            {/* Invisible reCAPTCHA container */}
+                            <div id="recaptcha-container" ref={recaptchaContainerRef} style={{ display: 'none' }}></div>
 
                             <button
                                 type="submit"

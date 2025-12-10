@@ -4184,6 +4184,9 @@ const App = () => {
     // View state for bottom navigation
     const [currentView, setCurrentView] = useState('play'); // 'play', 'rounds', 'management', or 'courses'
     
+    // Hamburger menu state
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    
     // Scroll to top when switching to rounds view
     useEffect(() => {
         if (currentView === 'rounds') {
@@ -6323,10 +6326,54 @@ const App = () => {
                 }
             `}</style>
 
-            <header className="text-center mb-4">
-                <h1 className="text-3xl font-extrabold text-gray-900 app-title-shadow">
-                    Strokes-N-Chokes
-                </h1>
+            <header className="relative mb-4">
+                <div className="flex items-center justify-between">
+                    {/* Hamburger Menu Button */}
+                    <button
+                        onClick={() => setIsMenuOpen(!isMenuOpen)}
+                        className="p-2 rounded-lg hover:bg-gray-200 transition"
+                        aria-label="Menu"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    
+                    {/* Title */}
+                    <h1 className="text-3xl font-extrabold text-gray-900 app-title-shadow flex-1 text-center">
+                        Strokes-N-Chokes
+                    </h1>
+                    
+                    {/* Spacer to balance the hamburger button */}
+                    <div className="w-10"></div>
+                </div>
+                
+                {/* Dropdown Menu */}
+                {isMenuOpen && (
+                    <>
+                        {/* Backdrop to close menu when clicking outside */}
+                        <div 
+                            className="fixed inset-0 z-40" 
+                            onClick={() => setIsMenuOpen(false)}
+                        ></div>
+                        
+                        {/* Menu Dropdown */}
+                        <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 min-w-[200px]">
+                            <button
+                                onClick={() => {
+                                    setIsMenuOpen(false);
+                                    handleLogout();
+                                }}
+                                className="w-full px-4 py-3 text-left text-red-600 hover:bg-red-50 flex items-center gap-3 rounded-lg transition"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                <span className="font-semibold">Logout</span>
+                            </button>
+                        </div>
+                    </>
+                )}
             </header>
 
             <div className="w-full px-2" style={{ paddingBottom: 'calc(75px + env(safe-area-inset-bottom, 0px))' }}>
