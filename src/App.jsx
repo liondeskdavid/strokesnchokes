@@ -5,6 +5,7 @@ import {
     getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc,
     serverTimestamp, query, where, getDocs, getDoc,
 } from 'firebase/firestore';
+import Courses from './Courses';
 
 // YOUR REAL FIREBASE CONFIG — THIS IS THE ONLY THING YOU NEED
 const firebaseConfig = {
@@ -3825,7 +3826,7 @@ const App = () => {
     const [sharedRoundCustomBets, setSharedRoundCustomBets] = useState([]);
     
     // View state for bottom navigation
-    const [currentView, setCurrentView] = useState('play'); // 'play', 'rounds', or 'management'
+    const [currentView, setCurrentView] = useState('play'); // 'play', 'rounds', 'management', or 'courses'
     
     // Scroll to top when switching to rounds view
     useEffect(() => {
@@ -6310,6 +6311,11 @@ const App = () => {
                         />
                     </div>
                 )}
+
+                {/* Courses View - Search for Golf Courses */}
+                {currentView === 'courses' && (
+                    <Courses />
+                )}
             </div>
 
             {/* Bottom Navigation Menu */}
@@ -6367,6 +6373,22 @@ const App = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                             <span className="text-xs font-semibold">Manage</span>
+                        </button>
+
+                        {/* Courses View */}
+                        <button
+                            onClick={() => setCurrentView('courses')}
+                            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition ${
+                                currentView === 'courses'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="text-xs font-semibold">Courses</span>
                         </button>
                     </div>
                 </div>
