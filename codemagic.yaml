@@ -32,6 +32,11 @@ workflows:
       - name: Install npm dependencies
         script: |
           npm ci --prefer-offline
+
+      - name: Install dependencies (with legacy peer deps)
+        script: |
+          npm ci --legacy-peer-deps
+
           
       # --- NEW STEP: Install the missing Capacitor iOS package ---
       - name: Install Capacitor iOS dependency
