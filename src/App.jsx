@@ -381,6 +381,8 @@ const ManagePlayers = ({
     handleEditPlayer,
     handleSaveEditedPlayer,
 }) => {
+    const [playerToDelete, setPlayerToDelete] = useState(null);
+    
     // Helper to parse name into first and last
     const parseName = (fullName) => {
         const parts = (fullName || '').trim().split(/\s+/);
@@ -431,7 +433,7 @@ const ManagePlayers = ({
                                                         Edit
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDeletePlayer(player.id)}
+                                                        onClick={() => setPlayerToDelete({ id: player.id, name: player.name })}
                                                         disabled={!dbReady}
                                                         className="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-lg hover:bg-red-600 transition duration-150 disabled:opacity-50"
                                                     >
@@ -490,6 +492,43 @@ const ManagePlayers = ({
                         </div>
                     )}
                 </div>
+            
+            {/* Delete Player Confirmation Modal */}
+            {playerToDelete && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl border-2 border-red-200 max-w-md w-full p-6">
+                        <div className="flex items-center justify-center mb-4">
+                            <div className="bg-red-100 rounded-full p-3">
+                                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                        </div>
+                        <h3 className="text-2xl font-bold text-gray-800 text-center mb-2">Delete Player?</h3>
+                        <p className="text-gray-600 text-center mb-6">
+                            Are you sure you want to delete <span className="font-semibold text-gray-800">"{playerToDelete.name}"</span>? 
+                            This action cannot be undone.
+                        </p>
+                        <div className="flex space-x-3">
+                            <button
+                                onClick={() => setPlayerToDelete(null)}
+                                className="flex-1 px-4 py-3 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 transition duration-150"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    handleDeletePlayer(playerToDelete.id);
+                                    setPlayerToDelete(null);
+                                }}
+                                className="flex-1 px-4 py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition duration-150 shadow-md"
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -597,9 +636,9 @@ const CustomBetManager = ({
                 </p>
             ) : (
                 customBets.map(bet => (
-                    <div key={bet.id} className="grid grid-cols-3 gap-2 items-center p-2 bg-blue-50 rounded-lg border border-blue-200">
-                        <span className="font-medium text-blue-700 text-left">{bet.name}</span>
-                        <span className="text-sm text-blue-600 font-mono text-left">
+                    <div key={bet.id} className="grid grid-cols-3 gap-2 items-center p-2 bg-gray-50 rounded-lg border border-gray-200">
+                        <span className="font-medium text-gray-700 text-left">{bet.name}</span>
+                        <span className="text-sm text-gray-600 font-mono text-left">
                             {bet.type} {
                                 bet.type === 'Nassau' ? `($${bet.amount.toFixed(0)}/side)` :
                                 bet.type === 'Skins' ? `($${bet.amount.toFixed(0)}/skin${bet.carryOver !== false ? ', CO' : ''})` :
@@ -739,7 +778,7 @@ const CourseManager = ({
                         disabled={!dbReady || !newCourseName.trim()}
                         className="px-3 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-md disabled:opacity-50 text-sm"
                     >
-                        Add from Hole Data
+                        Add Course
                     </button>
                 </div>
                 <p className="text-xs text-gray-600">
@@ -760,11 +799,11 @@ const CourseManager = ({
                             const isEditing = editingCourseId === course.id;
                             
                             return (
-                                <div key={course.id} className="p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+                                <div key={course.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                                     {!isEditing ? (
                                         // View Mode
                                         <div className="flex justify-between items-center">
-                                            <span className="font-medium text-gray-700 text-lg">{course.name}</span>
+                                            <span className="font-medium text-gray-700">{course.name}</span>
                                             <div className="flex space-x-2">
                                                 <button
                                                     onClick={() => handleEditCourse(course.id)}
@@ -1478,15 +1517,13 @@ const SkinsBetTracker = ({ skinsBets, skinsResults, calculatedScores }) => {
     const roundPlayers = calculatedScores.players || [];
     
     return (
-        <div className="p-5 bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl shadow-xl border-2 border-gray-300 mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">Skins Bet Tracker</h2>
-            
+        <>
             {skinsBets.map(bet => {
                 const result = skinsResults[bet.id];
                 if (!result) return null;
                 
                 return (
-                    <div key={bet.id} className="mb-4 p-4 bg-white rounded-xl border-2 border-gray-200">
+                    <div key={bet.id} className="mb-6 p-4 bg-white rounded-xl border-2 border-gray-200">
                         <div className="text-center mb-3">
                             <h3 className="text-lg font-bold text-gray-700">{bet.name}</h3>
                             <p className="text-sm text-gray-600">
@@ -1544,7 +1581,7 @@ const SkinsBetTracker = ({ skinsBets, skinsResults, calculatedScores }) => {
                     </div>
                 );
             })}
-        </div>
+        </>
     );
 };
 
@@ -2667,13 +2704,14 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Round Ended: Final Summary
+                Round Ended: {activeRound.courseName || 'Unspecified'}
+
             </h2>
             
             {/* Winnings Breakdown by Bet Type - For Verification */}
             <div className="mb-6 p-4 rounded-xl border-2 border-blue-400 bg-blue-50">
                 <h4 className="text-lg font-bold text-blue-800 mb-3 text-center">
-                    📊 Winnings Breakdown by Bet Type {isTeamMode ? '(Teams)' : '(Singles)'}
+                    📊 Winnings Breakdown {isTeamMode ? '(Teams)' : '(Singles)'}
                 </h4>
                 <div className="space-y-3">
                     {summaryData.map(item => {
@@ -2799,8 +2837,7 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                 </div>
             )}
             
-            <h3 className="text-xl font-medium text-gray-700 mb-6">Course: {activeRound.courseName || 'Unspecified'}</h3>
-
+            
             {/* Previous Winners Block */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div className="p-4 bg-blue-100 rounded-xl shadow-md border border-blue-300">
@@ -3693,36 +3730,41 @@ const Scorecard = ({
         )}
 
         {/* Totals Summary */}
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        {isEnded && (
+        <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-blue-200 mb-6">
+            <h2 className="text-lg font-bold text-blue-800 mb-4">Score Summary</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {roundPlayers.map(player => {
                     const totals = calculatedScores.playerTotals[player.name] || { grossTotal: 0, netTotal: 0 };
                     const front9 = getFront9Total(player.name);
                     const back9 = getBack9Total(player.name);
                     return (
-                        <div key={player.name} className="bg-gradient-to-r from-blue-50 to-blue-50 rounded-xl p-4">
-                            <div className="font-bold text-gray-800 mb-2">{player.name}</div>
-                            <div className="grid grid-cols-4 gap-2 text-sm">
+                        <div key={player.name} className="bg-gray-50 rounded-lg border border-gray-200 p-4">
+                            <div className="text-sm font-semibold text-gray-800 mb-3">{player.name}</div>
+                            <div className="grid grid-cols-4 gap-3">
                                 <div>
-                                    <div className="text-xs text-gray-600">Out</div>
-                                    <div className="font-bold">{front9}</div>
+                                    <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Out</div>
+                                    <div className="text-sm font-bold text-blue-800">{front9}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-gray-600">In</div>
-                                    <div className="font-bold">{back9}</div>
+                                    <div className="text-xs font-semibold text-gray-600 uppercase mb-1">In</div>
+                                    <div className="text-sm font-bold text-blue-800">{back9}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-gray-600">Gross</div>
-                                    <div className="font-bold text-blue-800">{totals.grossTotal || '-'}</div>
+                                    <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Gross</div>
+                                    <div className="text-sm font-bold text-blue-800">{totals.grossTotal || '-'}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-gray-600">Net</div>
-                                    <div className="font-bold text-blue-800">{totals.netTotal || '-'}</div>
+                                    <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Net</div>
+                                    <div className="text-sm font-bold text-blue-800">{totals.netTotal || '-'}</div>
                                 </div>
                             </div>
                         </div>
                     );
                 })}
             </div>
+        </div>
+        )}
         </>
     );
 };
