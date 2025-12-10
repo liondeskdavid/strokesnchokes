@@ -10,6 +10,7 @@ workflows:
         # REQUIRED FOR THE API BLOCK BELOW
         BUNDLE_ID: "com.strokesnchokes.strokesnchokes"
         IOS_SCHEME: "App"  # Xcode scheme name (typically matches the target name)
+        # DEVELOPMENT_TEAM: "YOUR_TEAM_ID"  # Uncomment and set your Apple Developer Team ID (found in Apple Developer account)
         ASC_KEY_ID: "FKNBK58HF2"  # ← Your 10-char Key ID
         APP_STORE_CONNECT_KEY_IDENTIFIER: "FKNBK58HF2"
         ASC_ISSUER_ID: "6c57ab02-4757-49f6-b5d2-462bcca62124"  # ← Your Issuer ID
@@ -20,6 +21,14 @@ workflows:
         
       node: latest
       xcode: latest
+      
+      # Code signing configuration
+      # CodeMagic will use automatic code signing if certificates are configured in UI
+      # Or you can specify certificates here
+      code_signing:
+        # Uncomment and configure if you have certificates uploaded to CodeMagic
+        # certificate_type: distribution
+        # distribution_type: app_store
 
     triggering:
       events:
@@ -121,6 +130,43 @@ workflows:
           xcodebuild -workspace App.xcworkspace -list
           cd ../..
 
+      - name: Configure Code Signing
+        script: |
+          cd ios/App
+          
+          echo "--- Configuring code signing ---"
+          echo "NOTE: Code signing requires a development team."
+          echo "Option 1: Configure code signing in CodeMagic UI (recommended)"
+          echo "Option 2: Set DEVELOPMENT_TEAM environment variable with your team ID"
+          
+          # Update project to use automatic code signing
+          cd App.xcodeproj
+          # Ensure CODE_SIGN_STYLE is set to Automatic
+          if ! grep -q "CODE_SIGN_STYLE = Automatic" project.pbxproj; then
+            echo "Updating code signing style to Automatic..."
+            sed -i '' 's/CODE_SIGN_STYLE = Manual/CODE_SIGN_STYLE = Automatic/g' project.pbxproj
+          fi
+          
+          # If DEVELOPMENT_TEAM is set, update the project file
+          if [ -n "$DEVELOPMENT_TEAM" ]; then
+            echo "Setting development team to: $DEVELOPMENT_TEAM"
+            # Add or update DEVELOPMENT_TEAM in project settings
+            # This is a simplified approach - you may need to adjust based on your project structure
+            sed -i '' "s/DEVELOPMENT_TEAM = \"[^\"]*\"/DEVELOPMENT_TEAM = \"$DEVELOPMENT_TEAM\"/g" project.pbxproj || {
+              # If DEVELOPMENT_TEAM doesn't exist, we'll need to add it
+              echo "Development team not found in project, will be set via xcodebuild flags"
+            }
+          else
+            echo "DEVELOPMENT_TEAM not set. CodeMagic should handle this automatically if configured in UI."
+          fi
+          cd ..
+          
+          # List available signing identities (for debugging)
+          echo "--- Available code signing identities ---"
+          security find-identity -v -p codesigning | head -10 || echo "No signing identities found"
+          
+          cd ../..
+
       - name: Prepare and Build IPA for TestFlight
         script: |
         
@@ -146,17 +192,37 @@ workflows:
             agvtool new-version -all $(($(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID") + 1))
           )
           
-          # 2. ARCHIVE using xcodebuild
+          # 2. ARCHIVE using xcodebuild with code signing
           echo "--- Starting xcodebuild archive ---"
-          xcodebuild archive \
-            -workspace "$WORKSPACE_PATH" \
-            -scheme "$IOS_SCHEME" \
-            -configuration Release \
-            -destination generic/platform=iOS \
-            -archivePath "$ARCHIVE_PATH" || {
+          
+          # Code signing configuration
+          # CodeMagic should handle code signing if configured in UI
+          # Otherwise, set DEVELOPMENT_TEAM environment variable
+          ARCHIVE_FLAGS=(
+            -workspace "$WORKSPACE_PATH"
+            -scheme "$IOS_SCHEME"
+            -configuration Release
+            -destination generic/platform=iOS
+            -archivePath "$ARCHIVE_PATH"
+            CODE_SIGN_STYLE=Automatic
+          )
+          
+          # Add development team if set
+          if [ -n "$DEVELOPMENT_TEAM" ]; then
+            ARCHIVE_FLAGS+=(DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM")
+            echo "Using development team: $DEVELOPMENT_TEAM"
+          else
+            echo "No development team set. Ensure code signing is configured in CodeMagic UI."
+            # Try to use automatic provisioning (may require authentication)
+            ARCHIVE_FLAGS+=(-allowProvisioningUpdates)
+          fi
+          
+          xcodebuild archive "${ARCHIVE_FLAGS[@]}" || {
               echo "Archive failed. Checking workspace and scheme..."
               cd ios/App
               xcodebuild -workspace App.xcworkspace -list
+              echo "--- Checking code signing configuration ---"
+              xcodebuild -workspace App.xcworkspace -scheme "$IOS_SCHEME" -showBuildSettings | grep -i "code_sign\|development_team\|provisioning" | head -10
               exit 1
             }
           
