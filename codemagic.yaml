@@ -17,6 +17,7 @@ workflows:
         # The key content should be stored as a SECRET in Codemagic UI.
         APP_STORE_PRIVATE_KEY: "API_KEY_CONTENT_SECRET"
         APP_STORE_CONNECT_PRIVATE_KEY: "API_KEY_CONTENT_SECRET"
+        DEVELOPMENT_TEAM: "TAU24Q4HV5"
         
       node: latest
       xcode: latest
