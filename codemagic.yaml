@@ -17,7 +17,6 @@ workflows:
         # The key content should be stored as a SECRET in Codemagic UI.
         APP_STORE_PRIVATE_KEY: "API_KEY_CONTENT_SECRET"
         APP_STORE_CONNECT_PRIVATE_KEY: "API_KEY_CONTENT_SECRET"
-        DEVELOPMENT_TEAM: "TAU24Q4HV5"
         
       node: latest
       xcode: latest
@@ -186,15 +185,42 @@ workflows:
           
           # 2. ARCHIVE using xcodebuild
           echo "--- Starting xcodebuild archive ---"
+          echo "Workspace: $WORKSPACE_PATH"
+          echo "Scheme: $IOS_SCHEME"
+          echo "Archive path: $ARCHIVE_PATH"
+          
+          # Check if workspace exists
+          if [ ! -d "$WORKSPACE_PATH" ]; then
+            echo "ERROR: Workspace not found at $WORKSPACE_PATH"
+            ls -la ios/App/ | head -20
+            exit 1
+          fi
+          
+          # Show build settings before archiving
+          echo "--- Build settings for scheme $IOS_SCHEME ---"
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace -scheme "$IOS_SCHEME" -configuration Release -showBuildSettings 2>&1 | grep -E "DEVELOPMENT_TEAM|CODE_SIGN|PROVISIONING|PRODUCT_BUNDLE_IDENTIFIER" | head -20 || echo "Could not retrieve build settings"
+          cd ../..
+          
+          # Archive with detailed output
           xcodebuild archive \
             -workspace "$WORKSPACE_PATH" \
             -scheme "$IOS_SCHEME" \
             -configuration Release \
             -destination generic/platform=iOS \
-            -archivePath "$ARCHIVE_PATH" || {
-              echo "Archive failed. Checking workspace and scheme..."
+            -archivePath "$ARCHIVE_PATH" \
+            -allowProvisioningUpdates \
+            2>&1 | tee /tmp/xcodebuild_archive.log || {
+              echo "=== Archive failed ==="
+              echo "Last 50 lines of build log:"
+              tail -50 /tmp/xcodebuild_archive.log
+              echo ""
+              echo "=== Checking workspace and scheme ==="
               cd ios/App
               xcodebuild -workspace App.xcworkspace -list
+              echo ""
+              echo "=== Checking code signing ==="
+              xcodebuild -workspace App.xcworkspace -scheme "$IOS_SCHEME" -showBuildSettings 2>&1 | grep -i "code_sign\|development_team\|provisioning" | head -20
               exit 1
             }
           
