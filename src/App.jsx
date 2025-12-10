@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
 import {
     getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc,
     serverTimestamp, query, where, getDocs, getDoc, setDoc,
 } from 'firebase/firestore';
 import Courses from './Courses';
+import Login from './Login';
 
 // YOUR REAL FIREBASE CONFIG — THIS IS THE ONLY THING YOU NEED
 const firebaseConfig = {
@@ -5070,12 +5071,11 @@ const App = () => {
             setDb(firestore);
             setAuth(firebaseAuth);
 
-            const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+            const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
                 if (user) {
                     setUserId(user.uid);
                 } else {
-                    // Only use anonymous auth — NO custom token
-                    await signInAnonymously(firebaseAuth);
+                    setUserId(null);
                 }
                 setIsAuthReady(true);
             });
@@ -6269,8 +6269,35 @@ const App = () => {
         }
     };
 
+    const handleLogout = async () => {
+        if (!auth) return;
+        try {
+            await signOut(auth);
+            // The onAuthStateChanged listener will automatically update the state
+            // and show the login screen
+        } catch (error) {
+            handleError("Failed to logout:", error);
+        }
+    };
+
 
     // --- Main App Render ---
+
+    // Show login screen if not authenticated
+    if (!isAuthReady || !userId) {
+        return auth ? (
+            <Login 
+                auth={auth} 
+                onLoginSuccess={() => {
+                    // Auth state will be updated by onAuthStateChanged
+                }} 
+            />
+        ) : (
+            <div className="min-h-screen bg-blue-600 flex items-center justify-center">
+                <div className="text-white text-lg">Loading...</div>
+            </div>
+        );
+    }
 
     return (
         <div 
@@ -6773,6 +6800,18 @@ const App = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                             <span className="text-xs font-semibold">Manage</span>
+                        </button>
+
+                        {/* Logout Button (Temporary) */}
+                        <button
+                            onClick={handleLogout}
+                            className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition text-red-600 hover:bg-red-50"
+                            title="Logout"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            <span className="text-xs font-semibold">Logout</span>
                         </button>
 
                     </div>
