@@ -20,10 +20,6 @@ workflows:
         
       node: latest
       xcode: latest
-      
-      ios_signing:
-        distribution_type: app_store # or: ad_hoc | development | enterprise
-        bundle_identifier: com.snc.strokesnchokes
         
     triggering:
       events:
@@ -185,6 +181,10 @@ workflows:
           echo "--- IPA export completed ---"
           ls -lh build/ios/ipa/*.ipa
 
+      - name: Set up code signing settings on Xcode project for TestFlight Internal Testing Only
+        script: |
+          xcode-project use-profiles   
+                --custom-export-options='{"testFlightInternalTestingOnly": true}'  
     artifacts:
       - build/ios/ipa/*.ipa
 
