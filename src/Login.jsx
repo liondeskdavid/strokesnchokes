@@ -13,11 +13,45 @@ const Login = ({ auth, onLoginSuccess }) => {
     const [step, setStep] = useState('phone'); // 'phone' or 'code'
     const recaptchaVerifierRef = useRef(null);
     const recaptchaContainerRef = useRef(null);
+    const recaptchaSolvedRef = useRef(false); // Track if reCAPTCHA has been solved
+    
+    // Detect if we're in development (localhost)
+    const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    // Detect if we're in Capacitor (Android/iOS app)
+    const isCapacitor = window.Capacitor !== undefined;
 
     // Initialize reCAPTCHA verifier when component mounts
     useEffect(() => {
         if (!auth) return;
+        
+        // For localhost development, disable app verification to make testing easier
+        // This makes reCAPTCHA auto-resolve. Only works with test phone numbers.
+        // See: https://firebase.google.com/docs/auth/web/phone-auth#testing
+        // Note: This requires 'localhost' to be added to Firebase Console → Authentication → Settings → Authorized domains
+        if (isDevelopment) {
+            try {
+                // In modular SDK, settings might be accessed differently
+                // Try both the old namespaced way and the modular way
+                if (auth.settings) {
+                    auth.settings.appVerificationDisabledForTesting = false;
+                    console.log('Development mode: App verification disabled for testing');
+                } else if (auth._delegate && auth._delegate.settings) {
+                    auth._delegate.settings.appVerificationDisabledForTesting = false;
+                    console.log('Development mode: App verification disabled for testing (via delegate)');
+                } else {
+                    console.warn('Could not access auth.settings. Make sure localhost is authorized in Firebase Console.');
+                }
+            } catch (err) {
+                console.warn('Could not disable app verification for testing:', err);
+                console.warn('Make sure localhost is added to Firebase Console → Authentication → Settings → Authorized domains');
+            }
+        }
 
+        // Note: We DON'T initialize reCAPTCHA here to prevent re-render issues
+        // reCAPTCHA is initialized on-demand when user submits the form
+        // This ensures the container element is stable and not recreated by React
+        
         // Clean up on unmount
         return () => {
             if (recaptchaVerifierRef.current) {
@@ -28,8 +62,9 @@ const Login = ({ auth, onLoginSuccess }) => {
                 }
                 recaptchaVerifierRef.current = null;
             }
+            recaptchaSolvedRef.current = false;
         };
-    }, [auth]);
+    }, [auth, isDevelopment]);
 
     const initializeRecaptcha = async () => {
         // Clear existing verifier if any
@@ -42,16 +77,39 @@ const Login = ({ auth, onLoginSuccess }) => {
             recaptchaVerifierRef.current = null;
         }
 
-        // Wait for DOM to be ready
+        // Wait for DOM to be ready and ensure container exists
         await new Promise(resolve => setTimeout(resolve, 100));
         
+        // Verify container exists and is stable (not being recreated by React)
+        const container = document.getElementById('recaptcha-container');
+        if (!container) {
+            throw new Error('reCAPTCHA container not found. Please refresh the page.');
+        }
+        
+        // Clear container only if it's safe to do so (no existing widget)
+        // Don't clear if React might be re-rendering
+        if (container.children.length === 0) {
+            container.innerHTML = '';
+        }
+        
         try {
+            // Use invisible reCAPTCHA for production and Android (better for WebView)
+            // Use visible reCAPTCHA only for localhost web development
+            const recaptchaSize = (isDevelopment && !isCapacitor) ? 'normal' : 'invisible';
+            
+            console.log('Initializing reCAPTCHA:', { size: recaptchaSize, isDevelopment, isCapacitor });
+            
             recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                size: 'invisible', // Use invisible reCAPTCHA
-                callback: () => {
-                    // reCAPTCHA solved automatically
+                size: recaptchaSize,
+                callback: (response) => {
+                    // reCAPTCHA solved - mark it as solved
+                    recaptchaSolvedRef.current = true;
+                    console.log('reCAPTCHA callback fired - solved!', response ? 'Response token received' : 'No response token');
+                    console.log('Response details:', response);
                 },
                 'expired-callback': () => {
+                    recaptchaSolvedRef.current = false;
+                    console.warn('reCAPTCHA expired');
                     setError('Verification expired. Please try again.');
                     if (recaptchaVerifierRef.current) {
                         try {
@@ -64,8 +122,25 @@ const Login = ({ auth, onLoginSuccess }) => {
                 }
             });
             
-            // Render the invisible reCAPTCHA and wait for it to complete
-            await recaptchaVerifierRef.current.render();
+            // Render the reCAPTCHA and wait for it to complete
+            console.log('Rendering reCAPTCHA...');
+            const widgetId = await recaptchaVerifierRef.current.render();
+            console.log('reCAPTCHA rendered successfully, widget ID:', widgetId);
+            
+            // For invisible reCAPTCHA, we MUST call verify() to get the token
+            // The callback will fire when it's solved, giving us the token
+            if (recaptchaSize === 'invisible') {
+                console.log('Invisible reCAPTCHA - calling verify() to get token...');
+                // For invisible, verify() triggers the verification and callback
+                // We need to wait for the callback to fire before proceeding
+                try {
+                    await recaptchaVerifierRef.current.verify();
+                    console.log('reCAPTCHA verify() completed');
+                } catch (verifyErr) {
+                    // verify() might resolve immediately or throw, but callback should fire
+                    console.log('verify() result:', verifyErr);
+                }
+            }
         } catch (err) {
             console.error('Error setting up reCAPTCHA:', err);
             throw new Error('Failed to initialize verification. Please refresh the page.');
@@ -129,30 +204,120 @@ const Login = ({ auth, onLoginSuccess }) => {
                 throw new Error('Please enter a valid 10-digit US phone number');
             }
             
-            // Log for debugging (remove in production)
+            // Log for debugging
             console.log('Formatted phone number:', formattedPhone);
 
-            // Initialize reCAPTCHA if not already initialized
-            if (!recaptchaVerifierRef.current) {
-                await initializeRecaptcha();
+            // Always recreate reCAPTCHA for each attempt to avoid stale state
+            recaptchaSolvedRef.current = false;
+            
+            // Clear any existing reCAPTCHA first
+            if (recaptchaVerifierRef.current) {
+                try {
+                    recaptchaVerifierRef.current.clear();
+                } catch (err) {
+                    console.warn('Error clearing old reCAPTCHA:', err);
+                }
+                recaptchaVerifierRef.current = null;
             }
+            
+            // Clear the container element safely
+            // Wait a moment to ensure any React re-renders have completed
+            await new Promise(resolve => setTimeout(resolve, 50));
+            
+            const container = document.getElementById('recaptcha-container');
+            if (!container) {
+                throw new Error('reCAPTCHA container not found. Please refresh the page.');
+            }
+            
+            // Only clear if we're sure it's safe (no active verifier)
+            if (!recaptchaVerifierRef.current) {
+                container.innerHTML = '';
+            }
+            
+            // Initialize fresh reCAPTCHA
+            await initializeRecaptcha();
 
             if (!recaptchaVerifierRef.current) {
                 throw new Error('Verification not initialized. Please try again.');
             }
             
-            // Ensure reCAPTCHA is ready before proceeding
-            // Wait a bit more to ensure it's fully rendered
-            await new Promise(resolve => setTimeout(resolve, 300));
+            // For visible reCAPTCHA, we need to wait for the user to solve it
+            // For invisible reCAPTCHA, it should solve automatically
+            const recaptchaSize = (isDevelopment && !isCapacitor) ? 'normal' : 'invisible';
+            
+            if (recaptchaSize === 'normal') {
+                // Visible reCAPTCHA - wait for user to solve it
+                console.log('Waiting for user to solve visible reCAPTCHA...');
+                if (!recaptchaSolvedRef.current) {
+                    // Wait up to 60 seconds for user to solve reCAPTCHA
+                    let solved = false;
+                    const maxWait = 60000; // 60 seconds
+                    const checkInterval = 500; // Check every 500ms
+                    const startTime = Date.now();
+                    
+                    while (!solved && (Date.now() - startTime) < maxWait) {
+                        await new Promise(resolve => setTimeout(resolve, checkInterval));
+                        solved = recaptchaSolvedRef.current;
+                        if (solved) {
+                            console.log('reCAPTCHA solved by user');
+                            break;
+                        }
+                    }
+                    
+                    if (!solved) {
+                        throw new Error('Please complete the reCAPTCHA verification before submitting.');
+                    }
+                }
+            } else {
+                // Invisible reCAPTCHA - we called verify() during initialization
+                // Now we need to wait for the callback to fire to ensure we have a token
+                console.log('Using invisible reCAPTCHA - waiting for callback to confirm token...');
+                
+                if (!recaptchaSolvedRef.current) {
+                    // Wait up to 10 seconds for invisible reCAPTCHA callback to fire
+                    let solved = false;
+                    const maxWait = 10000; // 10 seconds
+                    const checkInterval = 200; // Check every 200ms
+                    const startTime = Date.now();
+                    
+                    while (!solved && (Date.now() - startTime) < maxWait) {
+                        await new Promise(resolve => setTimeout(resolve, checkInterval));
+                        solved = recaptchaSolvedRef.current;
+                        if (solved) {
+                            console.log('Invisible reCAPTCHA solved via callback - token ready');
+                            break;
+                        }
+                    }
+                    
+                    if (!solved) {
+                        console.error('Invisible reCAPTCHA callback never fired - token not available');
+                        throw new Error('reCAPTCHA verification timed out. Please try again.');
+                    }
+                } else {
+                    console.log('Invisible reCAPTCHA already solved - token ready');
+                }
+            }
 
+            console.log('Calling signInWithPhoneNumber with:', {
+                phone: formattedPhone,
+                hasVerifier: !!recaptchaVerifierRef.current,
+                verifierType: recaptchaVerifierRef.current?.constructor?.name
+            });
+            
             // Send verification code with reCAPTCHA verifier
-            // The invisible reCAPTCHA will be solved automatically
+            // For invisible reCAPTCHA, this will trigger the verification automatically
             const confirmation = await signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifierRef.current);
+            console.log('signInWithPhoneNumber succeeded!');
             setConfirmationResult(confirmation);
             setStep('code');
             setLoading(false);
         } catch (err) {
             console.error('Phone authentication error:', err);
+            console.error('Full error object:', JSON.stringify(err, null, 2));
+            console.error('Error code:', err.code);
+            console.error('Error message:', err.message);
+            console.error('Error stack:', err.stack);
+            
             let errorMessage = 'Failed to send verification code. Please try again.';
             
             if (err.code === 'auth/invalid-phone-number') {
@@ -162,8 +327,14 @@ const Login = ({ auth, onLoginSuccess }) => {
             } else if (err.code === 'auth/quota-exceeded') {
                 errorMessage = 'SMS quota exceeded. Please try again later or contact support if this persists.';
             } else if (err.code === 'auth/captcha-check-failed') {
-                errorMessage = 'Verification failed. Please try again.';
+                // Check if it's a MALFORMED error specifically
+                if (err.message && err.message.includes('MALFORMED')) {
+                    errorMessage = 'reCAPTCHA verification failed. Please complete the reCAPTCHA checkbox and try again. If the problem persists, refresh the page.';
+                } else {
+                    errorMessage = 'reCAPTCHA verification failed. Please make sure "localhost" is added to Firebase Console → Authentication → Settings → Authorized domains, then refresh the page and try again.';
+                }
                 // Reset reCAPTCHA on failure
+                recaptchaSolvedRef.current = false;
                 if (recaptchaVerifierRef.current) {
                     try {
                         recaptchaVerifierRef.current.clear();
@@ -174,8 +345,12 @@ const Login = ({ auth, onLoginSuccess }) => {
                 }
             } else if (err.code === 'auth/argument-error') {
                 errorMessage = 'Invalid phone number format. Please include country code (e.g., +1 for US).';
-            } else if (err.code === 'auth/invalid-app-credential') {
-                errorMessage = 'App verification failed. Please ensure SHA-1 fingerprint is added to Firebase Console and rebuild the app.';
+            } else if (err.code === 'auth/invalid-app-credential' || (err.message && err.message.includes('INVALID_APP_CREDENTIAL'))) {
+                if (isCapacitor) {
+                    errorMessage = 'App verification failed (Android). Please ensure: 1) SHA-1 fingerprint is added to Firebase Console, 2) Updated google-services.json is downloaded, 3) App is rebuilt. See FIX_INVALID_APP_CREDENTIAL.md for details.';
+                } else {
+                    errorMessage = 'App verification failed (Web). Please ensure: 1) "localhost" is added to Firebase Console → Authentication → Settings → Authorized domains, 2) API key allows localhost. See FIX_INVALID_APP_CREDENTIAL.md for details.';
+                }
             } else if (err.message && err.message.includes('400')) {
                 errorMessage = 'Invalid request. Please check your phone number format and try again. If the problem persists, refresh the page.';
             } else if (err.code === 'auth/internal-error') {
@@ -236,6 +411,7 @@ const Login = ({ auth, onLoginSuccess }) => {
         setError('');
         setConfirmationResult(null);
         setLoading(false);
+        recaptchaSolvedRef.current = false; // Reset solved state
         // Clear reCAPTCHA - will be reinitialized on next submit
         if (recaptchaVerifierRef.current) {
             try {
@@ -287,8 +463,14 @@ const Login = ({ auth, onLoginSuccess }) => {
                                 </p>
                             </div>
 
-                            {/* Invisible reCAPTCHA container */}
-                            <div id="recaptcha-container" ref={recaptchaContainerRef} style={{ display: 'none' }}></div>
+                            {/* reCAPTCHA container - must be stable across re-renders */}
+                            {/* Using key to prevent React from recreating it unnecessarily */}
+                            <div 
+                                id="recaptcha-container" 
+                                ref={recaptchaContainerRef}
+                                key="recaptcha-container"
+                                style={{ minHeight: '1px' }}
+                            ></div>
 
                             <button
                                 type="submit"
