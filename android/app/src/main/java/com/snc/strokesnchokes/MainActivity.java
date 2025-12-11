@@ -1,4 +1,4 @@
-package com.snc.strokesnchokes;
+package com.strokesnchokes.strokesnchokes;
 
 import com.getcapacitor.BridgeActivity;
 

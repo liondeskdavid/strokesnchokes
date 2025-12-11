@@ -5,7 +5,7 @@ import {
 } from 'firebase/auth';
 
 const Login = ({ auth, onLoginSuccess }) => {
-    const [phoneNumber, setPhoneNumber] = useState('');
+    const [phoneNumber, setPhoneNumber] = useState('+1');
     const [verificationCode, setVerificationCode] = useState('');
     const [confirmationResult, setConfirmationResult] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -31,7 +31,7 @@ const Login = ({ auth, onLoginSuccess }) => {
         };
     }, [auth]);
 
-    const initializeRecaptcha = () => {
+    const initializeRecaptcha = async () => {
         // Clear existing verifier if any
         if (recaptchaVerifierRef.current) {
             try {
@@ -43,50 +43,66 @@ const Login = ({ auth, onLoginSuccess }) => {
         }
 
         // Wait for DOM to be ready
-        setTimeout(() => {
-            try {
-                recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                    size: 'invisible', // Use invisible reCAPTCHA
-                    callback: () => {
-                        // reCAPTCHA solved automatically
-                    },
-                    'expired-callback': () => {
-                        setError('Verification expired. Please try again.');
-                        if (recaptchaVerifierRef.current) {
-                            try {
-                                recaptchaVerifierRef.current.clear();
-                            } catch (err) {
-                                // Ignore
-                            }
-                            recaptchaVerifierRef.current = null;
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        try {
+            recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                size: 'invisible', // Use invisible reCAPTCHA
+                callback: () => {
+                    // reCAPTCHA solved automatically
+                },
+                'expired-callback': () => {
+                    setError('Verification expired. Please try again.');
+                    if (recaptchaVerifierRef.current) {
+                        try {
+                            recaptchaVerifierRef.current.clear();
+                        } catch (err) {
+                            // Ignore
                         }
+                        recaptchaVerifierRef.current = null;
                     }
-                });
-                // Render the invisible reCAPTCHA
-                recaptchaVerifierRef.current.render().catch((err) => {
-                    console.error('reCAPTCHA render error:', err);
-                    setError('Failed to initialize verification. Please refresh the page.');
-                });
-            } catch (err) {
-                console.error('Error setting up reCAPTCHA:', err);
-                setError('Failed to initialize verification. Please refresh the page.');
-            }
-        }, 100);
+                }
+            });
+            
+            // Render the invisible reCAPTCHA and wait for it to complete
+            await recaptchaVerifierRef.current.render();
+        } catch (err) {
+            console.error('Error setting up reCAPTCHA:', err);
+            throw new Error('Failed to initialize verification. Please refresh the page.');
+        }
     };
 
     const formatPhoneNumber = (value) => {
-        // Remove all non-digit characters
+        // Ensure it always starts with +1
+        if (!value.startsWith('+1')) {
+            // If user deletes everything, keep +1
+            if (value === '' || value === '+') {
+                return '+1';
+            }
+            // If it doesn't start with +, assume they want +1 prefix
+            if (!value.startsWith('+')) {
+                const digits = value.replace(/\D/g, '');
+                value = '+1' + digits;
+            }
+        }
+        
+        // Remove all non-digit characters except the leading +
         const digits = value.replace(/\D/g, '');
+        
+        // Ensure it starts with 1 (country code)
+        if (!digits.startsWith('1')) {
+            return '+1';
+        }
         
         // Format as +1 (XXX) XXX-XXXX for US numbers
         if (digits.length <= 1) {
-            return digits ? `+${digits}` : '';
+            return '+1';
         } else if (digits.length <= 4) {
-            return `+${digits.slice(0, 1)} (${digits.slice(1)}`;
+            return `+1 (${digits.slice(1)}`;
         } else if (digits.length <= 7) {
-            return `+${digits.slice(0, 1)} (${digits.slice(1, 4)}) ${digits.slice(4)}`;
+            return `+1 (${digits.slice(1, 4)}) ${digits.slice(4)}`;
         } else {
-            return `+${digits.slice(0, 1)} (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7, 11)}`;
+            return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7, 11)}`;
         }
     };
 
@@ -96,26 +112,38 @@ const Login = ({ auth, onLoginSuccess }) => {
         setLoading(true);
 
         try {
-            // Format phone number (ensure it starts with + and country code)
+            // Format phone number (ensure it starts with +1)
             let formattedPhone = phoneNumber.replace(/\D/g, '');
-            if (!formattedPhone.startsWith('1') && formattedPhone.length === 10) {
-                // Assume US number if 10 digits without country code
+            
+            // Ensure it starts with 1 (US country code)
+            if (!formattedPhone.startsWith('1')) {
                 formattedPhone = '1' + formattedPhone;
             }
-            if (!formattedPhone.startsWith('+')) {
-                formattedPhone = '+' + formattedPhone;
+            
+            // Add + prefix (E.164 format)
+            formattedPhone = '+' + formattedPhone;
+            
+            // Validate minimum length (country code + area code + number)
+            // E.164 format: +1XXXXXXXXXX (11 digits after +)
+            if (formattedPhone.length !== 12) { // +1 + exactly 10 digits
+                throw new Error('Please enter a valid 10-digit US phone number');
             }
+            
+            // Log for debugging (remove in production)
+            console.log('Formatted phone number:', formattedPhone);
 
             // Initialize reCAPTCHA if not already initialized
             if (!recaptchaVerifierRef.current) {
-                initializeRecaptcha();
-                // Wait a moment for reCAPTCHA to initialize
-                await new Promise(resolve => setTimeout(resolve, 500));
+                await initializeRecaptcha();
             }
 
             if (!recaptchaVerifierRef.current) {
                 throw new Error('Verification not initialized. Please try again.');
             }
+            
+            // Ensure reCAPTCHA is ready before proceeding
+            // Wait a bit more to ensure it's fully rendered
+            await new Promise(resolve => setTimeout(resolve, 300));
 
             // Send verification code with reCAPTCHA verifier
             // The invisible reCAPTCHA will be solved automatically
@@ -130,7 +158,9 @@ const Login = ({ auth, onLoginSuccess }) => {
             if (err.code === 'auth/invalid-phone-number') {
                 errorMessage = 'Invalid phone number. Please check and try again.';
             } else if (err.code === 'auth/too-many-requests') {
-                errorMessage = 'Too many requests. Please try again later.';
+                errorMessage = 'Too many verification attempts. Please wait a few minutes before trying again. Firebase limits the number of SMS codes you can request to prevent abuse.';
+            } else if (err.code === 'auth/quota-exceeded') {
+                errorMessage = 'SMS quota exceeded. Please try again later or contact support if this persists.';
             } else if (err.code === 'auth/captcha-check-failed') {
                 errorMessage = 'Verification failed. Please try again.';
                 // Reset reCAPTCHA on failure
@@ -144,6 +174,10 @@ const Login = ({ auth, onLoginSuccess }) => {
                 }
             } else if (err.code === 'auth/argument-error') {
                 errorMessage = 'Invalid phone number format. Please include country code (e.g., +1 for US).';
+            } else if (err.code === 'auth/invalid-app-credential') {
+                errorMessage = 'App verification failed. Please ensure SHA-1 fingerprint is added to Firebase Console and rebuild the app.';
+            } else if (err.message && err.message.includes('400')) {
+                errorMessage = 'Invalid request. Please check your phone number format and try again. If the problem persists, refresh the page.';
             } else if (err.code === 'auth/internal-error') {
                 errorMessage = 'Internal error. Please refresh the page and try again.';
                 // Reset reCAPTCHA on internal error
@@ -195,10 +229,13 @@ const Login = ({ auth, onLoginSuccess }) => {
     };
 
     const handleBackToPhone = () => {
+        // Reset all state to start fresh
         setStep('phone');
+        setPhoneNumber('+1'); // Reset to default
         setVerificationCode('');
         setError('');
         setConfirmationResult(null);
+        setLoading(false);
         // Clear reCAPTCHA - will be reinitialized on next submit
         if (recaptchaVerifierRef.current) {
             try {
@@ -211,9 +248,9 @@ const Login = ({ auth, onLoginSuccess }) => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center p-4">
-            <div className="w-full max-w-md">
-                <div className="bg-white rounded-2xl shadow-2xl p-6">
+        <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center p-4 w-full">
+            <div className="w-full">
+                <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl mx-auto">
                     <div className="text-center mb-6">
                         <h1 className="text-2xl font-extrabold text-gray-900 mb-2">Strokes-N-Chokes</h1>
                         <p className="text-gray-600">
@@ -241,12 +278,12 @@ const Login = ({ auth, onLoginSuccess }) => {
                                     value={phoneNumber}
                                     onChange={(e) => setPhoneNumber(formatPhoneNumber(e.target.value))}
                                     required
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                                    placeholder="+1 (555) 123-4567"
+                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-black"
+                                    placeholder="(555) 123-4567"
                                     disabled={loading}
                                 />
                                 <p className="mt-1 text-xs text-gray-500">
-                                    Include country code (e.g., +1 for US)
+                                    Enter your 10-digit phone number (US)
                                 </p>
                             </div>
 
@@ -274,7 +311,7 @@ const Login = ({ auth, onLoginSuccess }) => {
                                     onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                                     required
                                     maxLength={6}
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-center text-2xl tracking-widest"
+                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-black text-center text-2xl tracking-widest"
                                     placeholder="000000"
                                     disabled={loading}
                                     autoFocus
