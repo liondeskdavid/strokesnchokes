@@ -1882,7 +1882,8 @@ const JunkTracker = ({
     junkEvents, 
     handleJunkEventChange,
     roundPlayers,
-    activeRound
+    activeRound,
+    isReadOnly = false
 }) => {
     if (!selectedJunkTypes || selectedJunkTypes.length === 0) return null;
     
@@ -1975,13 +1976,14 @@ const JunkTracker = ({
                                                             return (
                                                                 <label 
                                                                     key={player.name} 
-                                                                    className="flex items-center justify-center cursor-pointer py-1"
+                                                                    className={`flex items-center justify-center py-1 ${isReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                                                                 >
                                                                     <input
                                                                         type="checkbox"
                                                                         checked={isChecked}
-                                                                        onChange={(e) => handleJunkEventChange(player.name, holeKey, junkId, e.target.checked)}
-                                                                        className={`w-4 h-4 ${isLosingDots ? 'text-red-600' : 'text-blue-600'} border-gray-300 rounded focus:ring-2 focus:ring-gray-500`}
+                                                                        onChange={(e) => !isReadOnly && handleJunkEventChange(player.name, holeKey, junkId, e.target.checked)}
+                                                                        disabled={isReadOnly}
+                                                                        className={`w-4 h-4 ${isLosingDots ? 'text-red-600' : 'text-blue-600'} border-gray-300 rounded focus:ring-2 focus:ring-gray-500 ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                                     />
                                                                 </label>
                                                             );
@@ -2042,13 +2044,14 @@ const JunkTracker = ({
                                                             return (
                                                                 <label 
                                                                     key={player.name} 
-                                                                    className="flex items-center justify-center cursor-pointer py-1"
+                                                                    className={`flex items-center justify-center py-1 ${isReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                                                                 >
                                                                     <input
                                                                         type="checkbox"
                                                                         checked={isChecked}
-                                                                        onChange={(e) => handleJunkEventChange(player.name, holeKey, junkId, e.target.checked)}
-                                                                        className={`w-4 h-4 ${isLosingDots ? 'text-red-600' : 'text-blue-600'} border-gray-300 rounded focus:ring-2 focus:ring-gray-500`}
+                                                                        onChange={(e) => !isReadOnly && handleJunkEventChange(player.name, holeKey, junkId, e.target.checked)}
+                                                                        disabled={isReadOnly}
+                                                                        className={`w-4 h-4 ${isLosingDots ? 'text-red-600' : 'text-blue-600'} border-gray-300 rounded focus:ring-2 focus:ring-gray-500 ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                                     />
                                                                 </label>
                                                             );
@@ -3846,6 +3849,7 @@ const Scorecard = ({
     betSelections,
     handleBetWinnerChange,
     userId,
+    sharedRoundOwnerId,
     players,
     roundBets = [],
     handleAddRoundBet,
@@ -4086,6 +4090,40 @@ const Scorecard = ({
                     </div>
                 </div>
                 {/* Scorecard div closed above */}
+
+                {/* Enter Share Code Section - Always visible at bottom */}
+                <div className="mt-6 p-5 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Enter Share Code to View Round:
+                    </label>
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={shareCodeInput}
+                            onChange={(e) => setShareCodeInput(e.target.value.toUpperCase().slice(0, 4))}
+                            placeholder="ABCD"
+                            maxLength={4}
+                            className="flex-1 px-4 py-2 border-2 border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg font-bold tracking-widest uppercase"
+                        />
+                        <button
+                            onClick={async () => {
+                                await handleEnterShareCode();
+                                if (isViewingSharedRound) {
+                                    setIsShareModalOpen(false);
+                                }
+                            }}
+                            disabled={!dbReady || shareCodeInput.length !== 4}
+                            className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                        >
+                            View
+                        </button>
+                    </div>
+                    {shareCodeInput.length > 0 && shareCodeInput.length < 4 && (
+                        <p className="mt-2 text-xs text-gray-500 text-center">
+                            Share code must be 4 characters
+                        </p>
+                    )}
+                </div>
             </div>
         );
     }
@@ -4211,7 +4249,7 @@ const Scorecard = ({
             )}
 
         {/* Betting Summaries - Below scorecard */}
-        {/* Junk Tracker */}
+        {/* Junk Tracker - Show for all viewers, but read-only for non-owners */}
         {selectedJunkTypes && selectedJunkTypes.length > 0 && (
                 <JunkTracker
                     selectedJunkTypes={selectedJunkTypes}
@@ -4220,10 +4258,11 @@ const Scorecard = ({
                     handleJunkEventChange={handleJunkEventChange}
                     roundPlayers={roundPlayers}
                     activeRound={activeRound}
+                    isReadOnly={isViewingSharedRound && userId !== sharedRoundOwnerId}
                 />
             )}
         
-        {/* Junk Totals - Separate Box Below Junk Tracker */}
+        {/* Junk Totals - Show for all viewers */}
         {selectedJunkTypes && selectedJunkTypes.length > 0 && (
             <JunkTotals
                 selectedJunkTypes={selectedJunkTypes}
@@ -4410,6 +4449,40 @@ const Scorecard = ({
             </div>
         </div>
         )}
+
+        {/* Enter Share Code Section - Always visible at bottom */}
+        <div className="mt-6 p-5 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Enter Share Code to View Round:
+            </label>
+            <div className="flex gap-2">
+                <input
+                    type="text"
+                    value={shareCodeInput}
+                    onChange={(e) => setShareCodeInput(e.target.value.toUpperCase().slice(0, 4))}
+                    placeholder="ABCD"
+                    maxLength={4}
+                    className="flex-1 px-4 py-2 border-2 border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg font-bold tracking-widest uppercase"
+                />
+                <button
+                    onClick={async () => {
+                        await handleEnterShareCode();
+                        if (isViewingSharedRound) {
+                            setIsShareModalOpen(false);
+                        }
+                    }}
+                    disabled={!dbReady || shareCodeInput.length !== 4}
+                    className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                    View
+                </button>
+            </div>
+            {shareCodeInput.length > 0 && shareCodeInput.length < 4 && (
+                <p className="mt-2 text-xs text-gray-500 text-center">
+                    Share code must be 4 characters
+                </p>
+            )}
+        </div>
         </>
     );
 };
@@ -6640,7 +6713,7 @@ const App = () => {
 
     return (
         <div 
-            className="min-h-screen bg-gray-100 p-2 sm:p-3 font-sans"
+            className="min-h-screen bg-gray-100 p-2 sm:p-3 font-sans w-full"
             style={{ paddingTop: 'calc(0.5rem + env(safe-area-inset-top, 0px))' }}
         >
             <script src="https://cdn.tailwindcss.com"></script>
@@ -6671,7 +6744,7 @@ const App = () => {
                 </div>
             </header>
 
-            <div className="w-full px-2" style={{ paddingBottom: 'calc(75px + env(safe-area-inset-bottom, 0px))' }}>
+            <div className="w-full max-w-full px-2" style={{ paddingBottom: 'calc(75px + env(safe-area-inset-bottom, 0px))' }}>
                 {/* Share Code Error Modal */}
                 {isShareCodeErrorModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
@@ -6949,6 +7022,7 @@ const App = () => {
                                 betSelections={betSelections}
                                 handleBetWinnerChange={handleBetWinnerChange}
                                 userId={userId}
+                                sharedRoundOwnerId={sharedRoundOwnerId}
                                 players={players}
                                 roundBets={roundBets}
                                 handleAddRoundBet={handleAddRoundBet}
