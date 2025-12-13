@@ -20,7 +20,7 @@ const SHARED_ROUNDS_COLLECTION = 'shared_rounds'; // Collection for mapping shar
 
 // --- Constants ---
 const NUM_HOLES = 18;
-const BET_TYPES = ['Side Bet', 'Nassau', 'Skins', 'Match Play', '9 Point', 'Low Ball/High Ball (Not Active)'];
+const BET_TYPES = ['9 Point', 'Match Play', 'Nassau', 'Side Bet', 'Skins'];
 const JUNK_TYPES = [
     { id: 'greenies', name: 'Greenies', description: 'Closest to pin on par 3', points: 1 },
     { id: 'sandies', name: 'Sandies', description: 'Up-and-down from greenside bunker', points: 1 },
@@ -106,7 +106,11 @@ const PlayerManager = ({
     roundPlayerIds,
     setRoundPlayerIds,
     myPlayerId,
+    handleUpdatePlayerHandicap,
 }) => {
+    const [editingHandicap, setEditingHandicap] = useState({});
+    
+    // Helper to parse name into first and last
     // Helper to parse name into first and last
     const parseName = (fullName) => {
         const parts = (fullName || '').trim().split(/\s+/);
@@ -120,8 +124,8 @@ const PlayerManager = ({
 
     return (
         <div className="p-3 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
-            <h2 className="text-lg font-bold text-blue-800 mb-2">Select Players</h2>
-            
+            <h2 className="text-lg font-bold text-blue-800 mb-2">Select Players For Round</h2>
+            <p className="text-xs text-gray-500 mt-1 mb-2">You can modify each player's handicap for this round by clicking on the handicap value</p>
             {/* Select existing player or enter a new one */}
             <div className="mb-3">
               
@@ -180,9 +184,12 @@ const PlayerManager = ({
                 />
                 <button
                     onClick={handleAddPlayer}
-                    className="px-3 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-md disabled:opacity-50 text-sm"
+                    className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-sm flex items-center gap-1 disabled:opacity-50"
                     disabled={!dbReady || !newPlayerFirstName.trim()}
                 >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
                     Add
                 </button>
             </div>
@@ -194,27 +201,86 @@ const PlayerManager = ({
             ) : (
                 players
                     .filter(player => roundPlayerIds.includes(player.id))
-                    .map(player => (
-                        <div key={player.id} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg border border-gray-200">
-                            <div className="flex items-center gap-2">
-                                <span className="font-medium text-gray-700">
-                                    {player.name} (HCP: {player.handicap || 0})
-                                </span>
-                                {myPlayerId === player.id && (
-                                    <span className="text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded font-semibold">Me</span>
-                                )}
+                    .sort((a, b) => {
+                        // Helper to get first name
+                        const getFirstName = (name) => {
+                            const parts = (name || '').trim().split(/\s+/);
+                            return parts[0] || '';
+                        };
+                        
+                        // Always put "me" player first
+                        if (a.id === myPlayerId) return -1;
+                        if (b.id === myPlayerId) return 1;
+                        
+                        // Sort alphabetically by first name
+                        const firstNameA = getFirstName(a.name);
+                        const firstNameB = getFirstName(b.name);
+                        return firstNameA.localeCompare(firstNameB);
+                    })
+                    .map(player => {
+                        // Always use saved player handicap (not round-specific)
+                        const currentHandicap = player.handicap ?? 0;
+                        const isEditingHcp = editingHandicap[player.id];
+                        const handicapValue = isEditingHcp !== undefined ? editingHandicap[player.id] : currentHandicap;
+                        
+                        return (
+                            <div key={player.id} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg border border-gray-200">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-medium text-gray-700">
+                                        {player.name}
+                                    </span>
+                                    {myPlayerId === player.id && (
+                                        <span className="text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded font-semibold">Me</span>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500">HCP:</span>
+                                    <input
+                                        type="number"
+                                        value={handicapValue === '' ? '' : (typeof handicapValue === 'number' ? handicapValue : currentHandicap)}
+                                        onChange={(e) => {
+                                            const inputValue = e.target.value;
+                                            setEditingHandicap(prev => ({
+                                                ...prev,
+                                                [player.id]: inputValue === '' ? '' : parseInt(inputValue, 10) || 0
+                                            }));
+                                        }}
+                                        onBlur={() => {
+                                            if (handleUpdatePlayerHandicap) {
+                                                const finalValue = handicapValue === '' ? currentHandicap : (typeof handicapValue === 'number' ? handicapValue : parseInt(String(handicapValue), 10) || currentHandicap);
+                                                if (typeof finalValue === 'number' && !isNaN(finalValue) && finalValue !== currentHandicap) {
+                                                    handleUpdatePlayerHandicap(player.id, finalValue);
+                                                }
+                                            }
+                                            setEditingHandicap(prev => {
+                                                const updated = { ...prev };
+                                                delete updated[player.id];
+                                                return updated;
+                                            });
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.target.blur();
+                                            }
+                                        }}
+                                        className="w-16 p-1 border border-gray-300 rounded text-sm text-center focus:ring-blue-500 focus:border-blue-500"
+                                        min="-54"
+                                        max="54"
+                                        disabled={!handleUpdatePlayerHandicap || !dbReady}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setRoundPlayerIds(prev => prev.filter(id => id !== player.id));
+                                        }}
+                                        className="px-2 py-1 text-xs font-medium rounded-lg border bg-white text-red-600 border-red-400 hover:bg-red-50"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setRoundPlayerIds(prev => prev.filter(id => id !== player.id));
-                                }}
-                                className="px-2 py-1 text-xs font-medium rounded-lg border bg-white text-red-600 border-red-400 hover:bg-red-50"
-                            >
-                                Remove from round
-                            </button>
-                        </div>
-                    ))
+                        );
+                    })
             )}
             {players.length > 0 && roundPlayerIds.length === 0 && (
                 <p className="text-[11px] text-gray-500 mt-1">
@@ -351,10 +417,13 @@ const TeamsManager = ({
                     <button
                         type="button"
                         onClick={addTeam}
-                        className="w-full px-3 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-md text-sm"
+                        className="w-full px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-sm flex items-center justify-center gap-1"
                         disabled={!dbReady}
                     >
-                        + Add Team
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Team
                     </button>
                     {teams.length === 0 && (
                         <p className="text-xs text-gray-500 italic text-center py-2">
@@ -383,6 +452,13 @@ const ManagePlayers = ({
     handleSaveEditedPlayer,
     myPlayerId,
     handleSetMePlayer,
+    newPlayerFirstName,
+    setNewPlayerFirstName,
+    newPlayerLastName,
+    setNewPlayerLastName,
+    newPlayerHandicap,
+    setNewPlayerHandicap,
+    handleAddPlayer,
 }) => {
     const [playerToDelete, setPlayerToDelete] = useState(null);
     
@@ -407,9 +483,49 @@ const ManagePlayers = ({
             </div>
 
             <div className="space-y-3">
-                    <p className="text-xs text-gray-600 mb-2">
-                        This list is saved to your account. Deleting a player here removes them from the saved list, but does not change historical rounds.
-                    </p>
+                {/* Add Player Form */}
+                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Add New Player</h3>
+                    <div className="flex space-x-2">
+                        <input
+                            type="text"
+                            placeholder="First Name"
+                            value={newPlayerFirstName}
+                            onChange={(e) => setNewPlayerFirstName(e.target.value)}
+                            className="flex-1 min-w-0 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Last Name"
+                            value={newPlayerLastName}
+                            onChange={(e) => setNewPlayerLastName(e.target.value)}
+                            className="flex-1 min-w-0 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                        <input
+                            type="number"
+                            placeholder="HCP"
+                            value={newPlayerHandicap}
+                            onChange={(e) => setNewPlayerHandicap(e.target.value)}
+                            className="w-20 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            min="-54"
+                            max="54"
+                        />
+                        <button
+                            onClick={handleAddPlayer}
+                            disabled={!dbReady || !newPlayerFirstName.trim()}
+                            className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-sm flex items-center gap-1 disabled:opacity-50"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add
+                        </button>
+                    </div>
+                </div>
+
+                <p className="text-xs text-gray-600 mb-2">
+                    This list is saved to your account. Deleting a player here removes them from the saved list, but does not change historical rounds.
+                </p>
                     {players.length === 0 ? (
                         <p className="text-gray-500 italic p-3 bg-gray-50 rounded text-sm text-center">
                             No players saved yet. Add players using the form above.
@@ -547,88 +663,169 @@ const ManagePlayers = ({
     );
 };
 
-const AccountFunding = ({ dbReady }) => {
-    const [fundAmount, setFundAmount] = useState('');
-    const [accountBalance, setAccountBalance] = useState(0.00); // Placeholder balance
+const UserProfile = ({ dbReady, userId, auth, db, userEmail }) => {
+    const [profileData, setProfileData] = useState({
+        email: '',
+        displayName: '',
+        phone: ''
+    });
+    const [originalEmail, setOriginalEmail] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [success, setSuccess] = useState(null);
+    const [error, setError] = useState(null);
 
-    const handleAddFunds = () => {
-        // Placeholder - will be implemented later
-        alert('Account funding feature coming soon!');
+    useEffect(() => {
+        if (!userId || !db) return;
+
+        const loadProfile = async () => {
+            try {
+                const currentEmail = userEmail || auth?.currentUser?.email || '';
+                const userRef = doc(db, `users/${userId}`);
+                const userSnap = await getDoc(userRef);
+                if (userSnap.exists()) {
+                    const userData = userSnap.data();
+                    const email = currentEmail || userData.email || '';
+                    setProfileData({
+                        email: email,
+                        displayName: userData.displayName || '',
+                        phone: userData.phone || ''
+                    });
+                    setOriginalEmail(email);
+                } else {
+                    setProfileData({
+                        email: currentEmail,
+                        displayName: '',
+                        phone: ''
+                    });
+                    setOriginalEmail(currentEmail);
+                }
+            } catch (err) {
+                console.error('Error loading profile:', err);
+            }
+        };
+
+        loadProfile();
+    }, [userId, db, userEmail]);
+
+    const handleSaveProfile = async () => {
+        if (!userId || !db) return;
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!profileData.email || !emailRegex.test(profileData.email)) {
+            setError('Please enter a valid email address');
+            return;
+        }
+
+        setSaving(true);
+        setSuccess(null);
+        setError(null);
+
+        try {
+            // Update profile in Firestore only (not Firebase Authentication)
+            // This email is stored in our database for Escrow.com and other services
+            // Use setDoc with merge to create document if it doesn't exist
+            const userRef = doc(db, `users/${userId}`);
+            await setDoc(userRef, {
+                email: profileData.email,
+                displayName: profileData.displayName,
+                phone: profileData.phone,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+
+            setOriginalEmail(profileData.email);
+            setSuccess('Profile updated successfully!');
+            setTimeout(() => setSuccess(null), 3000);
+        } catch (err) {
+            console.error('Error saving profile:', err);
+            setError(err.message || 'Failed to update profile. Please try again.');
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
         <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-blue-200 w-full">
             <div className="mb-4">
-                <h2 className="text-lg font-bold text-blue-800">Account Funding</h2>
+                <h2 className="text-lg font-bold text-blue-800">User Profile</h2>
                 <p className="text-sm text-gray-500 mt-1">
-                    Add money to your account
+                    Manage your account information
                 </p>
             </div>
 
             <div className="space-y-4">
-                {/* Current Balance Display */}
-                <div className="p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border-2 border-blue-200">
-                    <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-gray-600">Current Balance:</span>
-                        <span className="text-2xl font-bold text-blue-800">
-                            ${accountBalance.toFixed(2)}
-                        </span>
-                    </div>
-                </div>
-
-                {/* Add Funds Form */}
-                <div className="space-y-3">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Amount to Add
-                        </label>
-                        <div className="relative">
-                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
-                                $
-                            </span>
-                            <input
-                                type="number"
-                                placeholder="0.00"
-                                value={fundAmount}
-                                onChange={(e) => setFundAmount(e.target.value)}
-                                min="0"
-                                step="0.01"
-                                className="w-full pl-8 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-medium"
-                                disabled={!dbReady}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Quick Amount Buttons */}
-                    <div className="grid grid-cols-4 gap-2">
-                        {[25, 50, 100, 200].map((amount) => (
-                            <button
-                                key={amount}
-                                onClick={() => setFundAmount(amount.toString())}
-                                disabled={!dbReady}
-                                className="px-3 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition duration-150 disabled:opacity-50 text-sm"
-                            >
-                                ${amount}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Add Funds Button */}
-                    <button
-                        onClick={handleAddFunds}
-                        disabled={!dbReady || !fundAmount || parseFloat(fundAmount) <= 0}
-                        className="w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-                    >
-                        Add Funds
-                    </button>
-                </div>
-
-                {/* Placeholder Notice */}
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-xs text-yellow-800 text-center">
-                        ⚠️ Payment processing coming soon. This is a placeholder feature.
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email *
+                    </label>
+                    <input
+                        type="email"
+                        value={profileData.email}
+                        onChange={(e) => {
+                            setProfileData({...profileData, email: e.target.value});
+                            setError(null); // Clear error when user types
+                        }}
+                        className="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        disabled={!dbReady || saving}
+                        placeholder="your.email@example.com"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                        {profileData.email !== originalEmail ? 'Email will be updated' : 'Current email address'}
                     </p>
                 </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Display Name
+                    </label>
+                    <input
+                        type="text"
+                        value={profileData.displayName}
+                        onChange={(e) => setProfileData({...profileData, displayName: e.target.value})}
+                        placeholder="Your display name"
+                        className="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        disabled={!dbReady || saving}
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Phone Number
+                    </label>
+                    <input
+                        type="tel"
+                        value={profileData.phone}
+                        onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
+                        placeholder="(555) 123-4567"
+                        className="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        disabled={!dbReady || saving}
+                    />
+                </div>
+
+                <button
+                    onClick={handleSaveProfile}
+                    disabled={!dbReady || saving || !profileData.email}
+                    className="w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                >
+                    {saving ? 'Saving...' : 'Save Profile'}
+                </button>
+
+                {error && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-xs text-red-800 text-center">
+                            ⚠️ {error}
+                        </p>
+                    </div>
+                )}
+
+                {success && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-xs text-green-800 text-center">
+                            ✅ {success}
+                        </p>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -696,9 +893,12 @@ const CustomBetManager = ({
                 />
                 <button
                     onClick={handleAddBet}
-                    className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-md disabled:opacity-50"
+                    className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-sm flex items-center gap-1 disabled:opacity-50"
                     disabled={!dbReady || (newBetType === 'Side Bet' && !newBetName.trim()) || !newBetAmount}
                 >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
                     Add
                 </button>
             </div>
@@ -1168,8 +1368,11 @@ const CourseManager = ({
                     <button
                         onClick={handleAddCourse}
                         disabled={!dbReady || !newCourseName.trim()}
-                        className="px-3 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-md disabled:opacity-50 text-sm"
+                        className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-sm flex items-center gap-1 disabled:opacity-50"
                     >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
                         Add Course
                     </button>
                 </div>
@@ -1414,7 +1617,8 @@ const RoundSelector = ({
     setSelectedCourseId,
     handleCourseSelect,
     handicapMode,
-    setHandicapMode
+    setHandicapMode,
+    setCurrentView
 }) => {
     const activeRound = rounds.find(r => r.id === activeRoundId);
 
@@ -1422,7 +1626,28 @@ const RoundSelector = ({
 
         <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
             <div>
-            <h2 className="text-lg font-bold text-blue-800 mb-2">Select Course & Handicap Mode</h2>
+            <div className="flex items-center justify-between mb-2">
+                <h2 className="text-lg font-bold text-blue-800">Select Course</h2>
+                <button
+                    onClick={() => {
+                        setCurrentView('management');
+                        // Scroll to Manage Courses section after a brief delay to ensure DOM has updated
+                        setTimeout(() => {
+                            const courseManagerElement = document.getElementById('manage-courses-section');
+                            if (courseManagerElement) {
+                                courseManagerElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                        }, 100);
+                    }}
+                    className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-sm flex items-center gap-1"
+                    title="Add a new course"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add
+                </button>
+            </div>
 
                 <div className="mb-2">
                     <select
@@ -1437,22 +1662,6 @@ const RoundSelector = ({
                     </select>
                 </div>
                 
-                <div className="mb-2">
-                  
-                    <select
-                        value={handicapMode}
-                        onChange={(e) => setHandicapMode(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
-                    >
-                        <option value="lowest">Lowest Handicap as 0 (Relative)</option>
-                        <option value="gross">Gross Handicap (Absolute)</option>
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                        {handicapMode === 'lowest' 
-                            ? 'Lowest handicap player gets 0 strokes, others get strokes relative to them.'
-                            : 'All players use their actual handicap (1+ get strokes on appropriate holes).'}
-                    </p>
-                </div>
 
             </div>
         </div>
@@ -1591,8 +1800,11 @@ const BetRecorder = ({
                     <button
                         onClick={() => handleAddRoundBet && handleAddRoundBet()}
                         disabled={!dbReady || !newRoundBetName.trim() || !newRoundBetAmount || (newRoundBetType === 'twoPlayers' && (!newRoundBetPlayer1 || !newRoundBetPlayer2 || !newRoundBetOdds)) || !handleAddRoundBet}
-                        className="w-full py-1.5 px-3 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-sm flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
                         Add Bet
                     </button>
                 </div>
@@ -4262,7 +4474,7 @@ const App = () => {
     const [sharedRoundCustomBets, setSharedRoundCustomBets] = useState([]);
     
     // View state for bottom navigation
-    const [currentView, setCurrentView] = useState('play'); // 'play', 'rounds', 'management', or 'courses'
+    const [currentView, setCurrentView] = useState('play'); // 'play', 'rounds', 'management', 'courses', or 'profile'
     
     // Scroll to top when switching to rounds view
     useEffect(() => {
@@ -5874,6 +6086,45 @@ const App = () => {
         }
     };
 
+    // Simplified version for Manage section - just adds to saved players, no round logic
+    const handleAddPlayerToSaved = async () => {
+        const fullName = `${newPlayerFirstName.trim()} ${newPlayerLastName.trim()}`.trim();
+        if (!db || !userId || !newPlayerFirstName.trim()) return;
+        try {
+            const handicapValue = parseInt(newPlayerHandicap, 10) || 0;
+
+            // Create new saved player
+            await addDoc(collection(db, getPlayerCollectionPath(userId)), {
+                name: fullName,
+                handicap: handicapValue,
+                createdAt: serverTimestamp(),
+            });
+
+            setNewPlayerFirstName('');
+            setNewPlayerLastName('');
+            setNewPlayerHandicap('');
+        } catch (error) {
+            handleError("Failed to add player:", error);
+        }
+    };
+
+    const handleUpdatePlayerHandicap = async (playerId, newHandicap) => {
+        if (!db || !userId || !playerId) return;
+        
+        const parsed = parseInt(newHandicap, 10);
+        if (isNaN(parsed)) return;
+        
+        try {
+            const playerRef = doc(db, getPlayerCollectionPath(userId), playerId);
+            await updateDoc(playerRef, {
+                handicap: parsed,
+                lastUpdated: serverTimestamp(),
+            });
+        } catch (error) {
+            handleError("Failed to update player handicap:", error);
+        }
+    };
+
     const handleDeletePlayer = async (id) => {
         if (!db || !userId) return;
         try {
@@ -6561,6 +6812,7 @@ const App = () => {
                                 handleCourseSelect={handleCourseSelect}
                                 handicapMode={handicapMode}
                                 setHandicapMode={setHandicapMode}
+                                setCurrentView={setCurrentView}
                             />
                             <PlayerManager
                                 dbReady={dbReady}
@@ -6577,7 +6829,26 @@ const App = () => {
                                 roundPlayerIds={roundPlayerIds}
                                 setRoundPlayerIds={setRoundPlayerIds}
                                 myPlayerId={myPlayerId}
+                                handleUpdatePlayerHandicap={handleUpdatePlayerHandicap}
                             />
+                            
+                            {/* Handicap Mode Selection */}
+                            <div className="p-3 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
+                                <h3 className="text-sm font-semibold text-blue-800 mb-2">Handicap Mode</h3>
+                                <select
+                                    value={handicapMode}
+                                    onChange={(e) => setHandicapMode(e.target.value)}
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+                                >
+                                    <option value="lowest">Lowest Handicap as 0 (Relative)</option>
+                                    <option value="gross">Gross Handicap (Absolute)</option>
+                                </select>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    {handicapMode === 'lowest' 
+                                        ? 'Lowest handicap player gets 0 strokes, others get strokes relative to them.'
+                                        : 'All players use their actual handicap (1+ get strokes on appropriate holes).'}
+                                </p>
+                            </div>
                             <TeamsManager
                                 dbReady={dbReady}
                                 teamMode={teamMode}
@@ -6790,26 +7061,9 @@ const App = () => {
                     </>
                 )}
 
-                {/* Management View - Courses and Players */}
+                {/* Management View - Players and Courses */}
                 {currentView === 'management' && (
                     <div className="flex flex-col gap-6 mb-6 w-full">
-                        <CourseManager
-                            dbReady={dbReady}
-                            courses={courses}
-                            newCourseName={newCourseName}
-                            setNewCourseName={setNewCourseName}
-                            handleAddCourse={handleAddCourse}
-                            handleDeleteCourse={handleDeleteCourse}
-                            holeDataEdit={holeDataEdit}
-                            editingCourseId={editingCourseId}
-                            setEditingCourseId={setEditingCourseId}
-                            editingCourseHoleData={editingCourseHoleData}
-                            setEditingCourseHoleData={setEditingCourseHoleData}
-                            handleEditCourse={handleEditCourse}
-                            handleSaveEditedCourse={handleSaveEditedCourse}
-                            userId={userId}
-                            db={db}
-                        />
                         <ManagePlayers
                             dbReady={dbReady}
                             players={players}
@@ -6826,9 +7080,45 @@ const App = () => {
                             handleSaveEditedPlayer={handleSaveEditedPlayer}
                             myPlayerId={myPlayerId}
                             handleSetMePlayer={handleSetMePlayer}
+                            newPlayerFirstName={newPlayerFirstName}
+                            setNewPlayerFirstName={setNewPlayerFirstName}
+                            newPlayerLastName={newPlayerLastName}
+                            setNewPlayerLastName={setNewPlayerLastName}
+                            newPlayerHandicap={newPlayerHandicap}
+                            setNewPlayerHandicap={setNewPlayerHandicap}
+                            handleAddPlayer={handleAddPlayerToSaved}
                         />
-                        <AccountFunding
+                        <div id="manage-courses-section">
+                            <CourseManager
+                                dbReady={dbReady}
+                                courses={courses}
+                                newCourseName={newCourseName}
+                                setNewCourseName={setNewCourseName}
+                                handleAddCourse={handleAddCourse}
+                                handleDeleteCourse={handleDeleteCourse}
+                                holeDataEdit={holeDataEdit}
+                                editingCourseId={editingCourseId}
+                                setEditingCourseId={setEditingCourseId}
+                                editingCourseHoleData={editingCourseHoleData}
+                                setEditingCourseHoleData={setEditingCourseHoleData}
+                                handleEditCourse={handleEditCourse}
+                                handleSaveEditedCourse={handleSaveEditedCourse}
+                                userId={userId}
+                                db={db}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* Profile View - User Profile and Account Funding */}
+                {currentView === 'profile' && (
+                    <div className="flex flex-col gap-6 mb-6 w-full">
+                        <UserProfile
                             dbReady={dbReady}
+                            userId={userId}
+                            auth={auth}
+                            db={db}
+                            userEmail={auth?.currentUser?.email || null}
                         />
                     </div>
                 )}
@@ -6894,6 +7184,21 @@ const App = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                             <span className="text-xs font-semibold">Manage</span>
+                        </button>
+
+                        {/* Profile View */}
+                        <button
+                            onClick={() => setCurrentView('profile')}
+                            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition ${
+                                currentView === 'profile'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span className="text-xs font-semibold">Profile</span>
                         </button>
 
                         {/* Logout Button (Temporary) */}
