@@ -8,6 +8,7 @@ import { auth as firebaseAuth, db as firestoreDb } from './firebase';
 import Courses from './Courses';
 import Login from './Login';
 import LoginFirebaseUI from './LoginFirebaseUI';
+import SplashScreen from './SplashScreen';
 
 // SIMPLE, WORKING PATHS — THIS IS ALL YOU NEED
 const getPlayerCollectionPath = (userId) => `users/${userId}/players`;
@@ -4121,6 +4122,7 @@ const App = () => {
     const [auth, setAuth] = useState(null);
     const [userId, setUserId] = useState(null);
     const [isAuthReady, setIsAuthReady] = useState(false);
+    const [showSplash, setShowSplash] = useState(true);
     const dbReady = !!db;
 
     // Data States
@@ -6270,6 +6272,18 @@ const App = () => {
 
 
     // --- Main App Render ---
+
+    // Show splash screen first
+    if (showSplash) {
+        return (
+            <SplashScreen 
+                onAuthCheckComplete={(isAuthenticated) => {
+                    setShowSplash(false);
+                    // Auth state will be handled by the existing onAuthStateChanged listener
+                }} 
+            />
+        );
+    }
 
     // Show login screen if not authenticated
     if (!isAuthReady || !userId) {

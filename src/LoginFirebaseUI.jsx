@@ -4,7 +4,7 @@ import 'firebaseui/dist/firebaseui.css';
 import { PhoneAuthProvider, signInAnonymously } from 'firebase/auth';
 import { authCompat, auth } from './firebase';
 
-// Add custom CSS to ensure reCAPTCHA is visible
+// Add custom CSS to ensure reCAPTCHA is visible and style the logo
 const customStyles = `
     .firebaseui-recaptcha-wrapper {
         display: block !important;
@@ -26,6 +26,18 @@ const customStyles = `
         display: block !important;
         visibility: visible !important;
         opacity: 1 !important;
+    }
+    /* Style FirebaseUI logo */
+    .firebaseui-logo {
+        max-width: 120px !important;
+        max-height: 120px !important;
+        margin: 0 auto 20px !important;
+        display: block !important;
+    }
+    .firebaseui-logo img {
+        max-width: 100% !important;
+        height: auto !important;
+        object-fit: contain !important;
     }
 `;
 
@@ -68,6 +80,8 @@ const LoginFirebaseUI = ({ onLoginSuccess }) => {
 
         // Configure FirebaseUI for phone authentication only
         const uiConfig = {
+            // Add logo to FirebaseUI
+            logo: '/icon.png',
             signInOptions: [
                 {
                     provider: PhoneAuthProvider.PROVIDER_ID,
@@ -176,6 +190,17 @@ const LoginFirebaseUI = ({ onLoginSuccess }) => {
             <div className="w-full max-w-md">
                 <div className="bg-white rounded-2xl shadow-2xl p-6 w-full">
                     <div className="text-center mb-6">
+                        <div className="flex justify-center mb-4">
+                            <img 
+                                src="/icon.png" 
+                                alt="Strokes-N-Chokes Logo" 
+                                className="w-20 h-20 object-contain"
+                                onError={(e) => {
+                                    // Fallback if icon doesn't load
+                                    e.target.style.display = 'none';
+                                }}
+                            />
+                        </div>
                         <h1 className="text-2xl font-extrabold text-gray-900 mb-2">Strokes-N-Chokes</h1>
                         <p className="text-gray-600">Sign in with your phone number</p>
                     </div>
