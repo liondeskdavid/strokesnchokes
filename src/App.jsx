@@ -3342,11 +3342,11 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
 
     return (
         <div className="p-6 bg-white rounded-xl shadow-2xl border-t-4 border-red-500 mb-6">
-            <h2 className="text-3xl font-bold mb-4 text-red-800 flex items-center">
+            <h2 className="text-2xl font-bold mb-4 text-red-800 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Round Ended: {activeRound.courseName || 'Unspecified'}
+                {activeRound.courseName || 'Unspecified'}
 
             </h2>
             
@@ -3491,8 +3491,8 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                     <p className="text-2xl font-extrabold text-blue-900 mt-1">{results.netWinner || 'N/A'}</p>
                 </div>
             </div>
-
-            {/* Detailed Score and Winnings Table */}
+            
+            {/* Detailed Score and Winnings Table 
             <h4 className="text-2xl font-bold mb-4 text-gray-800 border-t pt-4">⛳ Final Scorecard</h4>
 
             <div className="overflow-x-auto">
@@ -3528,7 +3528,7 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                     </tbody>
                 </table>
             </div>
-
+            */}
 
             {/* Detailed Bet Payouts Breakdown */}
             <h4 className="text-2xl font-bold mb-4 text-gray-800 border-t pt-6 mt-6">💰 Bet Payouts Breakdown</h4>
@@ -4092,8 +4092,49 @@ const Scorecard = ({
 
                 {/* Enter Share Code Section - Always visible at bottom */}
                 <div className="mt-6 p-5 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
+                    {/* Show current round's share code if ended and has one */}
+                    {activeRound?.shareCode && (
+                        <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                This Round's Share Code:
+                            </label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={activeRound.shareCode}
+                                    readOnly
+                                    className="flex-1 px-4 py-2 border-2 border-blue-300 rounded-lg bg-white text-center text-lg font-bold tracking-widest uppercase"
+                                />
+                                <button
+                                    onClick={async (e) => {
+                                        try {
+                                            await navigator.clipboard.writeText(activeRound.shareCode);
+                                            // Show temporary success message
+                                            const btn = e.target;
+                                            const originalText = btn.textContent;
+                                            btn.textContent = 'Copied!';
+                                            btn.classList.add('bg-green-600');
+                                            setTimeout(() => {
+                                                btn.textContent = originalText;
+                                                btn.classList.remove('bg-green-600');
+                                            }, 2000);
+                                        } catch (err) {
+                                            console.error('Failed to copy:', err);
+                                        }
+                                    }}
+                                    className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <p className="mt-2 text-xs text-gray-600 text-center">
+                                Share this code with others to let them view this round
+                            </p>
+                        </div>
+                    )}
+                    
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Enter Share Code to View Round:
+                        Enter Share Code to View Someones Round:
                     </label>
                     <div className="flex gap-2">
                         <input
@@ -4451,6 +4492,47 @@ const Scorecard = ({
 
         {/* Enter Share Code Section - Always visible at bottom */}
         <div className="mt-6 p-5 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
+            {/* Show current round's share code if ended and has one */}
+            {isEnded && activeRound?.shareCode && (
+                <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        This Round's Share Code:
+                    </label>
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={activeRound.shareCode}
+                            readOnly
+                            className="flex-1 px-4 py-2 border-2 border-blue-300 rounded-lg bg-white text-center text-lg font-bold tracking-widest uppercase"
+                        />
+                        <button
+                            onClick={async (e) => {
+                                try {
+                                    await navigator.clipboard.writeText(activeRound.shareCode);
+                                    // Show temporary success message
+                                    const btn = e.target;
+                                    const originalText = btn.textContent;
+                                    btn.textContent = 'Copied!';
+                                    btn.classList.add('bg-green-600');
+                                    setTimeout(() => {
+                                        btn.textContent = originalText;
+                                        btn.classList.remove('bg-green-600');
+                                    }, 2000);
+                                } catch (err) {
+                                    console.error('Failed to copy:', err);
+                                }
+                            }}
+                            className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
+                        >
+                            Copy
+                        </button>
+                    </div>
+                    <p className="mt-2 text-xs text-gray-600 text-center">
+                        Share this code with others to let them view this round
+                    </p>
+                </div>
+            )}
+            
             <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Enter Share Code to View Round:
             </label>
