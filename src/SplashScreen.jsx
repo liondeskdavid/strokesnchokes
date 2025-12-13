@@ -1,11 +1,112 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth as firebaseAuth } from './firebase';
+
+const LOADING_MESSAGES = [
+    "Warming up the shaft…",
+    "Just a quick stroke while we load.",
+    "Polishing the clubs, be right with you.",
+    "Calibrating your choke settings…",
+    "Finding someone to blame for your slice.",
+    "Loading 18 holes of bad decisions.",
+    "Hold on, we're teeing up your humiliation.",
+    "Shanking the server connection… please wait.",
+    "Gripping it and ripping it… almost ready.",
+    "Trying to get it in the hole, stand by.",
+    "Fore! …play is about to get rough.",
+    "Relax, we're just lubing up the leaderboard.",
+    "Balls deep in loading, give us a sec.",
+    "Spitting on the grip for better control…",
+    "Warming the hole so you don't three-putt life.",
+    "Currently choking… please do not disturb.",
+    "Sliding into your fairway, hang tight.",
+    "One second, we're pulling out the big driver.",
+    "If this takes longer than four hours, call a doctor.",
+    "Just trimming the rough…",
+    "Waxing the shaft, stand by.",
+    "Loading your daily dose of bogey regret.",
+    "Finding the sweet spot… almost there.",
+    "Currently choking harder than you on the 18th.",
+    "Greasing the pin for easier entry.",
+    "Hold on, we're bending over to pick up your money.",
+    "Shaking the trees for loose change.",
+    "Teasing the hole, be patient.",
+    "Calibrating your handicap (and your dignity).",
+    "Spanking the server for being slow.",
+    "Just a little fore-play…",
+    "Pulling out the big wood.",
+    "Making the green wet for you.",
+    "Trying not to slice the database.",
+    "Stretching the fairway, give us a sec.",
+    "Polishing balls in the background.",
+    "Currently yanking the driver.",
+    "Adjusting your lie angle.",
+    "Warming up the back nine.",
+    "Slapping the bag, almost ready.",
+    "Getting the head nice and shiny.",
+    "Hold tight, we're topping it off.",
+    "Finding the G-spot on the leaderboard.",
+    "Loading your next bad bet.",
+    "Rimming the cup… please wait.",
+    "Just a quick tug on the flagstick.",
+    "Lubricating the betting slip.",
+    "Mounting the leaderboard, hang on.",
+    "Giving the shaft a good stroke.",
+    "Loading your future therapy bills.",
+    "Blowing the leaves off the green.",
+    "Taking the club nice and deep.",
+    "Hold on, we're draining the snake.",
+    "Greasing the wheels of your downfall.",
+    "Spreading the fairway for maximum pleasure.",
+    "Just the tip… of the iceberg of debt.",
+    "Ramming it straight down the middle.",
+    "Bending over to read the break.",
+    "Slipping it in gently…",
+    "Adjusting your stroke length.",
+    "Making the hole beg for mercy.",
+    "Loading your next \"I'm never betting again.\"",
+    "Giving the shaft a happy ending.",
+    "Currently penetrating the firewall.",
+    "Hold on, we're pounding the dogleg.",
+    "Smoothing out the divots… and your ego.",
+    "Teasing the back door entry.",
+    "Just a little rough stuff.",
+    "Loading your mulligan addiction.",
+    "Slapping it around the bunker.",
+    "Warming up the 69 different ways.",
+    "Currently riding the cart path hard.",
+    "Taking a practice stroke or ten.",
+    "Making the pin moan.",
+    "Loading your future excuses.",
+    "Giving the driver a reach-around.",
+    "Hold tight, we're coming in low and hot.",
+    "Stiffening the shaft.",
+    "Loading your next \"I can't believe I bet that.\"",
+    "Banging it off the hosel.",
+    "Currently three-putting the server.",
+    "Slamming it into the dance floor.",
+    "Making the green swallow.",
+    "Hold on, we're dropping a bomb.",
+    "Nice and easy does it… never mind, ramming speed.",
+    "Loading your next DUI on the 19th hole.",
+    "Gripping it like your ex's lawyer.",
+    "Currently blowing the leaves off your wallet.",
+    "Taking the club to pound town.",
+    "Loading your next \"fore!\" of shame.",
+    "Shoving it in the short grass.",
+    "Making the cup overflow.",
+    "Beating it like it owes us money.",
+    "Almost there… don't pull out yet."
+];
 
 const SplashScreen = ({ onAuthCheckComplete }) => {
     const startTime = useRef(Date.now());
     const MIN_DISPLAY_TIME = 1000; // Minimum 1 second display
     const authChecked = useRef(false);
+    const [loadingMessage, setLoadingMessage] = useState(() => {
+        // Randomly select initial message
+        return LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)];
+    });
 
     useEffect(() => {
         let authUnsubscribe = null;
@@ -45,6 +146,16 @@ const SplashScreen = ({ onAuthCheckComplete }) => {
             document.body.style.backgroundColor = originalBodyBg;
             document.documentElement.style.backgroundColor = originalHtmlBg;
         };
+    }, []);
+
+    // Cycle through loading messages every 2 seconds
+    useEffect(() => {
+        const messageInterval = setInterval(() => {
+            const randomIndex = Math.floor(Math.random() * LOADING_MESSAGES.length);
+            setLoadingMessage(LOADING_MESSAGES[randomIndex]);
+        }, 2000); // Change message every 2 seconds
+
+        return () => clearInterval(messageInterval);
     }, []);
 
     return (
@@ -154,10 +265,12 @@ const SplashScreen = ({ onAuthCheckComplete }) => {
                             textAlign: 'center', 
                             width: '100%',
                             color: '#4b5563',
-                            marginTop: '16px'
+                            marginTop: '16px',
+                            minHeight: '20px',
+                            transition: 'opacity 0.3s ease-in-out'
                         }}
                     >
-                        Loading...
+                        {loadingMessage}
                     </p>
                 </div>
             </div>

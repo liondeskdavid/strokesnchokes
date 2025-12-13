@@ -547,6 +547,93 @@ const ManagePlayers = ({
     );
 };
 
+const AccountFunding = ({ dbReady }) => {
+    const [fundAmount, setFundAmount] = useState('');
+    const [accountBalance, setAccountBalance] = useState(0.00); // Placeholder balance
+
+    const handleAddFunds = () => {
+        // Placeholder - will be implemented later
+        alert('Account funding feature coming soon!');
+    };
+
+    return (
+        <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-blue-200 w-full">
+            <div className="mb-4">
+                <h2 className="text-lg font-bold text-blue-800">Account Funding</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                    Add money to your account
+                </p>
+            </div>
+
+            <div className="space-y-4">
+                {/* Current Balance Display */}
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border-2 border-blue-200">
+                    <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-600">Current Balance:</span>
+                        <span className="text-2xl font-bold text-blue-800">
+                            ${accountBalance.toFixed(2)}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Add Funds Form */}
+                <div className="space-y-3">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Amount to Add
+                        </label>
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
+                                $
+                            </span>
+                            <input
+                                type="number"
+                                placeholder="0.00"
+                                value={fundAmount}
+                                onChange={(e) => setFundAmount(e.target.value)}
+                                min="0"
+                                step="0.01"
+                                className="w-full pl-8 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-medium"
+                                disabled={!dbReady}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Quick Amount Buttons */}
+                    <div className="grid grid-cols-4 gap-2">
+                        {[25, 50, 100, 200].map((amount) => (
+                            <button
+                                key={amount}
+                                onClick={() => setFundAmount(amount.toString())}
+                                disabled={!dbReady}
+                                className="px-3 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition duration-150 disabled:opacity-50 text-sm"
+                            >
+                                ${amount}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Add Funds Button */}
+                    <button
+                        onClick={handleAddFunds}
+                        disabled={!dbReady || !fundAmount || parseFloat(fundAmount) <= 0}
+                        className="w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                    >
+                        Add Funds
+                    </button>
+                </div>
+
+                {/* Placeholder Notice */}
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-xs text-yellow-800 text-center">
+                        ⚠️ Payment processing coming soon. This is a placeholder feature.
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const CustomBetManager = ({
     dbReady,
     newBetName,
@@ -6739,6 +6826,9 @@ const App = () => {
                             handleSaveEditedPlayer={handleSaveEditedPlayer}
                             myPlayerId={myPlayerId}
                             handleSetMePlayer={handleSetMePlayer}
+                        />
+                        <AccountFunding
+                            dbReady={dbReady}
                         />
                     </div>
                 )}
