@@ -2,6 +2,9 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+// Import compat versions for FirebaseUI
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
 
 // Replace everything inside the {} with YOUR real Firebase config
 const firebaseConfig = {
@@ -13,10 +16,20 @@ const firebaseConfig = {
   appId: "1:853506983444:android:1d60b493b5bda804c40901"
 };
 
-// Initialize Firebase
+// Initialize Firebase (modular SDK)
 const app = initializeApp(firebaseConfig);
 
-// Export these so the rest of your app can use them
+// Initialize Firebase compat for FirebaseUI
+// Only initialize if not already initialized
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+
+// Export modular SDK versions for the rest of the app
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Export compat auth for FirebaseUI
+export const authCompat = firebase.auth();
+
 export default app;

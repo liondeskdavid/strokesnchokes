@@ -127,6 +127,19 @@ const Login = ({ auth, onLoginSuccess }) => {
             const widgetId = await recaptchaVerifierRef.current.render();
             console.log('reCAPTCHA rendered successfully, widget ID:', widgetId);
             
+            // For visible reCAPTCHA, ensure it's fully displayed
+            if (recaptchaSize === 'normal') {
+                // Give it a moment to fully render the checkbox
+                await new Promise(resolve => setTimeout(resolve, 500));
+                // Ensure container is visible
+                if (container) {
+                    container.style.display = 'block';
+                    container.style.visibility = 'visible';
+                    container.style.opacity = '1';
+                }
+                console.log('Visible reCAPTCHA should now be fully displayed');
+            }
+            
             // For invisible reCAPTCHA, we MUST call verify() to get the token
             // The callback will fire when it's solved, giving us the token
             if (recaptchaSize === 'invisible') {
@@ -346,10 +359,17 @@ const Login = ({ auth, onLoginSuccess }) => {
             } else if (err.code === 'auth/argument-error') {
                 errorMessage = 'Invalid phone number format. Please include country code (e.g., +1 for US).';
             } else if (err.code === 'auth/invalid-app-credential' || (err.message && err.message.includes('INVALID_APP_CREDENTIAL'))) {
+                console.error('INVALID_APP_CREDENTIAL Error Details:');
+                console.error('- Current hostname:', window.location.hostname);
+                console.error('- Current origin:', window.location.origin);
+                console.error('- Is Development:', isDevelopment);
+                console.error('- Is Capacitor:', isCapacitor);
+                console.error('- Auth domain:', auth.config?.authDomain || 'not available');
+                
                 if (isCapacitor) {
                     errorMessage = 'App verification failed (Android). Please ensure: 1) SHA-1 fingerprint is added to Firebase Console, 2) Updated google-services.json is downloaded, 3) App is rebuilt. See FIX_INVALID_APP_CREDENTIAL.md for details.';
                 } else {
-                    errorMessage = 'App verification failed (Web). Please ensure: 1) "localhost" is added to Firebase Console → Authentication → Settings → Authorized domains, 2) API key allows localhost. See FIX_INVALID_APP_CREDENTIAL.md for details.';
+                    errorMessage = `App verification failed (Web). Current domain: ${window.location.hostname}. Please ensure: 1) "${window.location.hostname}" is added to Firebase Console → Authentication → Settings → Authorized domains, 2) API key allows this domain. See FIX_INVALID_APP_CREDENTIAL.md for details.`;
                 }
             } else if (err.message && err.message.includes('400')) {
                 errorMessage = 'Invalid request. Please check your phone number format and try again. If the problem persists, refresh the page.';
@@ -469,7 +489,8 @@ const Login = ({ auth, onLoginSuccess }) => {
                                 id="recaptcha-container" 
                                 ref={recaptchaContainerRef}
                                 key="recaptcha-container"
-                                style={{ minHeight: '1px' }}
+                                className="flex justify-center my-2"
+                                style={{ minHeight: '78px', width: '100%' }}
                             ></div>
 
                             <button
