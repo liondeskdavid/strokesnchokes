@@ -1,23 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import {
-    getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc,
+    collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc,
     serverTimestamp, query, where, getDocs, getDoc, setDoc,
 } from 'firebase/firestore';
+import { auth as firebaseAuth, db as firestoreDb } from './firebase';
 import Courses from './Courses';
 import Login from './Login';
 import LoginFirebaseUI from './LoginFirebaseUI';
-
-// YOUR REAL FIREBASE CONFIG — THIS IS THE ONLY THING YOU NEED
-const firebaseConfig = {
-  apiKey: "AIzaSyC35u2oF6k3oiGpPRde77b2gz6OWMmmy2E",
-  authDomain: "strokesnchokes.firebaseapp.com", // Changed from package name to Firebase auth domain
-  projectId: "strokesnchokes",
-  storageBucket: "strokesnchokes.firebasestorage.app",
-  messagingSenderId: "853506983444", // Updated from placeholder to actual sender ID
-  appId: "1:853506983444:android:1d60b493b5bda804c40901"
-};
 
 // SIMPLE, WORKING PATHS — THIS IS ALL YOU NEED
 const getPlayerCollectionPath = (userId) => `users/${userId}/players`;
@@ -5065,11 +5055,8 @@ const App = () => {
     // 1. Firebase Initialization and Authentication
     useEffect(() => {
         try {
-            const app = initializeApp(firebaseConfig);
-            const firestore = getFirestore(app);
-            const firebaseAuth = getAuth(app);
-
-            setDb(firestore);
+            // Use the already-initialized Firebase instances from firebase.js
+            setDb(firestoreDb);
             setAuth(firebaseAuth);
 
             const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
