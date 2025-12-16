@@ -3965,7 +3965,7 @@ const Scorecard = ({
                             const sectionNet = sectionName === 'front9'
                                 ? getFront9Net(player.name)
                                 : getBack9Net(player.name);
-                            
+
                             return (
                                 <tr key={player.name} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
                                     <td className={`border border-gray-300 px-3 py-2 font-bold text-gray-800 align-top sticky left-0 z-10 ${idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
@@ -3985,13 +3985,58 @@ const Scorecard = ({
                                         const holeInfo = calculatedScores.holeData?.[player.name]?.[holeKey] || {};
                                         const strokes = holeInfo.strokes || 0;
                                         const par = holeData[holeKey]?.par || 4;
-                                        
+
+                                        // Determine scoring symbol for read-only final scorecard
+                                        let numericScore = parseInt(score, 10);
+                                        if (isNaN(numericScore)) numericScore = 0;
+                                        let wrapperClass = '';
+                                        let isDoubleCircle = false;
+                                        let isDoubleSquare = false;
+                                        if (numericScore > 0 && par > 0) {
+                                            const diff = numericScore - par;
+                                            if (diff === -2) {
+                                                // Eagle (2 under par) - double circle (two separate circles), red
+                                                wrapperClass =
+                                                    'inline-flex items-center justify-center w-7 h-7 rounded-full border-2 border-red-500 text-red-600 bg-white relative';
+                                                isDoubleCircle = true;
+                                            } else if (diff === -1) {
+                                                // Birdie (1 under par) - circle, red
+                                                wrapperClass =
+                                                    'inline-flex items-center justify-center w-7 h-7 rounded-full border-2 border-red-500 text-red-600 bg-white';
+                                            } else if (diff === 1) {
+                                                // Bogey (1 over par) - square, black
+                                                wrapperClass =
+                                                    'inline-flex items-center justify-center w-7 h-7 rounded-sm border-2 border-black text-black bg-white';
+                                            } else if (diff >= 2) {
+                                                // Double bogey or worse (2+ over par) - double square (two separate squares), black
+                                                wrapperClass =
+                                                    'inline-flex items-center justify-center w-7 h-7 rounded-sm border-2 border-black text-black bg-white relative';
+                                                isDoubleSquare = true;
+                                            }
+                                        }
+
                                         return (
                                             <td key={h} className="border border-gray-300 px-1 py-2 text-center align-top">
                                                 {isReadOnlyMode ? (
                                                     <div className="flex flex-col items-center justify-start">
                                                         <div className="text-lg font-bold text-gray-800">
-                                                            {score || '-'}
+                                                            {numericScore > 0 ? (
+                                                                wrapperClass ? (
+                                                                    <span className={wrapperClass}>
+                                                                        {isDoubleCircle && (
+                                                                            <span className="absolute inset-0 rounded-full border-2 border-red-500" style={{ transform: 'scale(1.12)', margin: '1px' }}></span>
+                                                                        )}
+                                                                        {isDoubleSquare && (
+                                                                            <span className="absolute inset-0 rounded-sm border-2 border-black" style={{ transform: 'scale(1.12)', margin: '1px' }}></span>
+                                                                        )}
+                                                                        <span className="relative z-10">{numericScore}</span>
+                                                                    </span>
+                                                                ) : (
+                                                                    numericScore
+                                                                )
+                                                            ) : (
+                                                                '-'
+                                                            )}
                                                         </div>
                                                         {strokes !== 0 && (
                                                             <div className={`text-xs font-bold mt-0.5 ${strokes > 0 ? 'text-red-600' : 'text-blue-600'}`}>
