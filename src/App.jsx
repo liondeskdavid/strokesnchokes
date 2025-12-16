@@ -4209,11 +4209,9 @@ const Scorecard = ({
         )}
 
         <div className="p-5 bg-white rounded-2xl shadow-2xl border-4 border-blue-500 mb-6">
-            <h2 className="text-xl font-bold text-center text-blue-800 mb-1">Scorecard</h2>
-
-            <h3 className="text-sm text-center text-gray-700 mb-1">
-                {activeRound.courseName || 'Current Round'} • Par {coursePar}
-            </h3>
+            <h2 className="text-xl font-bold text-center text-blue-800 mb-1">
+                {activeRound.courseName || 'Current Round'}
+            </h2>
             {activeRound?.handicapMode && (
                 <p className="text-xs text-center text-gray-500 mb-3">
                     Handicap Mode: {activeRound.handicapMode === 'lowest' 

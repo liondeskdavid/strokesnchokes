@@ -4,9 +4,10 @@
 @tailwind utilities;
 
 
-/* Optional: nice default font */
+/* Ensure app uses full viewport height and width */
 html, body, #root {
   height: 100%;
+  width: 100%;
   margin: 0;
   padding: 0;
 }
@@ -90,10 +91,10 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  min-width: 0;
   min-height: 100vh;
+  display: block;
+  background-color: #f3f4f6; /* Tailwind gray-100 to match app background */
 }
 
 h1 {

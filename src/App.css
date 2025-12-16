@@ -1,8 +1,9 @@
+/* Make the app take the full width of the viewport on all pages */
 #root {
-  max-width: 100%;
-  margin: 0 auto;
-  padding: 1rem;
-  text-align: center;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
 }
 
 .logo {
