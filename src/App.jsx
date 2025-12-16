@@ -1911,7 +1911,15 @@ const JunkTracker = ({
             <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-700 mb-3">Record Junk Events by Hole</h3>
                 <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {selectedJunkTypes.map(junkId => {
+                    {(() => {
+                        const priority = { greenies: 0, losingDots: 2 };
+                        const ordered = [...selectedJunkTypes].sort((a, b) => {
+                            const pa = priority[a] ?? 1;
+                            const pb = priority[b] ?? 1;
+                            return pa - pb;
+                        });
+                        return ordered;
+                    })().map(junkId => {
                         const junkType = JUNK_TYPES.find(j => j.id === junkId);
                         if (!junkType) return null;
                         
@@ -1951,41 +1959,33 @@ const JunkTracker = ({
                                         <div className="grid grid-cols-9 gap-2 flex-1">
                                         {HOLE_NUMBERS.slice(0, 9).map(h => {
                                             const holeKey = `hole${h}`;
-                                            const holePar = holeData[holeKey]?.par || 0;
-                                            
-                                            // Hide Greenies if not par 3
-                                            if (junkId === 'greenies' && holePar !== 3) {
-                                                return (
-                                                    <div key={h} className="text-center">
-                                                        <div className="text-xs font-medium text-gray-400 mb-1">H{h}</div>
-                                                        <div className="space-y-1">
-                                                            {roundPlayers.map((player, idx) => (
-                                                                <div key={`${player.name}-${h}-${idx}`} className="text-xs text-gray-300 py-1">—</div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }
+                                            const holeParRaw = holeData[holeKey]?.par;
+                                            const holePar = Number.isFinite(Number(holeParRaw)) ? Number(holeParRaw) : 0;
                                             
                                             return (
                                                 <div key={h} className="text-center">
                                                     <div className="text-xs font-medium text-gray-600 mb-1">H{h}</div>
                                                     <div className="space-y-1">
                                                         {roundPlayers.map(player => {
-                                                            const isChecked = junkEvents[player.name]?.[holeKey]?.[junkId] || false;
+                                                            const currentCount = junkEvents[player.name]?.[holeKey]?.[junkId] ?? 0;
+                                                            const disabled = junkId === 'greenies' && holePar !== 3;
                                                             return (
-                                                                <label 
-                                                                    key={player.name} 
-                                                                    className={`flex items-center justify-center py-1 ${isReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                                                <select
+                                                                    key={player.name}
+                                                                    value={currentCount}
+                                                                    onChange={(e) => {
+                                                                        if (isReadOnly || disabled) return;
+                                                                        const val = parseInt(e.target.value, 10);
+                                                                        handleJunkEventChange(player.name, holeKey, junkId, isNaN(val) ? 0 : val);
+                                                                    }}
+                                                                    disabled={isReadOnly || disabled}
+                                                                    className={`w-12 text-center text-xs border-2 ${isLosingDots ? 'border-red-300' : 'border-blue-300'} rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly || disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                                 >
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={isChecked}
-                                                                        onChange={(e) => !isReadOnly && handleJunkEventChange(player.name, holeKey, junkId, e.target.checked)}
-                                                                        disabled={isReadOnly}
-                                                                        className={`w-4 h-4 ${isLosingDots ? 'text-red-600' : 'text-blue-600'} border-gray-300 rounded focus:ring-2 focus:ring-gray-500 ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                                    />
-                                                                </label>
+                                                                    <option value={0}>0</option>
+                                                                    <option value={1}>1</option>
+                                                                    <option value={2}>2</option>
+                                                                    <option value={3}>3</option>
+                                                                </select>
                                                             );
                                                         })}
                                                     </div>
@@ -2019,41 +2019,33 @@ const JunkTracker = ({
                                         <div className="grid grid-cols-9 gap-2 flex-1">
                                         {HOLE_NUMBERS.slice(9, 18).map(h => {
                                             const holeKey = `hole${h}`;
-                                            const holePar = holeData[holeKey]?.par || 0;
-                                            
-                                            // Hide Greenies if not par 3
-                                            if (junkId === 'greenies' && holePar !== 3) {
-                                                return (
-                                                    <div key={h} className="text-center">
-                                                        <div className="text-xs font-medium text-gray-400 mb-1">H{h}</div>
-                                                        <div className="space-y-1">
-                                                            {roundPlayers.map((player, idx) => (
-                                                                <div key={`${player.name}-${h}-${idx}`} className="text-xs text-gray-300 py-1">—</div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }
+                                            const holeParRaw = holeData[holeKey]?.par;
+                                            const holePar = Number.isFinite(Number(holeParRaw)) ? Number(holeParRaw) : 0;
                                             
                                             return (
                                                 <div key={h} className="text-center">
                                                     <div className="text-xs font-medium text-gray-600 mb-1">H{h}</div>
                                                     <div className="space-y-1">
                                                         {roundPlayers.map(player => {
-                                                            const isChecked = junkEvents[player.name]?.[holeKey]?.[junkId] || false;
+                                                            const currentCount = junkEvents[player.name]?.[holeKey]?.[junkId] ?? 0;
+                                                            const disabled = junkId === 'greenies' && holePar !== 3;
                                                             return (
-                                                                <label 
-                                                                    key={player.name} 
-                                                                    className={`flex items-center justify-center py-1 ${isReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                                                <select
+                                                                    key={player.name}
+                                                                    value={currentCount}
+                                                                    onChange={(e) => {
+                                                                        if (isReadOnly || disabled) return;
+                                                                        const val = parseInt(e.target.value, 10);
+                                                                        handleJunkEventChange(player.name, holeKey, junkId, isNaN(val) ? 0 : val);
+                                                                    }}
+                                                                    disabled={isReadOnly || disabled}
+                                                                    className={`w-12 text-center text-xs border-2 ${isLosingDots ? 'border-red-300' : 'border-blue-300'} rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly || disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                                 >
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={isChecked}
-                                                                        onChange={(e) => !isReadOnly && handleJunkEventChange(player.name, holeKey, junkId, e.target.checked)}
-                                                                        disabled={isReadOnly}
-                                                                        className={`w-4 h-4 ${isLosingDots ? 'text-red-600' : 'text-blue-600'} border-gray-300 rounded focus:ring-2 focus:ring-gray-500 ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                                    />
-                                                                </label>
+                                                                    <option value={0}>0</option>
+                                                                    <option value={1}>1</option>
+                                                                    <option value={2}>2</option>
+                                                                    <option value={3}>3</option>
+                                                                </select>
                                                             );
                                                         })}
                                                     </div>
@@ -2090,9 +2082,8 @@ const JunkTotals = ({
             let count = 0;
             HOLE_NUMBERS.forEach(h => {
                 const holeKey = `hole${h}`;
-                if (junkEvents[player.name]?.[holeKey]?.[junkId]) {
-                    count++;
-                }
+                const val = parseInt(junkEvents[player.name]?.[holeKey]?.[junkId], 10) || 0;
+                count += val;
             });
             const pointValue = junkPointValues[junkId] || 1;
             // Losing dots subtract, all others add
@@ -3643,9 +3634,8 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                                     let count = 0;
                                     HOLE_NUMBERS.forEach(h => {
                                         const holeKey = `hole${h}`;
-                                        if (activeRound.junkEvents?.[player.name]?.[holeKey]?.[junkId]) {
-                                            count++;
-                                        }
+                                        const val = parseInt(activeRound.junkEvents?.[player.name]?.[holeKey]?.[junkId], 10) || 0;
+                                        count += val;
                                     });
                                     const points = isLosingDots ? -(count * pointValue) : (count * pointValue);
                                     if (count > 0 || points !== 0) {
@@ -6160,9 +6150,8 @@ const App = () => {
                     let count = 0;
                     HOLE_NUMBERS.forEach(h => {
                         const holeKey = `hole${h}`;
-                        if (junkEvents[name]?.[holeKey]?.[junkId]) {
-                            count++;
-                        }
+                        const val = parseInt(junkEvents[name]?.[holeKey]?.[junkId], 10) || 0;
+                        count += val;
                     });
                     // Losing dots subtract, all others add
                     const points = isLosingDots 
@@ -6666,7 +6655,7 @@ const App = () => {
         });
     };
 
-    const handleJunkEventChange = useCallback((playerName, holeKey, junkId, isChecked) => {
+    const handleJunkEventChange = useCallback((playerName, holeKey, junkId, countValue) => {
         // Mark that we have a pending save
         hasPendingJunkSaveRef.current = true;
         
@@ -6678,8 +6667,10 @@ const App = () => {
             if (!newEvents[playerName][holeKey]) {
                 newEvents[playerName][holeKey] = {};
             }
-            if (isChecked) {
-                newEvents[playerName][holeKey][junkId] = true;
+            const parsed = parseInt(countValue, 10);
+            const safeVal = isNaN(parsed) ? 0 : Math.max(0, Math.min(3, parsed));
+            if (safeVal > 0) {
+                newEvents[playerName][holeKey][junkId] = safeVal;
             } else {
                 delete newEvents[playerName][holeKey][junkId];
                 if (Object.keys(newEvents[playerName][holeKey]).length === 0) {
@@ -6712,7 +6703,7 @@ const App = () => {
                 } else {
                     hasPendingJunkSaveRef.current = false;
                 }
-            }, 2000); // Wait 2 seconds after last change to reduce Firestore writes
+            }, 400); // Faster debounce so saves only after a change, but quicker
             
             return newEvents;
         });
