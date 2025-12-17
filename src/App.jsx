@@ -1938,15 +1938,15 @@ const JunkTracker = ({
                                     {/* Front 9 Row */}
                                     <div className="flex gap-2">
                                         {/* Player initials column */}
-                                        <div className="text-center min-w-[50px]">
-                                            <div className="text-xs font-medium text-gray-600 mb-1">Player</div>
+                                        <div className="text-left min-w-[20px] pr-0.5">
+                                            <div className="text-xs font-medium text-gray-600 mb-1">P</div>
                                             <div className="space-y-1">
                                                 {roundPlayers.map(player => {
                                                     const initials = getInitials(player.name);
                                                     return (
                                                         <div 
                                                             key={player.name} 
-                                                            className="text-xs font-bold text-gray-700 py-1"
+                                                            className="text-[11px] font-bold text-gray-700 py-1 leading-tight"
                                                         >
                                                             {initials}
                                                         </div>
@@ -1956,7 +1956,7 @@ const JunkTracker = ({
                                         </div>
                                         
                                         {/* Holes 1-9 */}
-                                        <div className="grid grid-cols-9 gap-2 flex-1">
+                                        <div className="grid grid-cols-9 gap-[2px] flex-1 overflow-x-auto">
                                         {HOLE_NUMBERS.slice(0, 9).map(h => {
                                             const holeKey = `hole${h}`;
                                             const holeParRaw = holeData[holeKey]?.par;
@@ -1969,24 +1969,24 @@ const JunkTracker = ({
                                                         {roundPlayers.map(player => {
                                                             const currentCount = junkEvents[player.name]?.[holeKey]?.[junkId] ?? 0;
                                                             const disabled = junkId === 'greenies' && holePar !== 3;
-                                                            return (
-                                                                <select
-                                                                    key={player.name}
-                                                                    value={currentCount}
-                                                                    onChange={(e) => {
-                                                                        if (isReadOnly || disabled) return;
-                                                                        const val = parseInt(e.target.value, 10);
-                                                                        handleJunkEventChange(player.name, holeKey, junkId, isNaN(val) ? 0 : val);
-                                                                    }}
-                                                                    disabled={isReadOnly || disabled}
-                                                                    className={`w-12 text-center text-xs border-2 ${isLosingDots ? 'border-red-300' : 'border-blue-300'} rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly || disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                                >
-                                                                    <option value={0}>0</option>
-                                                                    <option value={1}>1</option>
-                                                                    <option value={2}>2</option>
-                                                                    <option value={3}>3</option>
-                                                                </select>
-                                                            );
+                                                                return (
+                                                                    <select
+                                                                        key={player.name}
+                                                                        value={currentCount}
+                                                                        onChange={(e) => {
+                                                                            if (isReadOnly || disabled) return;
+                                                                            const val = parseInt(e.target.value, 10);
+                                                                            handleJunkEventChange(player.name, holeKey, junkId, isNaN(val) ? 0 : val);
+                                                                        }}
+                                                                        disabled={isReadOnly || disabled}
+                                                                        className={`w-9 text-center text-[11px] border-2 ${isLosingDots ? 'border-red-300' : 'border-blue-300'} rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly || disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                                    >
+                                                                        <option value={0}>0</option>
+                                                                        <option value={1}>1</option>
+                                                                        <option value={2}>2</option>
+                                                                        <option value={3}>3</option>
+                                                                    </select>
+                                                                );
                                                         })}
                                                     </div>
                                                 </div>
@@ -1998,15 +1998,15 @@ const JunkTracker = ({
                                     {/* Back 9 Row */}
                                     <div className="flex gap-2">
                                         {/* Player initials column */}
-                                        <div className="text-center min-w-[50px]">
-                                            <div className="text-xs font-medium text-gray-600 mb-1">Player</div>
+                                        <div className="text-left min-w-[20px] pr-0.5">
+                                            <div className="text-xs font-medium text-gray-600 mb-1">P</div>
                                             <div className="space-y-1">
                                                 {roundPlayers.map(player => {
                                                     const initials = getInitials(player.name);
                                                     return (
                                                         <div 
                                                             key={player.name} 
-                                                            className="text-xs font-bold text-gray-700 py-1"
+                                                            className="text-[11px] font-bold text-gray-700 py-1 leading-tight"
                                                         >
                                                             {initials}
                                                         </div>
@@ -2016,7 +2016,7 @@ const JunkTracker = ({
                                         </div>
                                         
                                         {/* Holes 10-18 */}
-                                        <div className="grid grid-cols-9 gap-2 flex-1">
+                                        <div className="grid grid-cols-9 gap-[2px] flex-1 overflow-x-auto">
                                         {HOLE_NUMBERS.slice(9, 18).map(h => {
                                             const holeKey = `hole${h}`;
                                             const holeParRaw = holeData[holeKey]?.par;
@@ -2029,24 +2029,24 @@ const JunkTracker = ({
                                                         {roundPlayers.map(player => {
                                                             const currentCount = junkEvents[player.name]?.[holeKey]?.[junkId] ?? 0;
                                                             const disabled = junkId === 'greenies' && holePar !== 3;
-                                                            return (
-                                                                <select
-                                                                    key={player.name}
-                                                                    value={currentCount}
-                                                                    onChange={(e) => {
-                                                                        if (isReadOnly || disabled) return;
-                                                                        const val = parseInt(e.target.value, 10);
-                                                                        handleJunkEventChange(player.name, holeKey, junkId, isNaN(val) ? 0 : val);
-                                                                    }}
-                                                                    disabled={isReadOnly || disabled}
-                                                                    className={`w-12 text-center text-xs border-2 ${isLosingDots ? 'border-red-300' : 'border-blue-300'} rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly || disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                                >
-                                                                    <option value={0}>0</option>
-                                                                    <option value={1}>1</option>
-                                                                    <option value={2}>2</option>
-                                                                    <option value={3}>3</option>
-                                                                </select>
-                                                            );
+                                                                return (
+                                                                    <select
+                                                                        key={player.name}
+                                                                        value={currentCount}
+                                                                        onChange={(e) => {
+                                                                            if (isReadOnly || disabled) return;
+                                                                            const val = parseInt(e.target.value, 10);
+                                                                            handleJunkEventChange(player.name, holeKey, junkId, isNaN(val) ? 0 : val);
+                                                                        }}
+                                                                        disabled={isReadOnly || disabled}
+                                                                        className={`w-9 text-center text-[11px] border-2 ${isLosingDots ? 'border-red-300' : 'border-blue-300'} rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly || disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                                    >
+                                                                        <option value={0}>0</option>
+                                                                        <option value={1}>1</option>
+                                                                        <option value={2}>2</option>
+                                                                        <option value={3}>3</option>
+                                                                    </select>
+                                                                );
                                                         })}
                                                     </div>
                                                 </div>
