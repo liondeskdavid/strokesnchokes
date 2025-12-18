@@ -21,7 +21,9 @@ const SHARED_ROUNDS_COLLECTION = 'shared_rounds'; // Collection for mapping shar
 
 // --- Constants ---
 const NUM_HOLES = 18;
-const BET_TYPES = ['9 Point', 'Match Play', 'Nassau', 'Side Bet', 'Skins'];
+// Available structured bet types for the round
+// Note: 'Vegas' is a team game (2v2) where team hole scores are paired into a two-digit number.
+const BET_TYPES = ['9 Point', 'Match Play', 'Nassau', 'Vegas', 'Side Bet', 'Skins'];
 const JUNK_TYPES = [
     { id: 'greenies', name: 'Greenies', description: 'Closest to pin on par 3', points: 1 },
     { id: 'sandies', name: 'Sandies', description: 'Up-and-down from greenside bunker', points: 1 },
@@ -295,8 +297,6 @@ const PlayerManager = ({
 
 const TeamsManager = ({
     dbReady,
-    teamMode,
-    setTeamMode,
     teams,
     setTeams,
     players,
@@ -308,131 +308,140 @@ const TeamsManager = ({
             name: '',
             playerIds: []
         };
-        setTeams([...teams, newTeam]);
+        setTeams([...(teams || []), newTeam]);
     };
 
     const removeTeam = (teamId) => {
-        setTeams(teams.filter(t => t.id !== teamId));
+        const updated = (teams || []).filter(t => t.id !== teamId);
+        setTeams(updated);
     };
 
     const updateTeamName = (teamId, name) => {
-        setTeams(teams.map(t => t.id === teamId ? { ...t, name } : t));
+        setTeams((teams || []).map(t => t.id === teamId ? { ...t, name } : t));
     };
 
     const updateTeamPlayers = (teamId, playerIds) => {
-        setTeams(teams.map(t => t.id === teamId ? { ...t, playerIds } : t));
+        setTeams((teams || []).map(t => t.id === teamId ? { ...t, playerIds } : t));
     };
 
     const togglePlayerInTeam = (teamId, playerId) => {
-        const team = teams.find(t => t.id === teamId);
+        const team = (teams || []).find(t => t.id === teamId);
         if (!team) return;
         
         const isSelected = team.playerIds.includes(playerId);
-        if (isSelected) {
-            // Remove player from team
-            updateTeamPlayers(teamId, team.playerIds.filter(id => id !== playerId));
-        } else {
-            // Add player to team
-            updateTeamPlayers(teamId, [...team.playerIds, playerId]);
-        }
+        
+        // When selecting a player for this team, ensure they are removed from any other team
+        const updatedTeams = (teams || []).map(t => {
+            if (t.id === teamId) {
+                if (isSelected) {
+                    // Remove from this team
+                    return { ...t, playerIds: t.playerIds.filter(id => id !== playerId) };
+                }
+                // Add to this team
+                return { ...t, playerIds: [...t.playerIds, playerId] };
+            }
+            // Remove from all other teams
+            return { ...t, playerIds: t.playerIds.filter(id => id !== playerId) };
+        });
+        
+        setTeams(updatedTeams);
     };
 
-    const availablePlayers = players.filter(p => roundPlayerIds.includes(p.id));
+    const availablePlayers = (players || []).filter(p => roundPlayerIds.includes(p.id));
 
     return (
-        <div className="p-3 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
-            <h2 className="text-lg font-bold text-blue-800 mb-2">Teams</h2>
-            
-            <div className="mb-3">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                    Game Mode
-                </label>
-                <select
-                    value={teamMode}
-                    onChange={(e) => {
-                        setTeamMode(e.target.value);
-                        if (e.target.value === 'singles') {
-                            setTeams([]);
-                        }
-                    }}
-                    className="w-full p-2 border border-gray-300 rounded-lg bg-white text-sm focus:ring-blue-500 focus:border-blue-500"
-                >
-                    <option value="singles">Singles (Individual Play)</option>
-                    <option value="teams">Teams</option>
-                </select>
-            </div>
-
-            {teamMode === 'teams' && (
-                <div className="space-y-3">
-                    {teams.map(team => (
-                        <div key={team.id} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                            <div className="flex items-center space-x-2 mb-2">
-                                <input
-                                    type="text"
-                                    placeholder="Team Name"
-                                    value={team.name}
-                                    onChange={(e) => updateTeamName(team.id, e.target.value)}
-                                    className="flex-1 p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
-                                />
-                                <button
-                                    onClick={() => removeTeam(team.id)}
-                                    className="px-2 py-1 text-xs font-medium rounded-lg border bg-white text-red-600 border-red-400 hover:bg-red-50"
-                                >
-                                    Remove
-                                </button>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-600 mb-2">
-                                    Select Players
-                                </label>
-                                <div className="space-y-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-2 bg-white">
-                                    {availablePlayers.length === 0 ? (
-                                        <p className="text-xs text-gray-500 italic text-center py-2">
-                                            No players available. Add players to the round first.
-                                        </p>
-                                    ) : (
-                                        availablePlayers.map(player => {
-                                            const isSelected = team.playerIds.includes(player.id);
-                                            return (
-                                                <label
-                                                    key={player.id}
-                                                    className="flex items-center space-x-2 p-2 rounded-lg hover:bg-blue-100 cursor-pointer transition-colors"
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={isSelected}
-                                                        onChange={() => togglePlayerInTeam(team.id, player.id)}
-                                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                                    />
-                                                    <span className={`text-sm flex-1 ${isSelected ? 'font-semibold text-blue-700' : 'text-gray-700'}`}>
-                                                        {player.name}
-                                                    </span>
-                                                </label>
-                                            );
-                                        })
-                                    )}
-                                </div>
+        <div className="space-y-3">
+            <div className="space-y-3">
+                {teams.map(team => (
+                    <div key={team.id} className="p-3 bg-white rounded-xl border border-gray-200 shadow-sm">
+                        <div className="flex items-center space-x-2 mb-3">
+                            <input
+                                type="text"
+                                placeholder="Team Name"
+                                value={team.name}
+                                onChange={(e) => updateTeamName(team.id, e.target.value)}
+                                className="flex-1 p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => removeTeam(team.id)}
+                                className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 text-gray-500 hover:bg-gray-100 hover:text-gray-700 text-sm font-bold"
+                                aria-label="Remove team"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-2">
+                                Select Players
+                            </label>
+                            <div className="max-h-56 overflow-y-auto">
+                                {availablePlayers.length === 0 ? (
+                                    <p className="text-xs text-gray-500 italic text-center py-2">
+                                        No players available. Add players to the round first.
+                                    </p>
+                                ) : (
+                                    (() => {
+                                        // Build 2-per-row grid of player cards
+                                        const rows = [];
+                                        for (let i = 0; i < availablePlayers.length; i += 2) {
+                                            rows.push(availablePlayers.slice(i, i + 2));
+                                        }
+                                        return (
+                                            <div className="space-y-2">
+                                                {rows.map((row, rowIndex) => (
+                                                    <div key={rowIndex} className="grid grid-cols-2 gap-2">
+                                                        {row.map(player => {
+                                                            const isSelected = team.playerIds.includes(player.id);
+                                                            const baseClasses =
+                                                                'flex items-center gap-2 px-3 py-2 rounded-xl border text-sm cursor-pointer transition-all';
+                                                            const selectedClasses =
+                                                                'bg-gradient-to-r from-blue-600 to-gray-800 border-blue-500 text-white shadow-sm';
+                                                            const unselectedClasses =
+                                                                'bg-gray-50 border-gray-200 text-gray-800 hover:bg-gray-100';
+                                                            return (
+                                                                <div
+                                                                    key={player.id}
+                                                                    onClick={() => togglePlayerInTeam(team.id, player.id)}
+                                                                    className={`${baseClasses} ${
+                                                                        isSelected ? selectedClasses : unselectedClasses
+                                                                    }`}
+                                                                >
+                                                                    <div className="flex-1 truncate">
+                                                                        <div className="font-semibold truncate">
+                                                                            {player.name}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                    })()
+                                )}
                             </div>
                         </div>
-                    ))}
-                    <button
-                        type="button"
-                        onClick={addTeam}
-                        className="w-full px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-sm flex items-center justify-center gap-1"
-                        disabled={!dbReady}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Add Team
-                    </button>
-                    {teams.length === 0 && (
-                        <p className="text-xs text-gray-500 italic text-center py-2">
-                            Add teams to organize players
-                        </p>
-                    )}
-                </div>
-            )}
+                    </div>
+                ))}
+                <button
+                    type="button"
+                    onClick={addTeam}
+                    className="w-full px-4 py-2 rounded-2xl bg-[#14532D] text-white text-sm font-bold shadow-md hover:brightness-110 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    disabled={!dbReady}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    New Team
+                </button>
+                {teams.length === 0 && (
+                    <p className="text-xs text-gray-500 italic text-center py-2">
+                        Add teams to organize players
+                    </p>
+                )}
+            </div>
         </div>
     );
 };
@@ -832,134 +841,7 @@ const UserProfile = ({ dbReady, userId, auth, db, userEmail }) => {
     );
 };
 
-const CustomBetManager = ({
-    dbReady,
-    newBetName,
-    setNewBetName,
-    newBetType,
-    setNewBetType,
-    newBetAmount,
-    setNewBetAmount,
-    newBetCarryOver,
-    setNewBetCarryOver,
-    handleAddBet,
-    customBets,
-    handleDeleteBet,
-    betError
-}) => (
-    <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
-        <h2 className="text-lg font-bold text-blue-800 mb-2">Select Your Game and Bets</h2>
-
-        {betError && (
-             <div className="p-3 mb-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm font-medium">
-                Error adding bet: {betError.message || betError.toString()}
-             </div>
-        )}
-
-        <div className="space-y-3 mb-4">
-            <select
-                value={newBetType}
-                onChange={(e) => {
-                    setNewBetType(e.target.value);
-                    // Auto-fill name for non-Side Bet types, clear for Side Bet
-                    if (e.target.value !== 'Side Bet') {
-                        setNewBetName(e.target.value);
-                    } else {
-                        setNewBetName('');
-                    }
-                }}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white"
-            >
-                {BET_TYPES.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                ))}
-            </select>
-            {newBetType === 'Side Bet' && (
-                <input
-                    type="text"
-                    placeholder="Bet Name (e.g., First Birdie)"
-                    value={newBetName}
-                    onChange={(e) => setNewBetName(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                />
-            )}
-            <div className="flex space-x-2">
-                <input
-                    type="number"
-                    placeholder={newBetType === 'Nassau' ? "$ Per Side" : newBetType === '9 Point' ? "$ Per Point" : "$ Amount"}
-                    value={newBetAmount}
-                    onChange={(e) => setNewBetAmount(e.target.value)}
-                    className="w-28 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    min="0"
-                />
-                <button
-                    onClick={handleAddBet}
-                    className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition duration-150 shadow-sm flex items-center gap-1 disabled:opacity-50"
-                    disabled={!dbReady || (newBetType === 'Side Bet' && !newBetName.trim()) || !newBetAmount}
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add
-                </button>
-            </div>
-            {newBetType === 'Nassau' && (
-                <p className="text-xs text-gray-600 mt-1">
-                    Nassau creates 3 bets: Front 9, Back 9, and Total. Amount is per side (e.g., $1 = $3 total).
-                </p>
-            )}
-            {newBetType === '9 Point' && (
-                <p className="text-xs text-gray-600 mt-1">
-                    9 Point is a 3-player game where 9 points are split per hole based on net scores. Requires exactly 3 players.
-                </p>
-            )}
-            {newBetType === 'Skins' && (
-                <div className="space-y-2 mt-2">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            checked={newBetCarryOver}
-                            onChange={(e) => setNewBetCarryOver(e.target.checked)}
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-gray-700">Enable Carry Over (ties carry to next hole)</span>
-                    </label>
-                    <p className="text-xs text-gray-600">
-                        Each hole is worth ${newBetAmount || 0}. Lowest net score wins. {newBetCarryOver ? 'Ties carry over to next hole.' : 'Ties result in no winner for that hole.'}
-                    </p>
-                </div>
-            )}
-        </div>
-
-        <div className="space-y-2 max-h-40 overflow-y-auto">
-            {customBets.length === 0 ? (
-                <p className="text-gray-500 italic p-2 bg-gray-50 rounded">
-                    Add custom bets here—these are the *only* bets available in Step 3.
-                </p>
-            ) : (
-                customBets.map(bet => (
-                    <div key={bet.id} className="grid grid-cols-3 gap-2 items-center p-2 bg-gray-50 rounded-lg border border-gray-200">
-                        <span className="font-medium text-gray-700 text-left">{bet.name}</span>
-                        <span className="text-sm text-gray-600 font-mono text-left">
-                            {bet.type} {
-                                bet.type === 'Nassau' ? `($${bet.amount.toFixed(0)}/side)` :
-                                bet.type === 'Skins' ? `($${bet.amount.toFixed(0)}/skin${bet.carryOver !== false ? ', CO' : ''})` :
-                                bet.type === '9 Point' ? `($${bet.amount.toFixed(0)}/point)` :
-                                `($${bet.amount.toFixed(0)})`
-                            }
-                        </span>
-                        <button
-                            onClick={() => handleDeleteBet(bet.id)}
-                            className="px-2 py-1 text-xs font-medium rounded-lg border bg-white text-red-600 border-red-400 hover:bg-red-50"
-                        >
-                            Delete
-                        </button>
-                    </div>
-                ))
-            )}
-        </div>
-    </div>
-);
+// Old dropdown-based CustomBetManager has been removed. Bets are now controlled via the box UI in the main flow.
 
 const CourseManager = ({
     dbReady,
@@ -1621,7 +1503,14 @@ const BetRecorder = ({
     if (!activeRound || activeRound.status !== 'Active') return null;
 
     const playerNames = players.map(p => p.name);
-    const manualBets = allAvailableBets.filter(b => b.type !== 'Skins' && b.type !== 'Nassau' && b.type !== 'Match Play' && b.type !== '9 Point');
+    const manualBets = allAvailableBets.filter(
+        b =>
+            b.type !== 'Skins' &&
+            b.type !== 'Nassau' &&
+            b.type !== 'Match Play' &&
+            b.type !== '9 Point' &&
+            b.type !== 'Vegas'
+    );
     const allBets = [...manualBets, ...(roundBets || [])];
 
     return (
@@ -5002,6 +4891,8 @@ const App = () => {
     // Team state
     const [teamMode, setTeamMode] = useState('singles'); // 'singles' or 'teams'
     const [teams, setTeams] = useState([]); // [{ id: string, name: string, playerIds: string[] }]
+    const [teamsDraft, setTeamsDraft] = useState([]); // draft teams used inside the Teams modal
+    const [isTeamsModalOpen, setIsTeamsModalOpen] = useState(false);
     
     // Round sharing state
     const [shareCodeInput, setShareCodeInput] = useState('');
@@ -5014,6 +4905,13 @@ const App = () => {
     const [isScorecardModalOpen, setIsScorecardModalOpen] = useState(false);
     const [isShareCodeErrorModalOpen, setIsShareCodeErrorModalOpen] = useState(false);
     const [sharedRoundCustomBets, setSharedRoundCustomBets] = useState([]);
+
+    // When there is no active round (and not viewing a shared round), default to no players selected for the next round
+    useEffect(() => {
+        if (!activeRoundId && !isViewingSharedRound) {
+            setRoundPlayerIds([]);
+        }
+    }, [activeRoundId, isViewingSharedRound]);
     
     // View state for bottom navigation
     const [currentView, setCurrentView] = useState('play'); // 'play', 'rounds', 'management', 'courses', or 'profile'
@@ -6268,7 +6166,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                 createdAt: serverTimestamp(),
             });
 
-            // 8. Update local state
+            // 8. Update local state for the active round
             setActiveRoundId(newRoundRef.id);
             setBetSelections(initialRoundBetWinners);
             setScores(initialRoundScores);
@@ -6276,9 +6174,28 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             setJunkEvents({}); // Clear junk checkboxes
             setSelectedCourseId(''); // Clear course selection
             setLastLoadedScoresRoundId(newRoundRef.id);
-            // Reset teams when starting new round
+
+            // 9. Reset Play tab "next round" configuration so it's independent of the active round
+            //    Once a round is started, its players/bets are locked to that round and the Play tab
+            //    should look like a fresh, not-yet-configured round.
+            setRoundPlayerIds([]);
+            setBetAmounts({
+                Skins: 0,
+                Nassau: 0,
+                '9 Point': 0,
+                'Match Play': 0,
+                Vegas: 0,
+                Greenies: 0,
+                Sandies: 0,
+                Poleys: 0,
+                'Gaining Dots': 0,
+                'Losing Dots': 0
+            });
+            setSkinsCarryOver(false);
+            // Reset team builder state for the next round setup
             setTeamMode('singles');
             setTeams([]);
+
             // Switch to rounds view when starting a new round
             setCurrentView('rounds');
         } catch (error) {
@@ -7294,15 +7211,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                 }
             `}</style>
 
-            <header className="relative mb-4">
-                <div className="flex items-center justify-center">
-                    {/* Title */}
-                    <h1 className="text-3xl font-extrabold text-gray-900 app-title-shadow">
-                        Strokes-N-Chokes
-                    </h1>
-                </div>
-            </header>
-
+        
             <div className="w-full max-w-full px-2" style={{ paddingBottom: 'calc(75px + env(safe-area-inset-bottom, 0px))' }}>
                 {/* Share Code Error Modal */}
                 {isShareCodeErrorModalOpen && (
@@ -7432,8 +7341,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
         <div className="max-w-[420px] mx-auto px-4 pt-4 pb-28 space-y-4">
             {/* Header */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
-                <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Strokes-N-Chokes</p>
-                <h1 className="text-2xl font-extrabold text-gray-900 mt-1">Start a Round</h1>
+                <h1 className="text-2xl font-extrabold text-gray-900 mt-1">Strokes-N-Chokes</h1>
                 <p className="text-sm text-gray-600 mt-1">Set it up fast. Argue later.</p>
             </div>
 
@@ -7483,11 +7391,10 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                 <div className="flex items-center justify-between">
                     <div className="text-lg font-semibold text-gray-500">
-                            {(() => {
-                                const ids = roundPlayerIds && roundPlayerIds.length ? roundPlayerIds : (players || []).map(p => p.id);
-                                const count = ids.length || 0;
-                            return `Players (${count})`;
-                            })()}
+                        {(() => {
+                            const count = (roundPlayerIds && roundPlayerIds.length) ? roundPlayerIds.length : 0;
+                            return count === 0 ? 'Players (Select Below)' : `Players (${count})`;
+                        })()}
                     </div>
                     <button
                         type="button"
@@ -7499,19 +7406,16 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                     </button>
                 </div>
 
-                {/* Quick preview list (2 per row) */}
+                {/* Quick preview list (2 per row) + Teams button */}
                 <div className="mt-3">
                     {(() => {
-                        const selectedIds = (roundPlayerIds && roundPlayerIds.length) ? roundPlayerIds : [];
-                        const selectedPlayers =
-                            selectedIds.length
-                                ? (players || []).filter(p => selectedIds.includes(p.id))
-                                : (players || []).slice(0, 4);
+                        const allPlayers = players || [];
+                        const inRoundIds = new Set(roundPlayerIds || []);
 
-                        if (!selectedPlayers.length) {
+                        if (!allPlayers.length) {
                             return (
                                 <div className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-xl p-3">
-                                    No players selected yet.
+                                    No players saved yet. Add players to your account first.
                                 </div>
                             );
                         }
@@ -7530,19 +7434,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                         // Helper to get avatar URL from UI Avatars
                         const getAvatarUrl = (name, index) => {
                             const initials = getInitials(name);
-                            // Use different colors based on index for variety
-                            const colors = [
-                              //  '0ea5e9', // blue
-                             //   '10b981', // green
-                              //  'a855f7', // purple
-                             //   'f97316', // orange
-                             //   'ec4899', // pink
-                             //   '6366f1', // indigo
-                            //    'eab308', // yellow
-                            //    'ef4444', // red
-                             //   '06b6d4', // cyan
-                                '14b8a6'  // teal
-                            ];
+                            const colors = ['14b8a6']; // teal
                             const color = colors[index % colors.length];
                             const encodedName = encodeURIComponent(name || 'Player');
                             return `https://ui-avatars.com/api/?name=${encodedName}&size=128&background=${color}&color=fff&bold=true&font-size=0.5`;
@@ -7559,59 +7451,96 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                             return 'Player';
                         };
                         
-                        // Gradient backgrounds for each player
-                        const gradients = [
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800'
-                        ];
+                        const togglePlayerInRound = (playerId) => {
+                            setRoundPlayerIds(prev => {
+                                const hasPlayer = prev.includes(playerId);
+                                if (hasPlayer) {
+                                    return prev.filter(id => id !== playerId);
+                                }
+                                return [...prev, playerId];
+                            });
+                        };
                         
                         // Group players into rows of 2
                         const rows = [];
-                        for (let i = 0; i < selectedPlayers.length; i += 2) {
-                            rows.push(selectedPlayers.slice(i, i + 2));
+                        for (let i = 0; i < allPlayers.length; i += 2) {
+                            rows.push(allPlayers.slice(i, i + 2));
                         }
 
+                        const inRoundCount = inRoundIds.size;
+
                         return (
-                            <div className="space-y-2">
-                                {rows.map((row, rowIndex) => (
-                                    <div key={rowIndex} className="grid grid-cols-2 gap-2">
-                                        {row.map((p, playerIndex) => {
-                                            const globalIndex = rowIndex * 2 + playerIndex;
-                                            const gradientClass = gradients[globalIndex % gradients.length];
-                                            
-                                            return (
-                                                <div key={p.id} className={`flex items-center gap-2 ${gradientClass} rounded-xl px-3 py-2 border border-white/20`}>
-                                                    <div className="h-10 w-10 rounded-full flex-shrink-0 overflow-hidden border-2 border-white/30 relative bg-gray-800">
-                                                        <div className="absolute inset-0 bg-gray-800 text-white flex items-center justify-center text-xs font-bold z-0">
-                                                            {getInitials(p.name).toUpperCase()}
-                                    </div>
-                                                        <img 
-                                                            src={getAvatarUrl(p.name, globalIndex)}
-                                                            alt={p.name || 'Player'}
-                                                            className="w-full h-full object-cover relative z-10"
-                                                            onError={(e) => {
-                                                                e.target.style.display = 'none';
-                                                            }}
-                                                        />
-                                    </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="text-sm font-semibold text-white truncate">{formatName(p.name)}</div>
-                                                        <div className="text-xs text-white/90">HCP {p.handicap ?? 0}</div>
+                            <>
+                                <div className="space-y-2">
+                                    {rows.map((row, rowIndex) => (
+                                        <div key={rowIndex} className="grid grid-cols-2 gap-2">
+                                            {row.map((p, playerIndex) => {
+                                                const globalIndex = rowIndex * 2 + playerIndex;
+                                                const isInRound = inRoundIds.has(p.id);
+                                                const cardClasses = isInRound
+                                                    ? 'bg-gradient-to-r from-blue-600 to-black border-white/20 text-white'
+                                                    : 'bg-gray-100 border-gray-200 text-gray-900 hover:bg-gray-200';
+                                                
+                                                return (
+                                                    <button
+                                                        key={p.id}
+                                                        type="button"
+                                                        onClick={() => togglePlayerInRound(p.id)}
+                                                        className={`flex items-center gap-2 rounded-xl px-3 py-2 border transition-colors w-full ${cardClasses}`}
+                                                    >
+                                                        <div className="h-10 w-10 rounded-full flex-shrink-0 overflow-hidden border-2 border-white/30 relative bg-gray-800">
+                                                            <div className="absolute inset-0 bg-gray-800 text-white flex items-center justify-center text-xs font-bold z-0">
+                                                                {getInitials(p.name).toUpperCase()}
+                                                            </div>
+                                                            <img 
+                                                                src={getAvatarUrl(p.name, globalIndex)}
+                                                                alt={p.name || 'Player'}
+                                                                className="w-full h-full object-cover relative z-10"
+                                                                onError={(e) => {
+                                                                    e.target.style.display = 'none';
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <div className="min-w-0 flex-1 text-left">
+                                                            <div className="text-sm font-semibold truncate">
+                                                                {formatName(p.name)}
+                                                            </div>
+                                                            <div className="text-xs opacity-90">
+                                                                HCP {p.handicap ?? 0}
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    ))}
                                 </div>
-                            </div>
-                                            );
-                                        })}
+
+                                {/* Create Teams Button (only when at least 3 players in round) */}
+                                {inRoundCount >= 3 && (
+                                    <div className="mt-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                // Initialize draft teams from existing teams or start with a new blank team
+                                                setTeamsDraft(prev => {
+                                                    if (prev && prev.length > 0) return prev;
+                                                    if (teams && teams.length > 0) return [...teams];
+                                                    return [{
+                                                        id: `team_${Date.now()}`,
+                                                        name: '',
+                                                        playerIds: []
+                                                    }];
+                                                });
+                                                setIsTeamsModalOpen(true);
+                                            }}
+                                            className="w-full inline-flex items-center justify-center px-4 py-2 rounded-2xl bg-[#14532D] text-white text-sm font-bold shadow-md hover:brightness-110 transition-colors"
+                                        >
+                                            Create Teams
+                                        </button>
                                     </div>
-                                ))}
-                            </div>
+                                )}
+                            </>
                         );
                     })()}
                 </div>
@@ -7692,17 +7621,20 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                     const skins = findBet('Skins');
                     const nassau = findBet('Nassau');
                     const ninePoint = findBet('9 Point');
+                    const vegas = findBet('Vegas');
                     const matchPlay = findBet('Match Play');
 
                     const skinsAmt = skins?.amount ?? skins?.value ?? skins?.betAmount ?? '';
                     const nassauAmt = nassau?.amount ?? nassau?.value ?? nassau?.betAmount ?? '';
                     const ninePointAmt = ninePoint?.amount ?? ninePoint?.value ?? ninePoint?.betAmount ?? '';
                     const matchPlayAmt = matchPlay?.amount ?? matchPlay?.value ?? matchPlay?.betAmount ?? '';
+                    const vegasAmt = vegas?.amount ?? vegas?.value ?? vegas?.betAmount ?? '';
 
-                    // Get player count
-                    const selectedIds = (roundPlayerIds && roundPlayerIds.length) ? roundPlayerIds : (players || []).map(p => p.id);
+                    // Get player count based ONLY on explicitly selected round players
+                    const selectedIds = (roundPlayerIds && roundPlayerIds.length) ? roundPlayerIds : [];
                     const playerCount = selectedIds.length || 0;
                     const hasThreePlayers = playerCount === 3;
+                    const hasFourPlayers = playerCount === 4;
 
                     // Create bet items array
                     const betItems = [
@@ -7735,6 +7667,16 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                             amount: betAmounts['9 Point'],
                             disabled: !hasThreePlayers
                         },
+                        {
+                            name: 'Vegas',
+                            descriptor: ' / point',
+                            baseSummary: hasFourPlayers
+                                ? ''
+                                : 'Requires 4 players',
+                            configured: !!vegas && hasFourPlayers,
+                            amount: betAmounts['Vegas'],
+                            disabled: !hasFourPlayers
+                        },
                         // Individual junk bet types
                         ...JUNK_TYPES.map(junkType => {
                             const isSelected = Array.isArray(selectedJunkTypes) && selectedJunkTypes.includes(junkType.id);
@@ -7751,17 +7693,25 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
                     // Handlers for bet amount changes
                     const handleIncreaseBet = (betName) => {
-                        setBetAmounts(prev => ({
-                            ...prev,
-                            [betName]: (prev[betName] || 0) + 1
-                        }));
+                        setBetAmounts(prev => {
+                            const step = betName === 'Vegas' ? 0.25 : 1;
+                            const current = Number(prev[betName] || 0);
+                            return {
+                                ...prev,
+                                [betName]: current + step
+                            };
+                        });
                     };
 
                     const handleDecreaseBet = (betName) => {
-                        setBetAmounts(prev => ({
-                            ...prev,
-                            [betName]: Math.max(0, (prev[betName] || 0) - 1)
-                        }));
+                        setBetAmounts(prev => {
+                            const step = betName === 'Vegas' ? 0.25 : 1;
+                            const current = Number(prev[betName] || 0);
+                            return {
+                                ...prev,
+                                [betName]: Math.max(0, current - step)
+                            };
+                        });
                     };
 
                     // Group bets into rows of 2
@@ -7780,7 +7730,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                                             const isLosingDots = bet.isLosingDots && isActive;
                                             const isDisabled = bet.disabled;
                                             
-                                            // Find if this is a junk bet and get its description
+                                            // Find if this is a junk bet and get its description/icon
                                             const junkType = JUNK_TYPES.find(j => j.name === bet.name);
                                             const hasDescription = !!junkType?.description;
                                             
@@ -7821,9 +7771,28 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                                                     )}
                                                     <div className="flex flex-col">
                                                         <div className="flex items-center justify-between mb-1">
-                                                            <div className={`text-sm font-semibold ${
+                                                            <div className={`text-sm font-semibold flex items-center gap-1 ${
                                                                 isActive ? 'text-white' : 'text-gray-900'
-                                                            }`}>{bet.name}</div>
+                                                            }`}>
+                                                                <span aria-hidden="true">
+                                                                    {bet.name === 'Skins' && '🎯'}
+                                                                    {bet.name === 'Nassau' && '💰'}
+                                                                    {bet.name === '9 Point' && '9️⃣'}
+                                                                    {bet.name === 'Match Play' && '⚔️'}
+                                                                    {bet.name === 'Vegas' && '🎲'}
+                                                                    {junkType && (() => {
+                                                                        switch (junkType.id) {
+                                                                            case 'greenies': return '🟢';
+                                                                            case 'sandies': return '🏖️';
+                                                                            case 'poleys': return '📏';
+                                                                            case 'gainingDots': return '🦅';
+                                                                            case 'losingDots': return '❌';
+                                                                            default: return '•';
+                                                                        }
+                                                                    })()}
+                                                                </span>
+                                                                <span>{bet.name}</span>
+                                                            </div>
                                                             {/* Bet Amount Controller */}
                                                             <div className="flex flex-col items-center gap-1">
                                                                 <button
@@ -7856,9 +7825,15 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                                                             isActive ? 'text-white/90' : 'text-gray-600'
                                                         }`}>
                                                             {bet.amount > 0 
-                                                                ? (isLosingDots 
-                                                                    ? `-$${bet.amount}${bet.descriptor || ''}` 
-                                                                    : `$${bet.amount}${bet.descriptor || ''}`)
+                                                                ? (() => {
+                                                                    const amountNum = Number(bet.amount || 0);
+                                                                    const formattedAmount = bet.name === 'Vegas'
+                                                                        ? amountNum.toFixed(2)
+                                                                        : amountNum.toString();
+                                                                    return isLosingDots
+                                                                        ? `-$${formattedAmount}${bet.descriptor || ''}` 
+                                                                        : `$${formattedAmount}${bet.descriptor || ''}`;
+                                                                })()
                                                                 : bet.baseSummary}
                                                         </div>
                                                         {/* Carry Over Checkbox for Skins */}
@@ -7897,64 +7872,119 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
             </div>
 
-            {/* Advanced (Handicap + Teams) */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
-                <button
-                    type="button"
-                    onClick={() => setIsAdvancedOpen(v => !v)}
-                    className="w-full px-4 py-3 flex items-center justify-between"
-                >
-                    <span className="text-sm font-semibold text-gray-900">Advanced</span>
-                    <span className="text-sm text-gray-500">{isAdvancedOpen ? 'Hide' : 'Show'}</span>
-                </button>
-
-                {isAdvancedOpen && (
-                    <div className="px-4 pb-4 space-y-4">
-                        <div className="rounded-xl border border-gray-200 p-3 bg-gray-50">
-                            <TeamsManager
-                                dbReady={dbReady}
-                                teamMode={teamMode}
-                                setTeamMode={setTeamMode}
-                                teams={teams}
-                                setTeams={setTeams}
-                                players={players}
-                                roundPlayerIds={roundPlayerIds}
-                            />
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Validation helper (above sticky CTA) */}
-            {(!selectedCourseId) && (
-                <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 text-sm font-medium">
-                    Please select a course to start a new round.
-                </div>
-            )}
-        </div>
-
-        {/* Sticky Start CTA */}
-        <div className="sticky bottom-0 z-40 bg-[#F8FAFC]/95 backdrop-blur border-t border-gray-200">
-            <div className="max-w-[420px] mx-auto px-4 py-3">
+            {/* Start Round CTA (moved up from sticky footer) */}
+            <div className="mt-4">
                 {(() => {
                     const playerCount = roundPlayerIds.length > 0 ? roundPlayerIds.length : (players?.length || 0);
                     return (
                         <>
-                <button
-                    onClick={handleStartNewRound}
-                    className="w-full h-14 rounded-2xl bg-[#14532D] text-white font-extrabold text-lg shadow-md hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={!dbReady || playerCount === 0 || !selectedCourseId}
-                >
-                    Start Round
-                </button>
-                <p className="text-xs text-gray-500 mt-2 text-center">
-                    {(!selectedCourseId || playerCount === 0) ? 'Select a course and at least 2 players.' : 'Ready to go.'}
-                </p>
+                            <button
+                                onClick={handleStartNewRound}
+                                className="w-full h-14 rounded-2xl bg-[#14532D] text-white font-extrabold text-lg shadow-md hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                                disabled={!dbReady || playerCount === 0 || !selectedCourseId}
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    className="w-6 h-6 text-amber-300 drop-shadow-sm"
+                                    fill="currentColor"
+                                >
+                                    <path d="M13.3 2.1a.75.75 0 0 0-1.07.3c-.82 1.52-1.9 2.7-3.03 3.6C7 7.3 5.5 9.1 5.5 11.7 5.5 15 8 17.5 11.25 17.5c.11 0 .22 0 .33-.01-.55.88-.83 1.7-.83 2.51 0 1.84 1.41 3.5 3.5 3.5 2.53 0 4.75-2.03 4.75-5.24 0-2.5-1.33-4.34-2.63-5.81-1.01-1.13-1.97-2.2-2.35-3.69-.13-.51-.2-1.07-.2-1.71 0-.59.06-1.22.18-1.91a.75.75 0 0 0-.8-.93z" />
+                                </svg>
+                                <span>Start Round</span>
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    className="w-6 h-6 text-amber-300 drop-shadow-sm"
+                                    fill="currentColor"
+                                >
+                                    <path d="M13.3 2.1a.75.75 0 0 0-1.07.3c-.82 1.52-1.9 2.7-3.03 3.6C7 7.3 5.5 9.1 5.5 11.7 5.5 15 8 17.5 11.25 17.5c.11 0 .22 0 .33-.01-.55.88-.83 1.7-.83 2.51 0 1.84 1.41 3.5 3.5 3.5 2.53 0 4.75-2.03 4.75-5.24 0-2.5-1.33-4.34-2.63-5.81-1.01-1.13-1.97-2.2-2.35-3.69-.13-.51-.2-1.07-.2-1.71 0-.59.06-1.22.18-1.91a.75.75 0 0 0-.8-.93z" />
+                                </svg>
+                            </button>
+                            <p className="text-xs text-gray-500 mt-2 text-center">
+                                {(!selectedCourseId || playerCount === 0) ? 'Select a course and at least 2 players.' : 'Ready to go.'}
+                            </p>
                         </>
                     );
                 })()}
             </div>
         </div>
+
+        {/* Teams Modal */}
+        {isTeamsModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
+                    <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                        <h2 className="text-lg font-bold text-gray-900">Teams</h2>
+                        <button
+                            type="button"
+                            onClick={() => setIsTeamsModalOpen(false)}
+                            className="text-gray-500 hover:text-gray-700 text-xl font-semibold"
+                            aria-label="Close teams modal"
+                        >
+                            ×
+                        </button>
+                    </div>
+                    <div className="p-4 space-y-4">
+                        <TeamsManager
+                            dbReady={dbReady}
+                            teams={teamsDraft}
+                            setTeams={setTeamsDraft}
+                            players={players}
+                            roundPlayerIds={roundPlayerIds}
+                        />
+                        <div className="flex justify-end gap-2 pt-2 border-t border-gray-200">
+                            <button
+                                type="button"
+                                onClick={() => setIsTeamsModalOpen(false)}
+                                className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-2xl hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    // Keep only teams that actually have players
+                                    const nonEmptyTeams = (teamsDraft || []).filter(
+                                        t => Array.isArray(t.playerIds) && t.playerIds.length > 0
+                                    );
+                                    
+                                    // If a team has no explicit name, build one from its players (e.g., "Gary/Justin")
+                                    const nonEmptyTeamsWithNames = nonEmptyTeams.map(team => {
+                                        const rawName = (team.name || '').trim();
+                                        if (rawName) return team;
+                                        
+                                        const memberFirstNames = (team.playerIds || [])
+                                            .map(playerId => (players || []).find(p => p.id === playerId))
+                                            .filter(p => !!p && !!p.name)
+                                            .map(p => {
+                                                const parts = p.name.trim().split(/\s+/);
+                                                return parts[0] || '';
+                                            })
+                                            .filter(name => !!name);
+                                        
+                                        const autoName = memberFirstNames.length > 0 ? memberFirstNames.join(' / ') : 'Team';
+                                        return { ...team, name: autoName };
+                                    });
+                                    
+                                    setTeams(nonEmptyTeamsWithNames);
+                                    // If there are no valid teams, treat it as a singles game
+                                    if (nonEmptyTeamsWithNames.length > 0) {
+                                        setTeamMode('teams');
+                                    } else {
+                                        setTeamMode('singles');
+                                    }
+                                    setIsTeamsModalOpen(false);
+                                }}
+                                className="px-4 py-2 text-sm font-bold text-white bg-[#14532D] rounded-2xl shadow-md hover:brightness-110 disabled:opacity-50"
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
 
         {/* Players Modal */}
         {isPlayersModalOpen && (
@@ -8144,7 +8174,12 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                     <div className="space-y-4">
                         {/* Skins */}
                         <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                            <h3 className="text-base font-bold text-gray-900 mb-2">Skins</h3>
+                            <h3 className="text-base font-bold text-gray-900 mb-2">
+                                <span className="inline-flex items-center gap-2">
+                                    <span className="text-lg" aria-hidden="true">🎯</span>
+                                    <span>Skins</span>
+                                </span>
+                            </h3>
                             <p className="text-sm text-gray-700">
                                 Each hole is worth the set amount. The player with the lowest net score on each hole wins that hole's skin. 
                                 If there's a tie, you can enable "Carry Over" so the skin carries to the next hole, increasing its value.
@@ -8153,7 +8188,12 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
                         {/* Nassau */}
                         <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                            <h3 className="text-base font-bold text-gray-900 mb-2">Nassau</h3>
+                            <h3 className="text-base font-bold text-gray-900 mb-2">
+                                <span className="inline-flex items-center gap-2">
+                                    <span className="text-lg" aria-hidden="true">💰</span>
+                                    <span>Nassau</span>
+                                </span>
+                            </h3>
                             <p className="text-sm text-gray-700">
                                 Creates 3 separate bets: Front 9, Back 9, and Total 18 holes. The amount is per side (e.g., $1 per side = $3 total). 
                                 Each bet is won by the player with the lowest net score for that portion of the round.
@@ -8162,7 +8202,12 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
                         {/* 9 Point */}
                         <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                            <h3 className="text-base font-bold text-gray-900 mb-2">9 Point</h3>
+                            <h3 className="text-base font-bold text-gray-900 mb-2">
+                                <span className="inline-flex items-center gap-2">
+                                    <span className="text-lg" aria-hidden="true">9️⃣</span>
+                                    <span>9 Point</span>
+                                </span>
+                            </h3>
                             <p className="text-sm text-gray-700">
                                 A 3-player game where 9 points are split per hole based on net scores. Requires exactly 3 players. 
                                 Points are awarded: 5 points to the winner, 3 points to second place, 1 point to third place. 
@@ -8170,9 +8215,30 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                             </p>
                         </div>
 
+                        {/* Vegas */}
+                        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                            <h3 className="text-base font-bold text-gray-900 mb-2">
+                                <span className="inline-flex items-center gap-2">
+                                    <span className="text-lg" aria-hidden="true">🎲</span>
+                                    <span>Vegas</span>
+                                </span>
+                            </h3>
+                            <p className="text-sm text-gray-700">
+                                A 4-player team game (2 vs 2). On each hole, teammates&apos; net scores are paired into a two-digit
+                                team score, with the lower score as the first digit (for example, scores of 4 and 5 become 45). The
+                                team with the lower two-digit number wins that hole by the difference between the two numbers
+                                (e.g., 56 − 45 = 11 points). Each point is worth the amount you set in the Bets card.
+                            </p>
+                        </div>
+
                         {/* Match Play */}
                         <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                            <h3 className="text-base font-bold text-gray-900 mb-2">Match Play</h3>
+                            <h3 className="text-base font-bold text-gray-900 mb-2">
+                                <span className="inline-flex items-center gap-2">
+                                    <span className="text-lg" aria-hidden="true">⚔️</span>
+                                    <span>Match Play</span>
+                                </span>
+                            </h3>
                             <p className="text-sm text-gray-700">
                                 Head-to-head match play where players compete hole by hole. Each hole is worth the set amount. 
                                 The player with the lower net score wins the hole. The match continues until one player is up by more holes than remain.
@@ -8181,7 +8247,12 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
                         {/* Junk Bets */}
                         <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                            <h3 className="text-base font-bold text-gray-900 mb-2">Junk Bets</h3>
+                            <h3 className="text-base font-bold text-gray-900 mb-2">
+                                <span className="inline-flex items-center gap-2">
+                                    <span className="text-lg" aria-hidden="true">✨</span>
+                                    <span>Junk Bets</span>
+                                </span>
+                            </h3>
                             <div className="space-y-3 mt-2">
                                 {JUNK_TYPES.map(junkType => (
                                     <div key={junkType.id} className="border-l-2 border-gray-300 pl-3">
