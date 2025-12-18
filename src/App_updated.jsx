@@ -2,14 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import {
     collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc,
-    serverTimestamp, query, where, getDocs, getDoc, setDoc, orderBy, limit,
+    serverTimestamp, query, where, getDocs, getDoc, setDoc,
 } from 'firebase/firestore';
 import { auth as firebaseAuth, db as firestoreDb } from './firebase';
 import Courses from './Courses';
 import Login from './Login';
 import LoginFirebaseUI from './LoginFirebaseUI';
 import SplashScreen from './SplashScreen';
-import rsfGif from './assets/rsf.gif';
 
 // SIMPLE, WORKING PATHS — THIS IS ALL YOU NEED
 const getPlayerCollectionPath = (userId) => `users/${userId}/players`;
@@ -26,8 +25,8 @@ const JUNK_TYPES = [
     { id: 'greenies', name: 'Greenies', description: 'Closest to pin on par 3', points: 1 },
     { id: 'sandies', name: 'Sandies', description: 'Up-and-down from greenside bunker', points: 1 },
     { id: 'poleys', name: 'Poleys', description: 'Putt longer than flagstick height', points: 1 },
-    { id: 'gainingDots', name: 'Birdies+', description: 'Birdies, chip-ins, long putts', points: 1 },
-    { id: 'losingDots', name: 'Negas', description: 'Bunker, water hazard, OB', points: 1 }
+    { id: 'gainingDots', name: 'Gaining Dots', description: 'Birdies, chip-ins, long putts', points: 1 },
+    { id: 'losingDots', name: 'Losing Dots', description: 'Bunker, water hazard, OB', points: 1 }
 ];
 const HOLE_NUMBERS = Array.from({ length: NUM_HOLES }, (_, i) => i + 1);
 
@@ -961,6 +960,83 @@ const CustomBetManager = ({
     </div>
 );
 
+const JunkManager = ({
+    dbReady,
+    selectedJunkTypes,
+    setSelectedJunkTypes,
+    junkPointValues,
+    setJunkPointValues
+}) => {
+    const toggleJunkType = (junkId) => {
+        if (selectedJunkTypes.includes(junkId)) {
+            setSelectedJunkTypes(selectedJunkTypes.filter(id => id !== junkId));
+        } else {
+            setSelectedJunkTypes([...selectedJunkTypes, junkId]);
+        }
+    };
+
+    return (
+        <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
+            <h2 className="text-lg font-bold text-gray-800 mb-2">Junk & Side Bets</h2>
+            <p className="text-sm text-gray-600 mb-4">
+                Select which Junk bets to track. Points are awarded per event and can be worth different amounts.
+            </p>
+            
+            <div className="space-y-3">
+                {JUNK_TYPES.map(junk => {
+                    const isSelected = selectedJunkTypes.includes(junk.id);
+                    const pointValue = junkPointValues[junk.id] || junk.points;
+                    
+                    return (
+                        <div key={junk.id} className={`p-3 rounded-lg border-2 ${isSelected ? 'bg-gray-50 border-gray-300' : 'bg-gray-50 border-gray-200'}`}>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="flex items-center space-x-2 cursor-pointer flex-grow">
+                                    <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => toggleJunkType(junk.id)}
+                                        disabled={!dbReady}
+                                        className="w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-500"
+                                    />
+                                    <div>
+                                        <span className="font-semibold text-gray-800">{junk.name}</span>
+                                        <span className="text-xs text-gray-600 ml-2">({junk.description})</span>
+                                    </div>
+                                </label>
+                                {isSelected && (
+                                    <div className="flex items-center space-x-2">
+                                        <span className="text-sm text-gray-600">Points:</span>
+                                        <input
+                                            type="number"
+                                            value={pointValue}
+                                            onChange={(e) => setJunkPointValues({
+                                                ...junkPointValues,
+                                                [junk.id]: parseFloat(e.target.value) || 1
+                                            })}
+                                            min="0"
+                                            step="0.5"
+                                            className="w-16 p-1 border border-gray-300 rounded text-center text-sm"
+                                            disabled={!dbReady}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+            
+            {selectedJunkTypes.length > 0 && (
+                <div className="mt-4 p-3 bg-gray-100 rounded-lg border border-gray-300">
+                    <p className="text-xs text-gray-800">
+                        <strong>Selected:</strong> {selectedJunkTypes.map(id => JUNK_TYPES.find(j => j.id === id)?.name).join(', ')}
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const CourseManager = ({
     dbReady,
     courses,
@@ -1575,7 +1651,7 @@ const RoundSelector = ({
 
                 <div className="mb-2">
                     <select
-                        id="course-select"
+                        id=\"course-select\"
                         value={selectedCourseId}
                         onChange={(e) => handleCourseSelect(e.target.value)}
                         className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 mb-2 bg-white"
@@ -1625,8 +1701,8 @@ const BetRecorder = ({
     const allBets = [...manualBets, ...(roundBets || [])];
 
     return (
-        <div className="p-5 bg-white rounded-2xl shadow-sm border border-gray-200 mb-6">
-            <h2 className="text-xl font-bold text-center text-blue-800 mb-1">
+        <div className="p-3 bg-white rounded-xl shadow-lg border-2 border-blue-400 mb-6">
+            <h2 className="text-lg font-bold text-center mb-3 text-blue-800">
                 Prop Bets
             </h2>
 
@@ -1797,6 +1873,274 @@ const BetRecorder = ({
                 </div>
             )}
 
+        </div>
+    );
+};
+
+const JunkTracker = ({ 
+    selectedJunkTypes, 
+    junkPointValues, 
+    junkEvents, 
+    handleJunkEventChange,
+    roundPlayers,
+    activeRound,
+    isReadOnly = false
+}) => {
+    if (!selectedJunkTypes || selectedJunkTypes.length === 0) return null;
+    
+    const holeData = activeRound?.holeData || {};
+    
+    // Helper to get player initials (first initial + last initial, all caps)
+    const getInitials = (name) => {
+        if (!name) return '';
+        const parts = name.trim().split(/\s+/);
+        if (parts.length >= 2) {
+            // First initial + Last initial
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        } else if (parts.length === 1) {
+            // Only one name, use first two letters
+            return parts[0].substring(0, 2).toUpperCase();
+        }
+        return '';
+    };
+    
+    return (
+        <div className="p-5 bg-gradient-to-r from-gray-50 to-gray-50 rounded-2xl shadow-xl border-2 border-gray-300 mb-6">
+            <h2 className="text-lg font-bold text-blue-800 mb-2">Junk / Side Bets Tracker</h2>
+            
+            {/* Per-Hole Junk Input - Organized by Junk Type */}
+            <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-3">Record Junk Events by Hole</h3>
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {(() => {
+                        const priority = { greenies: 0, losingDots: 2 };
+                        const ordered = [...selectedJunkTypes].sort((a, b) => {
+                            const pa = priority[a] ?? 1;
+                            const pb = priority[b] ?? 1;
+                            return pa - pb;
+                        });
+                        return ordered;
+                    })().map(junkId => {
+                        const junkType = JUNK_TYPES.find(j => j.id === junkId);
+                        if (!junkType) return null;
+                        
+                        const isLosingDots = junkId === 'losingDots';
+                        const bgColor = isLosingDots ? 'bg-red-50' : 'bg-blue-50';
+                        const borderColor = isLosingDots ? 'border-red-300' : 'border-blue-300';
+                        const textColor = isLosingDots ? 'text-red-800' : 'text-blue-800';
+                        
+                        return (
+                            <div key={junkId} className={`p-4 rounded-lg border-2 ${borderColor} ${bgColor}`}>
+                                <div className="font-bold text-lg mb-3 flex items-center justify-between">
+                                    <span className={textColor}>{junkType.name}</span>
+                                    <span className="text-xs font-normal text-gray-600">({junkType.description})</span>
+                                </div>
+                                <div className="space-y-3">
+                                    {/* Front 9 Row */}
+                                    <div className="flex gap-2">
+                                        {/* Player initials column */}
+                                        <div className="text-left min-w-[20px] pr-0.5">
+                                            <div className="text-xs font-medium text-gray-600 mb-1">P</div>
+                                            <div className="space-y-1">
+                                                {roundPlayers.map(player => {
+                                                    const initials = getInitials(player.name);
+                                                    return (
+                                                        <div 
+                                                            key={player.name} 
+                                                            className="text-[11px] font-bold text-gray-700 py-1 leading-tight"
+                                                        >
+                                                            {initials}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Holes 1-9 */}
+                                        <div className="grid grid-cols-9 gap-[2px] flex-1 overflow-x-auto">
+                                        {HOLE_NUMBERS.slice(0, 9).map(h => {
+                                            const holeKey = `hole${h}`;
+                                            const holeParRaw = holeData[holeKey]?.par;
+                                            const holePar = Number.isFinite(Number(holeParRaw)) ? Number(holeParRaw) : 0;
+                                            
+                                            return (
+                                                <div key={h} className="text-center">
+                                                    <div className="text-xs font-medium text-gray-600 mb-1">H{h}</div>
+                                                    <div className="space-y-1">
+                                                        {roundPlayers.map(player => {
+                                                            const currentCount = junkEvents[player.name]?.[holeKey]?.[junkId] ?? 0;
+                                                            const disabled = junkId === 'greenies' && holePar !== 3;
+                                                                return (
+                                                                    <select
+                                                                        key={player.name}
+                                                                        value={currentCount}
+                                                                        onChange={(e) => {
+                                                                            if (isReadOnly || disabled) return;
+                                                                            const val = parseInt(e.target.value, 10);
+                                                                            handleJunkEventChange(player.name, holeKey, junkId, isNaN(val) ? 0 : val);
+                                                                        }}
+                                                                        disabled={isReadOnly || disabled}
+                                                                        className={`w-9 text-center text-[11px] border-2 ${isLosingDots ? 'border-red-300' : 'border-blue-300'} rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly || disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                                    >
+                                                                        <option value={0}>0</option>
+                                                                        <option value={1}>1</option>
+                                                                        <option value={2}>2</option>
+                                                                        <option value={3}>3</option>
+                                                                    </select>
+                                                                );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Back 9 Row */}
+                                    <div className="flex gap-2">
+                                        {/* Player initials column */}
+                                        <div className="text-left min-w-[20px] pr-0.5">
+                                            <div className="text-xs font-medium text-gray-600 mb-1">P</div>
+                                            <div className="space-y-1">
+                                                {roundPlayers.map(player => {
+                                                    const initials = getInitials(player.name);
+                                                    return (
+                                                        <div 
+                                                            key={player.name} 
+                                                            className="text-[11px] font-bold text-gray-700 py-1 leading-tight"
+                                                        >
+                                                            {initials}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Holes 10-18 */}
+                                        <div className="grid grid-cols-9 gap-[2px] flex-1 overflow-x-auto">
+                                        {HOLE_NUMBERS.slice(9, 18).map(h => {
+                                            const holeKey = `hole${h}`;
+                                            const holeParRaw = holeData[holeKey]?.par;
+                                            const holePar = Number.isFinite(Number(holeParRaw)) ? Number(holeParRaw) : 0;
+                                            
+                                            return (
+                                                <div key={h} className="text-center">
+                                                    <div className="text-xs font-medium text-gray-600 mb-1">H{h}</div>
+                                                    <div className="space-y-1">
+                                                        {roundPlayers.map(player => {
+                                                            const currentCount = junkEvents[player.name]?.[holeKey]?.[junkId] ?? 0;
+                                                            const disabled = junkId === 'greenies' && holePar !== 3;
+                                                                return (
+                                                                    <select
+                                                                        key={player.name}
+                                                                        value={currentCount}
+                                                                        onChange={(e) => {
+                                                                            if (isReadOnly || disabled) return;
+                                                                            const val = parseInt(e.target.value, 10);
+                                                                            handleJunkEventChange(player.name, holeKey, junkId, isNaN(val) ? 0 : val);
+                                                                        }}
+                                                                        disabled={isReadOnly || disabled}
+                                                                        className={`w-9 text-center text-[11px] border-2 ${isLosingDots ? 'border-red-300' : 'border-blue-300'} rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly || disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                                    >
+                                                                        <option value={0}>0</option>
+                                                                        <option value={1}>1</option>
+                                                                        <option value={2}>2</option>
+                                                                        <option value={3}>3</option>
+                                                                    </select>
+                                                                );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const JunkTotals = ({ 
+    selectedJunkTypes, 
+    junkPointValues, 
+    junkEvents, 
+    roundPlayers,
+    activeRound
+}) => {
+    if (!selectedJunkTypes || selectedJunkTypes.length === 0) return null;
+    
+    // Calculate total junk points per player
+    const junkTotals = {};
+    roundPlayers.forEach(player => {
+        junkTotals[player.name] = {};
+        let totalPoints = 0;
+        selectedJunkTypes.forEach(junkId => {
+            let count = 0;
+            HOLE_NUMBERS.forEach(h => {
+                const holeKey = `hole${h}`;
+                const val = parseInt(junkEvents[player.name]?.[holeKey]?.[junkId], 10) || 0;
+                count += val;
+            });
+            const pointValue = junkPointValues[junkId] || 1;
+            // Losing dots subtract, all others add
+            const points = junkId === 'losingDots' 
+                ? -(count * pointValue) 
+                : (count * pointValue);
+            junkTotals[player.name][junkId] = { count, points };
+            totalPoints += points;
+        });
+        junkTotals[player.name].total = totalPoints;
+    });
+    
+    return (
+        <div className="p-5 bg-white rounded-2xl shadow-xl border-2 border-gray-200 mb-6">
+            <h3 className="text-lg font-semibold text-gray-700 mb-3 text-center">Junk Totals</h3>
+            <div className="space-y-3">
+                {roundPlayers.map(player => {
+                    const totals = junkTotals[player.name] || {};
+                    return (
+                        <div key={player.name} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="font-bold text-gray-800 mb-2">{player.name}</div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                {selectedJunkTypes.map(junkId => {
+                                    const junkType = JUNK_TYPES.find(j => j.id === junkId);
+                                    const data = totals[junkId] || { count: 0, points: 0 };
+                                    const isLosingDots = junkId === 'losingDots';
+                                    const pointValue = junkPointValues[junkId] || 1;
+                                    
+                                    return (
+                                        <div key={junkId} className="flex justify-between items-center">
+                                            <span className="text-gray-700">
+                                                {junkType.name}:
+                                            </span>
+                                            <span className={`font-semibold ${isLosingDots ? 'text-red-600' : 'text-blue-600'}`}>
+                                                {data.count > 0 ? (
+                                                    <span>
+                                                        {data.count} × ${pointValue} = {isLosingDots ? '-' : '+'}${Math.abs(data.points).toFixed(0)}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-400">0</span>
+                                                )}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-gray-300 flex justify-between items-center">
+                                <span className="font-semibold text-gray-800">Total:</span>
+                                <span className={`text-lg font-bold ${totals.total >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                    {totals.total >= 0 ? '+' : ''}${totals.total?.toFixed(0) || 0}
+                                </span>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 };
@@ -3473,7 +3817,6 @@ const Scorecard = ({
     handleSaveScores, 
     handleEndRound, 
     dbReady, 
-    db,
     calculatedScores, 
     allAvailableBets,
     selectedJunkTypes,
@@ -3486,8 +3829,6 @@ const Scorecard = ({
     isReadOnly = false,
     isShareModalOpen,
     setIsShareModalOpen,
-    isScorecardModalOpen,
-    setIsScorecardModalOpen,
     shareCodeInput,
     setShareCodeInput,
     handleEnterShareCode,
@@ -3518,78 +3859,17 @@ const Scorecard = ({
     setNewRoundBetPlayer2,
     myPlayerId
 }) => {
-    const [currentHole, setCurrentHole] = useState(1); // Track current hole (1-18)
-    const [playerOrder, setPlayerOrder] = useState([]); // Track custom player order
+    const [activeSection, setActiveSection] = useState('front9'); // 'front9' or 'back9'
     
-    // Reset to hole 1 when starting a new round
+    // Reset to Front 9 when starting a new round
     useEffect(() => {
-        setCurrentHole(1);
+        setActiveSection('front9');
     }, [activeRoundId]);
-    
-    // Initialize player order from activeRound or use calculatedScores.players order
-    useEffect(() => {
-        if (activeRound?.playerOrder && activeRound.playerOrder.length > 0) {
-            // Use saved order, but filter to only include players that still exist
-            const savedOrder = activeRound.playerOrder;
-            const currentPlayers = calculatedScores.players || [];
-            const playerNames = new Set(currentPlayers.map(p => p.name));
-            const validOrder = savedOrder.filter(name => playerNames.has(name));
-            // Add any new players that weren't in the saved order
-            const newPlayers = currentPlayers.filter(p => !validOrder.includes(p.name));
-            setPlayerOrder([...validOrder, ...newPlayers.map(p => p.name)]);
-        } else {
-            // Use default order from calculatedScores.players
-            const defaultOrder = (calculatedScores.players || []).map(p => p.name);
-            setPlayerOrder(defaultOrder);
-        }
-    }, [activeRound?.playerOrder, calculatedScores.players, activeRoundId]);
-    
-    // Handler to reorder players
-    const handleReorderPlayer = async (playerName, direction) => {
-        if (!db || !userId || !activeRoundId || isReadOnly || isEnded) return;
-        
-        const currentOrder = [...playerOrder];
-        const currentIndex = currentOrder.indexOf(playerName);
-        
-        if (currentIndex === -1) return;
-        
-        let newOrder;
-        if (direction === 'up' && currentIndex > 0) {
-            // Move up
-            newOrder = [...currentOrder];
-            [newOrder[currentIndex - 1], newOrder[currentIndex]] = [newOrder[currentIndex], newOrder[currentIndex - 1]];
-        } else if (direction === 'down' && currentIndex < currentOrder.length - 1) {
-            // Move down
-            newOrder = [...currentOrder];
-            [newOrder[currentIndex], newOrder[currentIndex + 1]] = [newOrder[currentIndex + 1], newOrder[currentIndex]];
-        } else {
-            return; // Can't move further
-        }
-        
-        setPlayerOrder(newOrder);
-        
-        // Save to Firestore
-        try {
-            const roundRef = doc(db, getRoundCollectionPath(userId), activeRoundId);
-            await updateDoc(roundRef, {
-                playerOrder: newOrder,
-                lastUpdated: serverTimestamp(),
-            });
-        } catch (error) {
-            console.error('Failed to save player order:', error);
-            // Revert on error
-            setPlayerOrder(currentOrder);
-        }
-    };
     
     if (!activeRound) return null;
     
     const holeData = activeRound.holeData || {};
-    // Use custom player order if available, otherwise use calculatedScores.players
-    const orderedPlayerNames = playerOrder.length > 0 ? playerOrder : (calculatedScores.players || []).map(p => p.name);
-    const roundPlayers = orderedPlayerNames
-        .map(name => calculatedScores.players?.find(p => p.name === name))
-        .filter(Boolean); // Remove any undefined players
+    const roundPlayers = calculatedScores.players;
     const coursePar = HOLE_NUMBERS.reduce((sum, h) => sum + (holeData[`hole${h}`]?.par || 0), 0);
     const isEnded = activeRound.status === 'Ended';
     const nassauBets = allAvailableBets.filter(b => b.type === 'Nassau');
@@ -3798,7 +4078,7 @@ const Scorecard = ({
                     players={players}
                 />
                 {/* Full Scorecard in Read-Only Mode */}
-                <div className="p-5 bg-white rounded-2xl shadow-sm border border-gray-200 mt-6">
+                <div className="p-5 bg-white rounded-2xl shadow-2xl border-4 border-blue-500 mt-6">
                     <h2 className="text-xl font-bold text-center text-blue-800 mb-1">         {activeRound.courseName || 'Current Round'}
                     </h2>
                    
@@ -3926,8 +4206,45 @@ const Scorecard = ({
 
     return (
         <>
+        {/* Action Buttons at Top */}
+        {!isReadOnly && !isEnded && activeRound && activeRound.status === 'Active' && (
+            <div className="mb-4 grid grid-cols-2 gap-3">
+                <button
+                    onClick={() => setIsShareModalOpen(true)}
+                    disabled={!dbReady}
+                    className="py-2 px-4 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                    Share
+                </button>
+                <button
+                    onClick={handleEndRound}
+                    disabled={!dbReady}
+                    className="py-2 px-4 bg-red-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-red-700 disabled:opacity-50"
+                >
+                    End Round
+                </button>
+            </div>
+        )}
+        
+        {/* Share button for ended rounds and shared rounds */}
+        {((isEnded && activeRound) || (isViewingSharedRound && activeRound)) && (
+            <div className="mb-4">
+                <button
+                    onClick={() => setIsShareModalOpen(true)}
+                    className="w-full py-2 px-4 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-blue-700 flex items-center justify-center gap-2"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                    Share Round
+                </button>
+            </div>
+        )}
 
-        <div className="p-5 bg-white rounded-2xl shadow-sm border border-gray-200 mb-6">
+        <div className="p-5 bg-white rounded-2xl shadow-2xl border-4 border-blue-500 mb-6">
             <h2 className="text-xl font-bold text-center text-blue-800 mb-1">
                 {activeRound.courseName || 'Current Round'}
             </h2>
@@ -3939,680 +4256,41 @@ const Scorecard = ({
                 </p>
             )}
 
-            {/* Hole Navigation */}
-            <div className="mb-4 flex items-center justify-between">
+            {/* Section Toggle Buttons */}
+            <div className="mb-4 flex gap-2 justify-center">
                 <button
-                    onClick={() => setCurrentHole(Math.max(1, currentHole - 1))}
-                    disabled={currentHole === 1}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    onClick={() => setActiveSection('front9')}
+                    className={`px-6 py-2 font-semibold rounded-lg transition ${
+                        activeSection === 'front9'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
                 >
-                    ← Previous
+                    Front 9
                 </button>
-                <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-800">Hole {currentHole}</div>
-                    <div className="text-sm text-gray-600">Par {holeData[`hole${currentHole}`]?.par || 4}</div>
-                </div>
                 <button
-                    onClick={() => setCurrentHole(Math.min(18, currentHole + 1))}
-                    disabled={currentHole === 18}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    onClick={() => setActiveSection('back9')}
+                    className={`px-6 py-2 font-semibold rounded-lg transition ${
+                        activeSection === 'back9'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
                 >
-                    Next →
+                    Back 9
                 </button>
             </div>
 
-            {/* Single Hole Scorecard - Player Cards Stacked */}
-            {!isEnded && !isReadOnly ? (
-                <div className="space-y-3">
-                    {roundPlayers.map((player, playerIndex) => {
-                        const playerScores = scores[player.name] || {};
-                        const holeKey = `hole${currentHole}`;
-                        const par = holeData[holeKey]?.par || 4;
-                        const rawScore = playerScores[holeKey];
-                        // If score is empty or not set, show dash. Otherwise use the actual score.
-                        const hasScore = rawScore !== '' && rawScore !== undefined && rawScore !== null;
-                        const scoreValue = hasScore ? Number(rawScore) : null;
-                        
-                        // Helper to format name: first name + last initial
-                        const formatName = (fullName) => {
-                            const parts = (fullName || '').trim().split(/\s+/);
-                            if (parts.length >= 2) {
-                                return parts[0] + ' ' + (parts[parts.length - 1][0] || '').toUpperCase();
-                            } else if (parts.length === 1) {
-                                return parts[0] || 'Player';
-                            }
-                            return 'Player';
-                        };
-
-                        const handleDecreaseScore = () => {
-                            const currentValue = scoreValue !== null ? scoreValue : par;
-                            const newScore = Math.max(1, currentValue - 1);
-                            handleScoreChange(player.name, currentHole, newScore);
-                        };
-
-                        const handleIncreaseScore = () => {
-                            // If score is null/empty (showing "-"), default to par on first click
-                            // Otherwise increment from current value
-                            if (scoreValue === null) {
-                                handleScoreChange(player.name, currentHole, par);
-                            } else {
-                                const newScore = scoreValue + 1;
-                                handleScoreChange(player.name, currentHole, newScore);
-                            }
-                        };
-
-                        const canMoveUp = playerIndex > 0;
-                        const canMoveDown = playerIndex < roundPlayers.length - 1;
-                        
-                        // Calculate cumulative net score (sum of all holes from 1 to currentHole)
-                        let cumulativeNetDiff = 0;
-                        for (let h = 1; h <= currentHole; h++) {
-                            const hKey = `hole${h}`;
-                            const hPar = holeData[hKey]?.par || 4;
-                            const hInfo = calculatedScores.holeData?.[player.name]?.[hKey] || {};
-                            const hNetScore = hInfo.netScore;
-                            
-                            // Only count holes that have been scored
-                            if (hNetScore !== undefined && hNetScore !== null && hNetScore !== '') {
-                                const hNetScoreNum = Number(hNetScore);
-                                const hNetDiff = hNetScoreNum - hPar;
-                                cumulativeNetDiff += hNetDiff;
-                            }
-                        }
-                        
-                        // Format cumulative net score display
-                        let netScoreDisplay = '';
-                        if (cumulativeNetDiff < 0) {
-                            netScoreDisplay = `${cumulativeNetDiff}`; // Already negative, e.g., -2
-                        } else if (cumulativeNetDiff > 0) {
-                            netScoreDisplay = `+${cumulativeNetDiff}`; // Positive, e.g., +1
-                        } else {
-                            netScoreDisplay = '0'; // Exactly even
-                        }
-                        
-                        // Check if player gets a stroke on current hole
-                        const holeInfo = calculatedScores.holeData?.[player.name]?.[holeKey] || {};
-                        const strokes = holeInfo.strokes || 0;
-                        const hasStroke = strokes > 0;
-                        
-                        return (
-                            <div key={player.name} className={`rounded-xl px-4 py-3 border border-white/20 relative ${
-                                hasStroke 
-                                    ? 'bg-gradient-to-r from-green-700 to-black' 
-                                    : 'bg-gradient-to-r from-blue-600 to-gray-800'
-                            }`}>
-                                {/* Net Score in upper right - cumulative total */}
-                                <div className="absolute top-3 right-4 text-white font-bold text-lg">
-                                    {netScoreDisplay}
-                                </div>
-                                <div className="flex items-start gap-3">
-                                    {/* Reorder buttons */}
-                                    <div className="flex flex-col gap-1 pt-1">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleReorderPlayer(player.name, 'up')}
-                                            disabled={!canMoveUp}
-                                            className="bg-white/20 text-white text-xs w-6 h-6 flex items-center justify-center rounded hover:bg-white/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                                            aria-label={`Move ${player.name} up`}
-                                        >
-                                            ↑
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleReorderPlayer(player.name, 'down')}
-                                            disabled={!canMoveDown}
-                                            className="bg-white/20 text-white text-xs w-6 h-6 flex items-center justify-center rounded hover:bg-white/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                                            aria-label={`Move ${player.name} down`}
-                                        >
-                                            ↓
-                                        </button>
-                                    </div>
-                                    <div className="h-12 w-12 rounded-full flex-shrink-0 overflow-hidden border-2 border-white/30 relative bg-gray-800">
-                                        <div className="absolute inset-0 bg-gray-800 text-white flex items-center justify-center text-sm font-bold z-0">
-                                            {getInitials(player.name).toUpperCase()}
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 flex flex-col gap-2">
-                                        <div className="flex flex-col">
-                                            <div className="flex items-center gap-2">
-                                                <div className="text-white font-semibold text-base">
-                                                    {player.name}
-                                                </div>
-                                                {(() => {
-                                                    // Find player's team if in team mode
-                                                    if (activeRound?.teamMode === 'teams' && activeRound?.teams && activeRound.teams.length > 0) {
-                                                        const playerObj = players.find(p => p.name === player.name);
-                                                        if (playerObj) {
-                                                            const playerTeam = activeRound.teams.find(team => 
-                                                                team.playerIds && team.playerIds.includes(playerObj.id)
-                                                            );
-                                                            if (playerTeam) {
-                                                                return (
-                                                                    <span className="text-white text-xs font-medium bg-white/20 px-2 py-0.5 rounded">
-                                                                        {playerTeam.name}
-                                                                    </span>
-                                                                );
-                                                            }
-                                                        }
-                                                    }
-                                                    return null;
-                                                })()}
-                                                {hasStroke && (
-                                                    <>
-                                                        <span className="text-white text-lg" title="Stroke hole">⛳</span>
-                                                        <span className="text-white text-xs font-bold bg-white/20 px-2 py-0.5 rounded">
-                                                            Stroke hole!
-                                                        </span>
-                                                    </>
-                                                )}
-                                            </div>
-                                            <div className="text-white text-xs">
-                                                HCP {player.handicap || 0}
-                                            </div>
-                                        </div>
-                                        {/* Score adjuster underneath */}
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={handleDecreaseScore}
-                                                className="bg-white text-gray-900 text-lg font-bold w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 transition-colors"
-                                                aria-label={`Decrease score for ${player.name}`}
-                                            >
-                                                −
-                                            </button>
-                                            <div className="bg-white/20 text-white text-2xl font-bold w-16 h-12 flex items-center justify-center rounded border-2 border-white/30">
-                                                {scoreValue !== null ? scoreValue : '-'}
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={handleIncreaseScore}
-                                                className="bg-white text-gray-900 text-lg font-bold w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 transition-colors"
-                                                aria-label={`Increase score for ${player.name}`}
-                                            >
-                                                +
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* Junk Bet Icons - Full width underneath avatar and arrows */}
-                                {(() => {
-                                    // Get selectedJunkTypes from activeRound (what was saved when round was created)
-                                    // This is based on betAmounts from the new Bets section, not the old UI
-                                    const roundJunkTypes = activeRound?.selectedJunkTypes;
-                                    
-                                    // Use round's selectedJunkTypes if it exists and is an array with items
-                                    const activeJunkTypes = (Array.isArray(roundJunkTypes) && roundJunkTypes.length > 0)
-                                        ? roundJunkTypes
-                                        : [];
-                                    
-                                    if (!activeJunkTypes || activeJunkTypes.length === 0) return null;
-                                    
-                                    return (
-                                        <div className="grid grid-cols-3 gap-1.5 mt-3 w-full">
-                                            {activeJunkTypes.map(junkId => {
-                                            const junkType = JUNK_TYPES.find(j => j.id === junkId);
-                                            if (!junkType) return null;
-                                            
-                                            const currentCount = junkEvents[player.name]?.[holeKey]?.[junkId] || 0;
-                                            const isActive = currentCount > 0;
-                                            
-                                            // Get icon for each junk type
-                                            const getJunkIcon = (id) => {
-                                                switch(id) {
-                                                    case 'greenies': return '🟢';
-                                                    case 'sandies': return '🏖️';
-                                                    case 'poleys': return '📏';
-                                                    case 'gainingDots': return '🦅';
-                                                    case 'losingDots': return '❌';
-                                                    default: return '•';
-                                                }
-                                            };
-                                            
-                                            const handleToggleJunk = () => {
-                                                // Toggle: if active (count > 0), set to 0; if inactive, set to 1
-                                                const newCount = isActive ? 0 : 1;
-                                                handleJunkEventChange(player.name, holeKey, junkId, newCount);
-                                            };
-                                            
-                                            const isLosingDots = junkId === 'losingDots';
-                                            
-                                            return (
-                                                <button
-                                                    key={junkId}
-                                                    type="button"
-                                                    onClick={handleToggleJunk}
-                                                    className={`flex items-center justify-center gap-1 rounded-lg px-2 py-1.5 border transition-all w-full ${
-                                                        isActive
-                                                            ? (isLosingDots 
-                                                                ? 'bg-red-500 border-red-400' 
-                                                                : 'bg-green-500 border-green-400')
-                                                            : 'bg-white/10 border-white/20 hover:bg-white/15'
-                                                    }`}
-                                                    title={junkType.description}
-                                                >
-                                                    <span className="text-sm">
-                                                        {getJunkIcon(junkId)}
-                                                    </span>
-                                                    <span className={`text-xs font-semibold ${isActive ? 'text-white' : 'text-white/80'}`}>
-                                                        {junkType.name}
-                                                    </span>
-                                                </button>
-                                            );
-                                            })}
-                                        </div>
-                                    );
-                                })()}
-                            </div>
-                        );
-                    })}
+            {/* Scorecard Table - Now at the top */}
+            {activeSection === 'front9' ? (
+                <div className="mb-6">
+                    {renderScorecardTable([1, 2, 3, 4, 5, 6, 7, 8, 9], 'front9')}
                 </div>
             ) : (
                 <div className="mb-6">
-                    {renderScorecardTable([currentHole], 'single')}
+                    {renderScorecardTable([10, 11, 12, 13, 14, 15, 16, 17, 18], 'back9')}
                 </div>
             )}
-
-            {/* Bet Summary Card */}
-            {(() => {
-                const nassauBets = allAvailableBets?.filter(b => b.type === 'Nassau') || [];
-                const skinsBets = allAvailableBets?.filter(b => b.type === 'Skins') || [];
-                const matchPlayBets = allAvailableBets?.filter(b => b.type === 'Match Play') || [];
-                const ninePointBets = allAvailableBets?.filter(b => b.type === '9 Point') || [];
-                const hasJunk = selectedJunkTypes && selectedJunkTypes.length > 0;
-                
-                // Only show if there are any bets
-                if (nassauBets.length === 0 && skinsBets.length === 0 && matchPlayBets.length === 0 && ninePointBets.length === 0 && !hasJunk) {
-                    return null;
-                }
-                
-                const nassauResults = calculatedScores?.nassauResults || {};
-                const skinsResults = calculatedScores?.skinsResults || {};
-                const matchPlayResults = calculatedScores?.matchPlayResults || {};
-                const ninePointResults = calculatedScores?.ninePointResults || {};
-                
-                // Check if team mode
-                const isTeamMode = activeRound?.teamMode === 'teams' && activeRound?.teams && activeRound.teams.length > 0;
-                const teams = activeRound?.teams || [];
-                
-                // Helper to get team name for a player (or player name if not in team mode)
-                const getDisplayName = (playerName) => {
-                    if (!isTeamMode || !playerName) {
-                        // Single mode: format player name
-                        const parts = (playerName || '').trim().split(/\s+/);
-                        if (parts.length >= 2) {
-                            return parts[0] + ' ' + (parts[parts.length - 1][0] || '').toUpperCase();
-                        } else if (parts.length === 1) {
-                            return parts[0] || 'Player';
-                        }
-                        return 'Player';
-                    }
-                    
-                    // Team mode: find player's team
-                    const playerObj = players.find(p => p.name === playerName);
-                    if (playerObj) {
-                        const playerTeam = teams.find(team => 
-                            team.playerIds && team.playerIds.includes(playerObj.id)
-                        );
-                        if (playerTeam) {
-                            return playerTeam.name;
-                        }
-                    }
-                    
-                    // Fallback: format player name if team not found
-                    const parts = (playerName || '').trim().split(/\s+/);
-                    if (parts.length >= 2) {
-                        return parts[0] + ' ' + (parts[parts.length - 1][0] || '').toUpperCase();
-                    } else if (parts.length === 1) {
-                        return parts[0] || 'Player';
-                    }
-                    return 'Player';
-                };
-                
-                // Helper to get team name for multiple players (for aggregating team totals)
-                const getTeamNameForPlayers = (playerNames) => {
-                    if (!isTeamMode || !playerNames || playerNames.length === 0) {
-                        return null;
-                    }
-                    
-                    // Find which team(s) these players belong to
-                    const playerTeamMap = {};
-                    playerNames.forEach(playerName => {
-                        const playerObj = players.find(p => p.name === playerName);
-                        if (playerObj) {
-                            const playerTeam = teams.find(team => 
-                                team.playerIds && team.playerIds.includes(playerObj.id)
-                            );
-                            if (playerTeam) {
-                                playerTeamMap[playerTeam.name] = (playerTeamMap[playerTeam.name] || 0) + 1;
-                            }
-                        }
-                    });
-                    
-                    // If all players are on the same team, return that team name
-                    const teamNames = Object.keys(playerTeamMap);
-                    if (teamNames.length === 1) {
-                        return teamNames[0];
-                    }
-                    
-                    return null; // Multiple teams or no team found
-                };
-                
-                // Calculate junk totals - reactive to junkEvents changes
-                const junkTotals = {};
-                const junkTotalsByTeam = {}; // For team mode
-                const roundPlayers = calculatedScores?.players || [];
-                if (hasJunk && junkEvents && roundPlayers.length > 0 && selectedJunkTypes) {
-                    roundPlayers.forEach(player => {
-                        let totalPoints = 0;
-                        selectedJunkTypes.forEach(junkId => {
-                            let count = 0;
-                            HOLE_NUMBERS.forEach(h => {
-                                const holeKey = `hole${h}`;
-                                // Handle both numeric values and undefined (when deleted)
-                                const val = junkEvents[player.name]?.[holeKey]?.[junkId];
-                                const numVal = typeof val === 'number' ? val : (parseInt(val, 10) || 0);
-                                count += numVal;
-                            });
-                            const pointValue = junkPointValues?.[junkId] || 1;
-                            const points = junkId === 'losingDots' 
-                                ? -(count * pointValue) 
-                                : (count * pointValue);
-                            totalPoints += points;
-                        });
-                        junkTotals[player.name] = totalPoints;
-                        
-                        // Also aggregate by team if in team mode
-                        if (isTeamMode) {
-                            const playerObj = players.find(p => p.name === player.name);
-                            if (playerObj) {
-                                const playerTeam = teams.find(team => 
-                                    team.playerIds && team.playerIds.includes(playerObj.id)
-                                );
-                                if (playerTeam) {
-                                    junkTotalsByTeam[playerTeam.name] = (junkTotalsByTeam[playerTeam.name] || 0) + totalPoints;
-                                }
-                            }
-                        }
-                    });
-                }
-                
-                // Helper to format name (for backward compatibility, but use getDisplayName instead)
-                const formatName = (fullName) => {
-                    return getDisplayName(fullName);
-                };
-                
-                return (
-                    <div className="mt-4 rounded-xl px-4 py-3 border border-white/20 bg-gradient-to-r from-green-700 to-black">
-                        <div className="text-white font-semibold text-base mb-3 flex items-center gap-2">
-                            <span>$$</span>
-                            <span>Bet Summary</span>
-                        </div>
-                        <div className="space-y-2">
-                            {/* Nassau */}
-                            {nassauBets.map(bet => {
-                                const result = nassauResults[bet.id];
-                                if (!result) return null;
-                                
-                                return (
-                                    <div key={bet.id} className="space-y-1">
-                                        <div className="text-white text-sm">
-                                            <span className="font-semibold">Nassau Front 9:</span>{' '}
-                                            {result.front9Winner && result.front9Winner !== 'Tie' 
-                                                ? formatName(result.front9Winner) 
-                                                : 'Tie'}
-                                        </div>
-                                        <div className="text-white text-sm">
-                                            <span className="font-semibold">Nassau Back 9:</span>{' '}
-                                            {result.back9Winner && result.back9Winner !== 'Tie' 
-                                                ? formatName(result.back9Winner) 
-                                                : 'Tie'}
-                                        </div>
-                                        <div className="text-white text-sm">
-                                            <span className="font-semibold">Nassau Total:</span>{' '}
-                                            {result.totalWinner && result.totalWinner !== 'Tie' 
-                                                ? formatName(result.totalWinner) 
-                                                : 'Tie'}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                            
-                            {/* Skins */}
-                            {skinsBets.map(bet => {
-                                const result = skinsResults[bet.id];
-                                if (!result || !result.grossWinnings) return null;
-                                
-                                const playerWinnings = result.grossWinnings || {};
-                                const playersList = Object.keys(playerWinnings);
-                                if (playersList.length === 0) return null;
-                                
-                                if (isTeamMode) {
-                                    // Aggregate by team
-                                    const teamWinnings = {};
-                                    playersList.forEach(playerName => {
-                                        const playerObj = players.find(p => p.name === playerName);
-                                        if (playerObj) {
-                                            const playerTeam = teams.find(team => 
-                                                team.playerIds && team.playerIds.includes(playerObj.id)
-                                            );
-                                            if (playerTeam) {
-                                                teamWinnings[playerTeam.name] = (teamWinnings[playerTeam.name] || 0) + (playerWinnings[playerName] || 0);
-                                            }
-                                        }
-                                    });
-                                    
-                                    const teamNames = Object.keys(teamWinnings);
-                                    if (teamNames.length === 0) return null;
-                                    
-                                    const leaderTeam = teamNames.reduce((max, team) => 
-                                        (teamWinnings[team] || 0) > (teamWinnings[max] || 0) ? team : max
-                                    );
-                                    const winnings = teamWinnings[leaderTeam] || 0;
-                                    
-                                    return (
-                                        <div key={bet.id} className="text-white text-sm">
-                                            <span className="font-semibold">Skins:</span>{' '}
-                                            {winnings > 0 ? `${leaderTeam} +$${winnings.toFixed(0)}` : 'No skins won'}
-                                        </div>
-                                    );
-                                } else {
-                                    // Single mode: find player with highest winnings
-                                    const leader = playersList.reduce((max, player) => 
-                                        (playerWinnings[player] || 0) > (playerWinnings[max] || 0) ? player : max
-                                    );
-                                    const winnings = playerWinnings[leader] || 0;
-                                    
-                                    return (
-                                        <div key={bet.id} className="text-white text-sm">
-                                            <span className="font-semibold">Skins:</span>{' '}
-                                            {winnings > 0 ? `${formatName(leader)} +$${winnings.toFixed(0)}` : 'No skins won'}
-                                        </div>
-                                    );
-                                }
-                            })}
-                            
-                            {/* Match Play */}
-                            {matchPlayBets.map(bet => {
-                                const result = matchPlayResults[bet.id];
-                                if (!result || !result.matchWinner) return null;
-                                
-                                return (
-                                    <div key={bet.id} className="text-white text-sm">
-                                        <span className="font-semibold">Match Play:</span>{' '}
-                                        {result.matchWinner !== 'Tie' 
-                                            ? formatName(result.matchWinner) 
-                                            : 'Tie'}
-                                    </div>
-                                );
-                            })}
-                            
-                            {/* 9 Point */}
-                            {ninePointBets.map(bet => {
-                                const result = ninePointResults[bet.id];
-                                if (!result || !result.grossWinnings) return null;
-                                
-                                const playerWinnings = result.grossWinnings || {};
-                                const playersList = Object.keys(playerWinnings);
-                                if (playersList.length === 0) return null;
-                                
-                                if (isTeamMode) {
-                                    // Aggregate by team
-                                    const teamWinnings = {};
-                                    playersList.forEach(playerName => {
-                                        const playerObj = players.find(p => p.name === playerName);
-                                        if (playerObj) {
-                                            const playerTeam = teams.find(team => 
-                                                team.playerIds && team.playerIds.includes(playerObj.id)
-                                            );
-                                            if (playerTeam) {
-                                                teamWinnings[playerTeam.name] = (teamWinnings[playerTeam.name] || 0) + (playerWinnings[playerName] || 0);
-                                            }
-                                        }
-                                    });
-                                    
-                                    const teamNames = Object.keys(teamWinnings);
-                                    if (teamNames.length === 0) return null;
-                                    
-                                    const leaderTeam = teamNames.reduce((max, team) => 
-                                        (teamWinnings[team] || 0) > (teamWinnings[max] || 0) ? team : max
-                                    );
-                                    const winnings = teamWinnings[leaderTeam] || 0;
-                                    
-                                    return (
-                                        <div key={bet.id} className="text-white text-sm">
-                                            <span className="font-semibold">9 Point:</span>{' '}
-                                            {winnings > 0 ? `${leaderTeam} +$${winnings.toFixed(0)}` : 'No points won'}
-                                        </div>
-                                    );
-                                } else {
-                                    // Single mode: find player with highest gross winnings
-                                    const leader = playersList.reduce((max, player) => 
-                                        (playerWinnings[player] || 0) > (playerWinnings[max] || 0) ? player : max
-                                    );
-                                    const winnings = playerWinnings[leader] || 0;
-                                    
-                                    return (
-                                        <div key={bet.id} className="text-white text-sm">
-                                            <span className="font-semibold">9 Point:</span>{' '}
-                                            {winnings > 0 ? `${formatName(leader)} +$${winnings.toFixed(0)}` : 'No points won'}
-                                        </div>
-                                    );
-                                }
-                            })}
-                            
-                            {/* Junk */}
-                            {hasJunk && (() => {
-                                if (isTeamMode) {
-                                    // Team mode: show team totals
-                                    const teamsWithJunk = Object.keys(junkTotalsByTeam)
-                                        .filter(team => (junkTotalsByTeam[team] || 0) > 0)
-                                        .sort((a, b) => (junkTotalsByTeam[b] || 0) - (junkTotalsByTeam[a] || 0));
-                                    
-                                    if (teamsWithJunk.length === 0) {
-                                        return (
-                                            <div className="text-white text-sm">
-                                                <span className="font-semibold">Junk:</span> No junk points
-                                            </div>
-                                        );
-                                    }
-                                    
-                                    return (
-                                        <div className="text-white text-sm">
-                                            <span className="font-semibold">Junk:</span>{' '}
-                                            {teamsWithJunk.map((team, index) => {
-                                                const total = junkTotalsByTeam[team] || 0;
-                                                return (
-                                                    <span key={team}>
-                                                        {index > 0 ? ', ' : ''}
-                                                        {team} {total > 0 ? '+' : ''}${total.toFixed(0)}
-                                                    </span>
-                                                );
-                                            })}
-                                        </div>
-                                    );
-                                } else {
-                                    // Single mode: show player totals
-                                    const playersWithJunk = Object.keys(junkTotals)
-                                        .filter(player => (junkTotals[player] || 0) > 0)
-                                        .sort((a, b) => (junkTotals[b] || 0) - (junkTotals[a] || 0));
-                                    
-                                    if (playersWithJunk.length === 0) {
-                                        return (
-                                            <div className="text-white text-sm">
-                                                <span className="font-semibold">Junk:</span> No junk points
-                                            </div>
-                                        );
-                                    }
-                                    
-                                    return (
-                                        <div className="text-white text-sm">
-                                            <span className="font-semibold">Junk:</span>{' '}
-                                            {playersWithJunk.map((player, index) => {
-                                                const total = junkTotals[player] || 0;
-                                                return (
-                                                    <span key={player}>
-                                                        {index > 0 ? ', ' : ''}
-                                                        {formatName(player)} {total > 0 ? '+' : ''}${total.toFixed(0)}
-                                                    </span>
-                                                );
-                                            })}
-                                        </div>
-                                    );
-                                }
-                            })()}
-                        </div>
-                    </div>
-                );
-            })()}
         </div>
-
-        {/* Action buttons for active rounds - Below Bet Summary */}
-        {!isEnded && activeRound && activeRound.status === 'Active' && (
-            <div className="mb-4 flex justify-center gap-3">
-                <button
-                    onClick={() => setIsShareModalOpen(true)}
-                    disabled={!dbReady}
-                    className="h-14 rounded-2xl bg-[#14532D] text-white font-extrabold text-sm shadow-md hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed px-6 flex items-center justify-center gap-2"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                    </svg>
-                    Share
-                </button>
-                <button
-                    onClick={handleEndRound}
-                    disabled={!dbReady}
-                    className="h-14 rounded-2xl bg-red-600 text-white font-extrabold text-sm shadow-md hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed px-6 flex items-center justify-center gap-2"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    End Round
-                </button>
-                <button
-                    onClick={() => setIsScorecardModalOpen(true)}
-                    disabled={!dbReady}
-                    className="h-14 rounded-2xl bg-[#14532D] text-white font-extrabold text-sm shadow-md hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed px-6 flex items-center justify-center gap-2"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Scorecard
-                </button>
-            </div>
-        )}
-        
-        {/* Share button for ended rounds and shared rounds - Below Bet Summary */}
-        {((isEnded && activeRound) || (isViewingSharedRound && activeRound)) && (
-            <div className="mb-4 flex justify-center">
-                <button
-                    onClick={() => setIsShareModalOpen(true)}
-                    className="h-14 rounded-2xl bg-[#14532D] text-white font-extrabold text-lg shadow-md hover:brightness-110 px-6"
-                >
-                    Share Round
-                </button>
-            </div>
-        )}
 
         {/* Record Bet Winners - Right under scorecard */}
         {!isEnded && activeRound && activeRound.status === 'Active' && (
@@ -4645,6 +4323,47 @@ const Scorecard = ({
             )}
 
         {/* Betting Summaries - Below scorecard */}
+        {/* Junk Tracker - Show for all viewers, but read-only for non-owners */}
+        {selectedJunkTypes && selectedJunkTypes.length > 0 && (
+                <JunkTracker
+                    selectedJunkTypes={selectedJunkTypes}
+                    junkPointValues={junkPointValues}
+                    junkEvents={junkEvents}
+                    handleJunkEventChange={handleJunkEventChange}
+                    roundPlayers={roundPlayers}
+                    activeRound={activeRound}
+                    isReadOnly={isViewingSharedRound && userId !== sharedRoundOwnerId}
+                />
+            )}
+        
+        {/* Junk Totals - Show for all viewers */}
+        {selectedJunkTypes && selectedJunkTypes.length > 0 && (
+            <JunkTotals
+                selectedJunkTypes={selectedJunkTypes}
+                junkPointValues={junkPointValues}
+                junkEvents={junkEvents}
+                roundPlayers={roundPlayers}
+                activeRound={activeRound}
+            />
+        )}
+
+        {/* Skins Bet Tracker */}
+        {skinsBets.length > 0 && (
+                <SkinsBetTracker 
+                    skinsBets={skinsBets}
+                    skinsResults={calculatedScores.skinsResults || {}}
+                    calculatedScores={calculatedScores}
+                />
+            )}
+            
+        {/* Nassau Bet Tracker */}
+        {nassauBets.length > 0 && (
+                <NassauBetTracker 
+                    nassauBets={nassauBets}
+                    nassauResults={calculatedScores.nassauResults || {}}
+                    calculatedScores={calculatedScores}
+                />
+            )}
             
         {/* Match Play Bet Tracker */}
         {matchPlayBets.length > 0 && (
@@ -4764,77 +4483,6 @@ const Scorecard = ({
                             </button>
                         </div>
                     )}
-                </div>
-            </div>
-        )}
-
-        {/* Scorecard Modal */}
-        {isScorecardModalOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-                <div className="bg-white rounded-2xl shadow-2xl border-2 border-gray-200 max-w-6xl w-full p-6 my-4 max-h-[90vh] overflow-y-auto">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-2xl font-bold text-blue-800">Scorecard</h3>
-                        <button
-                            onClick={() => setIsScorecardModalOpen(false)}
-                            className="text-gray-500 hover:text-gray-700"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                    
-                    {/* Scorecard Content */}
-                    <div className="p-5 bg-white rounded-2xl shadow-sm border border-gray-200">
-                        <h2 className="text-xl font-bold text-center text-blue-800 mb-1">
-                            {activeRound.courseName || 'Current Round'}
-                        </h2>
-                        
-                        {activeRound?.handicapMode && (
-                            <p className="text-xs text-center text-gray-500 mb-3">
-                                Handicap Mode: {activeRound.handicapMode === 'lowest' 
-                                    ? 'Lowest as 0 (Relative)' 
-                                    : 'Gross (Absolute)'}
-                            </p>
-                        )}
-
-                        {/* Front 9 */}
-                        <div className="mb-6">
-                            <h4 className="text-xl font-bold text-blue-700 mb-2">Front 9</h4>
-                            {renderScorecardTable([1, 2, 3, 4, 5, 6, 7, 8, 9], 'front9')}
-                        </div>
-
-                        {/* Back 9 */}
-                        <div className="mb-6">
-                            <h4 className="text-xl font-bold text-blue-700 mb-2">Back 9</h4>
-                            {renderScorecardTable([10, 11, 12, 13, 14, 15, 16, 17, 18], 'back9')}
-                        </div>
-
-                        {/* Totals */}
-                        <div className="mt-6 grid grid-cols-2 gap-4">
-                            {(() => {
-                                const roundPlayers = calculatedScores.players || [];
-                                return roundPlayers.map(player => {
-                                    const totals = calculatedScores.playerTotals[player.name] || { grossTotal: 0, netTotal: 0 };
-                                    return (
-                                        <div key={player.name} className="bg-gradient-to-r from-blue-50 to-blue-50 rounded-xl p-4">
-                                            <div className="font-bold text-gray-800 mb-2">{player.name}</div>
-                                            <div className="grid grid-cols-2 gap-2 text-sm">
-                                                <div>
-                                                    <span className="text-gray-600">Gross: </span>
-                                                    <span className="font-bold text-blue-800">{totals.grossTotal || '-'}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="text-gray-600">Net: </span>
-                                                    <span className="font-bold text-blue-800">{totals.netTotal || '-'}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                });
-                            })()}
-                        </div>
-                    </div>
                 </div>
             </div>
         )}
@@ -5010,7 +4658,6 @@ const App = () => {
     const [isViewingSharedRound, setIsViewingSharedRound] = useState(false);
     const [shareCodeToDisplay, setShareCodeToDisplay] = useState(null);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-    const [isScorecardModalOpen, setIsScorecardModalOpen] = useState(false);
     const [isShareCodeErrorModalOpen, setIsShareCodeErrorModalOpen] = useState(false);
     const [sharedRoundCustomBets, setSharedRoundCustomBets] = useState([]);
     
@@ -5094,18 +4741,6 @@ const App = () => {
     
     // Round Bets (on-the-fly bets) State
     const [roundBets, setRoundBets] = useState([]);
-    const [betAmounts, setBetAmounts] = useState({
-        Skins: 0,
-        Nassau: 0,
-        '9 Point': 0,
-        'Match Play': 0,
-        'Greenies': 0,
-        'Sandies': 0,
-        'Poleys': 0,
-        'Gaining Dots': 0,
-        'Losing Dots': 0
-    });
-    const [skinsCarryOver, setSkinsCarryOver] = useState(false);
     const [newRoundBetName, setNewRoundBetName] = useState('');
     const [newRoundBetType, setNewRoundBetType] = useState('everyone');
     const [newRoundBetAmount, setNewRoundBetAmount] = useState('');
@@ -5122,8 +4757,6 @@ const App = () => {
 
 const [isPlayersModalOpen, setIsPlayersModalOpen] = useState(false);
 const [isBetsModalOpen, setIsBetsModalOpen] = useState(false);
-const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
-const [isBetsHelpModalOpen, setIsBetsHelpModalOpen] = useState(false);
 const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
     const finalSummaryRef = useRef(null);
 
@@ -5900,12 +5533,11 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
     }, []);
 
     // Function to generate the empty scores structure
-    const generateInitialScores = useCallback((playerList, holeData = {}) => {
+    const generateInitialScores = useCallback((playerList) => {
         const initialScores = {};
         playerList.forEach(player => {
             initialScores[player.name] = {};
             HOLE_NUMBERS.forEach(h => {
-                // Default all holes to empty (0 will be shown as dash)
                 initialScores[player.name][`hole${h}`] = '';
             });
         });
@@ -6133,46 +5765,6 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
         });
     }, [isAuthReady, userId, db]);
 
-    // Set default course to last course used
-    useEffect(() => {
-        if (!db || !userId || !courses.length || selectedCourseId) return;
-        
-        // Get the most recent round to find last course used
-        const roundQuery = collection(db, getRoundCollectionPath(userId));
-        getDocs(query(roundQuery, orderBy('createdAt', 'desc'), limit(1)))
-            .then((roundSnapshot) => {
-                if (!roundSnapshot.empty) {
-                    const lastRound = roundSnapshot.docs[0].data();
-                    if (lastRound.courseName) {
-                        const lastCourse = courses.find(c => c.name === lastRound.courseName);
-                        if (lastCourse) {
-                            setSelectedCourseId(lastCourse.id);
-                            if (lastCourse.holeData) {
-                                setHoleDataEdit(lastCourse.holeData);
-                            }
-                            return;
-                        }
-                    }
-                }
-                // If no rounds found, default to first course
-                if (courses.length > 0) {
-                    setSelectedCourseId(courses[0].id);
-                    if (courses[0].holeData) {
-                        setHoleDataEdit(courses[0].holeData);
-                    }
-                }
-            })
-            .catch(() => {
-                // If query fails, default to first course
-                if (courses.length > 0) {
-                    setSelectedCourseId(courses[0].id);
-                    if (courses[0].holeData) {
-                        setHoleDataEdit(courses[0].holeData);
-                    }
-                }
-            });
-    }, [db, userId, courses, selectedCourseId]);
-
 
     // --- Round Management and Finalization ---
 
@@ -6198,36 +5790,19 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             const selectedCourse = courses.find(c => c.id === selectedCourseId);
             const courseName = selectedCourse ? selectedCourse.name : 'Unspecified Course';
             
-            // 2. Filter bets to only include those with amount > 0
-            const activeBets = allAvailableBets.filter(bet => {
-                const betName = bet.type || bet.name;
-                return (betAmounts[betName] || 0) > 0;
-            });
-            
-            // Determine selected junk types based on betAmounts (new Bets section)
-            // A junk type is "selected" if it has a bet amount > 0
-            const selectedJunkTypesFromBets = JUNK_TYPES
-                .filter(junkType => (betAmounts[junkType.name] || 0) > 0)
-                .map(junkType => junkType.id);
-            
-            // Filter junk types to only include those with amount > 0 (for bet calculations)
-            const activeJunkTypes = selectedJunkTypesFromBets;
-            
+            // 2. Generate fresh data structures
+            const initialRoundBetWinners = generateInitialBetSelections(allAvailableBets);
+            const initialRoundScores = generateInitialScores(rosterPlayers);
             // Use current holeDataEdit if available (from selected course or previous edits), otherwise use default
             const initialHoleData = Object.keys(holeDataEdit).length > 0 && 
                 HOLE_NUMBERS.every(h => holeDataEdit[`hole${h}`]) 
                 ? holeDataEdit 
                 : generateDefaultHoleData();
-            
-            // Generate fresh data structures
-            const initialRoundBetWinners = generateInitialBetSelections(activeBets);
-            const initialRoundScores = generateInitialScores(rosterPlayers, initialHoleData);
 
             // 3. Generate share code
             const shareCode = generateShareCode();
             
             // 4. Create New Round
-            // Store selectedJunkTypes based on betAmounts from the new Bets section
             const newRoundRef = await addDoc(collection(db, getRoundCollectionPath(userId)), {
                 date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
                 courseName: courseName,
@@ -6236,15 +5811,13 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                 betSelections: initialRoundBetWinners,
                 scores: initialRoundScores,
                 holeData: initialHoleData, // Use selected course data or default
-                selectedJunkTypes: selectedJunkTypesFromBets, // Based on betAmounts from new Bets section
+                selectedJunkTypes: selectedJunkTypes || [],
                 junkPointValues: junkPointValues || {},
                 junkEvents: {},
                 handicapMode: handicapMode || 'lowest', // Store handicap calculation mode
                 teamMode: teamMode || 'singles', // Store team mode
                 teams: teamMode === 'teams' ? teams : [], // Store teams if in teams mode
                 shareCode: shareCode, // Store share code
-                betAmounts: betAmounts, // Store bet amounts for this round
-                skinsCarryOver: skinsCarryOver, // Store skins carry-over setting
                 createdAt: serverTimestamp(),
             });
             
@@ -7426,69 +6999,68 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             </div>
 
             {/* Course Card */}
-            <div>
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                    {/* Course Image */}
-                    <div className="w-full h-24 bg-gray-100 relative">
-                        <img 
-                            src={rsfGif} 
-                            alt="Course" 
-                            className="w-full h-full object-cover"
-                        />
-                    </div>
-                    
-                    {/* Course Name */}
-                    <div className="p-4">
-                        <div className="flex items-center justify-between">
-                            {selectedCourseId ? (
-                                (() => {
-                                    const selectedCourse = courses.find(c => c.id === selectedCourseId);
-                                    return selectedCourse ? (
-                                        <div className="text-lg font-extrabold text-gray-900">
-                                            {selectedCourse.name}
-                                        </div>
-                                    ) : (
-                                        <div className="text-lg font-semibold text-gray-500">Course not found</div>
-                                    );
-                                })()
-                            ) : (
-                                <div className="text-lg font-semibold text-gray-500">No course selected</div>
-                            )}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
+                <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-sm font-semibold text-gray-800">Course</h2>
                     <button
                         type="button"
-                                className="text-gray-700 hover:text-gray-900 text-xl font-semibold"
-                                onClick={() => setIsCourseModalOpen(true)}
-                                aria-label="Change course"
-                            >
-                                &gt;
+                        className="text-sm font-semibold text-gray-700 hover:text-gray-900 flex items-center gap-1"
+                        onClick={() => {
+                            // Focus the select inside RoundSelector by scrolling it into view
+                            const el = document.getElementById('course-select');
+                            if (el && typeof el.focus === 'function') el.focus();
+                        }}
+                    >
+                        Change <span aria-hidden="true">›</span>
                     </button>
                 </div>
-                    </div>
+
+                {/* Keep existing selector + add-course behavior (RoundSelector) */}
+                <div className="rounded-xl border border-gray-200 p-3 bg-gray-50">
+                    <RoundSelector
+                        dbReady={dbReady}
+                        playersCount={roundPlayerIds.length > 0 ? roundPlayerIds.length : players.length}
+                        rounds={rounds}
+                        courses={courses}
+                        activeRoundId={activeRoundId}
+                        handleStartNewRound={handleStartNewRound}
+                        handleSelectRound={handleSelectRound}
+                        newRoundCourseName={newRoundCourseName}
+                        setNewRoundCourseName={setNewRoundCourseName}
+                        selectedCourseId={selectedCourseId}
+                        setSelectedCourseId={setSelectedCourseId}
+                        handleCourseSelect={handleCourseSelect}
+                        handicapMode={handicapMode}
+                        setHandicapMode={setHandicapMode}
+                        setCurrentView={setCurrentView}
+                    />
                 </div>
             </div>
 
             {/* Players Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                 <div className="flex items-center justify-between">
-                    <div className="text-lg font-semibold text-gray-500">
+                    <div>
+                        <h2 className="text-sm font-semibold text-gray-800">Players</h2>
+                        <p className="text-xs text-gray-500 mt-1">
                             {(() => {
                                 const ids = roundPlayerIds && roundPlayerIds.length ? roundPlayerIds : (players || []).map(p => p.id);
                                 const count = ids.length || 0;
-                            return `Players (${count})`;
+                                return count > 0 ? `${count} selected` : 'Add at least 2';
                             })()}
+                        </p>
                     </div>
                     <button
                         type="button"
                         onClick={() => setIsPlayersModalOpen(true)}
-                        className="text-gray-700 hover:text-gray-900 text-xl font-semibold"
-                        aria-label="Edit players"
+                        className="px-3 py-2 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-black"
                     >
-                        &gt;
+                        Add / Edit
                     </button>
                 </div>
 
-                {/* Quick preview list (2 per row) */}
-                <div className="mt-3">
+                {/* Quick preview list (names only) */}
+                <div className="mt-3 space-y-2">
                     {(() => {
                         const selectedIds = (roundPlayerIds && roundPlayerIds.length) ? roundPlayerIds : [];
                         const selectedPlayers =
@@ -7504,172 +7076,39 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                             );
                         }
 
-                        // Helper to get initials: first name initial + last name initial
-                        const getInitials = (fullName) => {
-                            const parts = (fullName || '').trim().split(/\s+/);
-                            if (parts.length >= 2) {
-                                return (parts[0][0] || '') + (parts[parts.length - 1][0] || '');
-                            } else if (parts.length === 1) {
-                                return parts[0][0] || 'P';
-                            }
-                            return 'P';
-                        };
-                        
-                        // Helper to get avatar URL from UI Avatars
-                        const getAvatarUrl = (name, index) => {
-                            const initials = getInitials(name);
-                            // Use different colors based on index for variety
-                            const colors = [
-                              //  '0ea5e9', // blue
-                             //   '10b981', // green
-                              //  'a855f7', // purple
-                             //   'f97316', // orange
-                             //   'ec4899', // pink
-                             //   '6366f1', // indigo
-                            //    'eab308', // yellow
-                            //    'ef4444', // red
-                             //   '06b6d4', // cyan
-                                '14b8a6'  // teal
-                            ];
-                            const color = colors[index % colors.length];
-                            const encodedName = encodeURIComponent(name || 'Player');
-                            return `https://ui-avatars.com/api/?name=${encodedName}&size=128&background=${color}&color=fff&bold=true&font-size=0.5`;
-                        };
-                        
-                        // Helper to format name: first name + last initial
-                        const formatName = (fullName) => {
-                            const parts = (fullName || '').trim().split(/\s+/);
-                            if (parts.length >= 2) {
-                                return parts[0] + ' ' + (parts[parts.length - 1][0] || '').toUpperCase();
-                            } else if (parts.length === 1) {
-                                return parts[0] || 'Player';
-                            }
-                            return 'Player';
-                        };
-                        
-                        // Gradient backgrounds for each player
-                        const gradients = [
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800',
-                            'bg-gradient-to-r from-blue-600 to-gray-800'
-                        ];
-                        
-                        // Group players into rows of 2
-                        const rows = [];
-                        for (let i = 0; i < selectedPlayers.length; i += 2) {
-                            rows.push(selectedPlayers.slice(i, i + 2));
-                        }
-
-                        return (
-                            <div className="space-y-2">
-                                {rows.map((row, rowIndex) => (
-                                    <div key={rowIndex} className="grid grid-cols-2 gap-2">
-                                        {row.map((p, playerIndex) => {
-                                            const globalIndex = rowIndex * 2 + playerIndex;
-                                            const gradientClass = gradients[globalIndex % gradients.length];
-                                            
-                                            return (
-                                                <div key={p.id} className={`flex items-center gap-2 ${gradientClass} rounded-xl px-3 py-2 border border-white/20`}>
-                                                    <div className="h-10 w-10 rounded-full flex-shrink-0 overflow-hidden border-2 border-white/30 relative bg-gray-800">
-                                                        <div className="absolute inset-0 bg-gray-800 text-white flex items-center justify-center text-xs font-bold z-0">
-                                                            {getInitials(p.name).toUpperCase()}
+                        return selectedPlayers.slice(0, 4).map(p => (
+                            <div key={p.id} className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-700">
+                                        {(p.name || '').split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase() || 'P'}
                                     </div>
-                                                        <img 
-                                                            src={getAvatarUrl(p.name, globalIndex)}
-                                                            alt={p.name || 'Player'}
-                                                            className="w-full h-full object-cover relative z-10"
-                                                            onError={(e) => {
-                                                                e.target.style.display = 'none';
-                                                            }}
-                                                        />
+                                    <div className="min-w-0">
+                                        <div className="text-sm font-semibold text-gray-900 truncate">{p.name || 'Player'}</div>
+                                        <div className="text-xs text-gray-500">HCP {p.handicap ?? 0}</div>
                                     </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="text-sm font-semibold text-white truncate">{formatName(p.name)}</div>
-                                                        <div className="text-xs text-white/90">HCP {p.handicap ?? 0}</div>
                                 </div>
+                                <span className="text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-full px-2 py-1">
+                                    HCP {p.handicap ?? 0}
+                                </span>
                             </div>
-                                            );
-                                        })}
-                                    </div>
-                                ))}
-                            </div>
-                        );
+                        ));
                     })()}
-                </div>
-
-                {/* Handicap Mode Selection */}
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="space-y-3">
-                        <div className="flex items-start gap-2">
-                            <input
-                                type="checkbox"
-                                id="handicap-mode-lowest"
-                                checked={handicapMode === 'lowest'}
-                                onChange={(e) => {
-                                    setHandicapMode(e.target.checked ? 'lowest' : 'gross');
-                                }}
-                                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2"
-                            />
-                            <div className="flex-1">
-                                <label 
-                                    htmlFor="handicap-mode-lowest"
-                                    className="text-sm font-semibold text-gray-900 cursor-pointer"
-                                >
-                                    Lowest Golfer (Relative)
-                                </label>
-                                {handicapMode === 'lowest' && (
-                                    <p className="text-xs text-gray-600 mt-1">
-                                        Lowest handicap player gets 0 strokes, others get strokes relative to them.
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                        <div className="flex items-start gap-2">
-                            <input
-                                type="checkbox"
-                                id="handicap-mode-gross"
-                                checked={handicapMode === 'gross'}
-                                onChange={(e) => {
-                                    setHandicapMode(e.target.checked ? 'gross' : 'lowest');
-                                }}
-                                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2"
-                            />
-                            <div className="flex-1">
-                                <label 
-                                    htmlFor="handicap-mode-gross"
-                                    className="text-sm font-semibold text-gray-900 cursor-pointer"
-                                >
-                                    Against the Course (Absolute)
-                                </label>
-                                {handicapMode === 'gross' && (
-                                    <p className="text-xs text-gray-600 mt-1">
-                                        All players use their actual course handicap.
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
             {/* Bets Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
-                <div className="flex items-center gap-2">
-                    <div className="text-lg font-semibold text-gray-500">Bets</div>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-sm font-semibold text-gray-800">Bets</h2>
+                        <p className="text-xs text-gray-500 mt-1">Quick toggles here. Full setup in Customize.</p>
+                    </div>
                     <button
                         type="button"
-                        onClick={() => setIsBetsHelpModalOpen(true)}
-                        className="w-5 h-5 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-xs font-bold text-gray-700 transition-colors"
-                        aria-label="Bet types help"
+                        onClick={() => setIsBetsModalOpen(true)}
+                        className="px-3 py-2 rounded-xl bg-gray-100 text-gray-900 text-sm font-semibold hover:bg-gray-200"
                     >
-                        ?
+                        Customize <span aria-hidden="true">›</span>
                     </button>
                 </div>
 
@@ -7679,210 +7118,54 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
                     const skins = findBet('Skins');
                     const nassau = findBet('Nassau');
-                    const ninePoint = findBet('9 Point');
-                    const matchPlay = findBet('Match Play');
 
                     const skinsAmt = skins?.amount ?? skins?.value ?? skins?.betAmount ?? '';
                     const nassauAmt = nassau?.amount ?? nassau?.value ?? nassau?.betAmount ?? '';
-                    const ninePointAmt = ninePoint?.amount ?? ninePoint?.value ?? ninePoint?.betAmount ?? '';
-                    const matchPlayAmt = matchPlay?.amount ?? matchPlay?.value ?? matchPlay?.betAmount ?? '';
+                    const junkCount = Array.isArray(selectedJunkTypes) ? selectedJunkTypes.length : 0;
 
-                    // Get player count
-                    const selectedIds = (roundPlayerIds && roundPlayerIds.length) ? roundPlayerIds : (players || []).map(p => p.id);
-                    const playerCount = selectedIds.length || 0;
-                    const hasThreePlayers = playerCount === 3;
-
-                    // Create bet items array
-                    const betItems = [
-                        {
-                            name: 'Skins',
-                            descriptor: ' / skin',
-                            baseSummary: '',
-                            configured: !!skins,
-                            amount: betAmounts.Skins
-                        },
-                        {
-                            name: 'Nassau',
-                            descriptor: ' / side',
-                            baseSummary: '',
-                            configured: !!nassau,
-                            amount: betAmounts.Nassau
-                        },
-                        {
-                            name: 'Match Play',
-                            descriptor: ' / match',
-                            baseSummary: '',
-                            configured: !!matchPlay,
-                            amount: betAmounts['Match Play']
-                        },
-                        {
-                            name: '9 Point',
-                            descriptor: ' / point',
-                            baseSummary: hasThreePlayers ? '' : 'Requires 3 players',
-                            configured: !!ninePoint && hasThreePlayers,
-                            amount: betAmounts['9 Point'],
-                            disabled: !hasThreePlayers
-                        },
-                        // Individual junk bet types
-                        ...JUNK_TYPES.map(junkType => {
-                            const isSelected = Array.isArray(selectedJunkTypes) && selectedJunkTypes.includes(junkType.id);
-                            return {
-                                name: junkType.name,
-                                descriptor: ' / dot',
-                                baseSummary: '',
-                                configured: isSelected,
-                                amount: betAmounts[junkType.name] || 0,
-                                isLosingDots: junkType.id === 'losingDots'
-                            };
-                        })
-                    ];
-
-                    // Handlers for bet amount changes
-                    const handleIncreaseBet = (betName) => {
-                        setBetAmounts(prev => ({
-                            ...prev,
-                            [betName]: (prev[betName] || 0) + 1
-                        }));
-                    };
-
-                    const handleDecreaseBet = (betName) => {
-                        setBetAmounts(prev => ({
-                            ...prev,
-                            [betName]: Math.max(0, (prev[betName] || 0) - 1)
-                        }));
-                    };
-
-                    // Group bets into rows of 2
-                    const rows = [];
-                    for (let i = 0; i < betItems.length; i += 2) {
-                        rows.push(betItems.slice(i, i + 2));
-                    }
+                    const Row = ({ name, summary, enabled }) => (
+                        <div className="flex items-center justify-between py-3 border-t border-gray-100">
+                            <div>
+                                <div className="text-sm font-semibold text-gray-900">{name}</div>
+                                <div className="text-xs text-gray-500 mt-0.5">{summary}</div>
+                            </div>
+                            <span
+                                className={[
+                                    "text-xs font-bold px-2 py-1 rounded-full border",
+                                    enabled ? "bg-green-50 text-green-800 border-green-200" : "bg-gray-50 text-gray-500 border-gray-200"
+                                ].join(' ')}
+                            >
+                                {enabled ? "ON" : "OFF"}
+                            </span>
+                        </div>
+                    );
 
                     return (
-                        <div className="mt-3">
-                            <div className="space-y-2">
-                                {rows.map((row, rowIndex) => (
-                                    <div key={rowIndex} className="grid grid-cols-2 gap-2">
-                                        {row.map((bet) => {
-                                            const isActive = bet.amount > 0;
-                                            const isLosingDots = bet.isLosingDots && isActive;
-                                            const isDisabled = bet.disabled;
-                                            
-                                            // Find if this is a junk bet and get its description
-                                            const junkType = JUNK_TYPES.find(j => j.name === bet.name);
-                                            const hasDescription = !!junkType?.description;
-                                            
-                                            // Handler for clicking on the card (for all bets)
-                                            const handleCardClick = (e) => {
-                                                // Don't trigger if clicking on buttons or checkbox
-                                                if (e.target.closest('button') || e.target.closest('input[type="checkbox"]')) {
-                                                    return;
-                                                }
-                                                // Activate bet if it's currently inactive
-                                                if (bet.amount === 0 && !isDisabled) {
-                                                    setBetAmounts(prev => ({
-                                                        ...prev,
-                                                        [bet.name]: 1
-                                                    }));
-                                                }
-                                            };
-                                            
-                                            return (
-                                                <div 
-                                                    key={bet.name} 
-                                                    onClick={handleCardClick}
-                                                    className={`relative group rounded-xl px-3 py-3 border transition-all duration-200 ${
-                                                        isActive 
-                                                            ? (isLosingDots 
-                                                                ? 'bg-gradient-to-r from-red-800 to-black border-red-600'
-                                                                : 'bg-gradient-to-r from-green-700 to-black border-green-500')
-                                                            : 'bg-gray-100 border-gray-200'
-                                                    } ${isDisabled ? 'opacity-50' : ''} ${bet.amount === 0 ? 'cursor-pointer hover:bg-gray-200' : ''}`}>
-                                                    {/* Tooltip for junk bets */}
-                                                    {hasDescription && (
-                                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 whitespace-nowrap">
-                                                            {junkType.description}
-                                                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                                                                <div className="border-4 border-transparent border-t-gray-900"></div>
-                            </div>
-                                                        </div>
-                                                    )}
-                                                    <div className="flex flex-col">
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <div className={`text-sm font-semibold ${
-                                                                isActive ? 'text-white' : 'text-gray-900'
-                                                            }`}>{bet.name}</div>
-                                                            {/* Bet Amount Controller */}
-                                                            <div className="flex flex-col items-center gap-1">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleIncreaseBet(bet.name);
-                                                                    }}
-                                                                    disabled={isDisabled}
-                                                                    className="bg-white text-gray-900 text-sm font-bold w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                                                                    aria-label={`Increase ${bet.name}`}
-                                                                >
-                                                                    +
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleDecreaseBet(bet.name);
-                                                                    }}
-                                                                    disabled={bet.amount === 0 || isDisabled}
-                                                                    className="bg-white text-gray-900 text-sm font-bold w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                                                                    aria-label={`Decrease ${bet.name}`}
-                                                                >
-                                                                    −
-                                                                </button>
-                        </div>
-                                                        </div>
-                                                        <div className={`text-xs ${
-                                                            isActive ? 'text-white/90' : 'text-gray-600'
-                                                        }`}>
-                                                            {bet.amount > 0 
-                                                                ? (isLosingDots 
-                                                                    ? `-$${bet.amount}${bet.descriptor || ''}` 
-                                                                    : `$${bet.amount}${bet.descriptor || ''}`)
-                                                                : bet.baseSummary}
-                                                        </div>
-                                                        {/* Carry Over Checkbox for Skins */}
-                                                        {bet.name === 'Skins' && isActive && (
-                                                            <div className="mt-2 flex items-center gap-2">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    id={`skins-carryover-${rowIndex}`}
-                                                                    checked={skinsCarryOver}
-                                                                    onChange={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setSkinsCarryOver(e.target.checked);
-                                                                    }}
-                                                                    className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 focus:ring-2"
-                                                                />
-                                                                <label 
-                                                                    htmlFor={`skins-carryover-${rowIndex}`}
-                                                                    className={`text-xs cursor-pointer ${
-                                                                        isActive ? 'text-white/90' : 'text-gray-600'
-                                                                    }`}
-                                                                >
-                                                                    Carry Over
-                                                                </label>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ))}
+                        <div className="mt-3 rounded-xl border border-gray-200 bg-white">
+                            <div className="px-3">
+                                <Row
+                                    name="Skins"
+                                    summary={skins ? `$${skinsAmt || 1} / skin` : 'Not configured'}
+                                    enabled={!!skins}
+                                />
+                                <Row
+                                    name="Nassau"
+                                    summary={nassau ? `$${nassauAmt || 5} / side` : 'Not configured'}
+                                    enabled={!!nassau}
+                                />
+                                <Row
+                                    name="Junk Bets"
+                                    summary={junkCount ? `${junkCount} active` : 'None selected'}
+                                    enabled={junkCount > 0}
+                                />
                             </div>
                         </div>
                     );
                 })()}
 
+                <div className="mt-3 text-xs text-gray-600">
+                    Est. round value: <span className="font-semibold">—</span>
+                </div>
             </div>
 
             {/* Advanced (Handicap + Teams) */}
@@ -7898,6 +7181,23 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
                 {isAdvancedOpen && (
                     <div className="px-4 pb-4 space-y-4">
+                        <div className="rounded-xl border border-gray-200 p-3 bg-gray-50">
+                            <h3 className="text-sm font-semibold text-gray-800 mb-2">Handicap Mode</h3>
+                            <select
+                                value={handicapMode}
+                                onChange={(e) => setHandicapMode(e.target.value)}
+                                className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm font-medium"
+                            >
+                                <option value="lowest">Lowest Handicap as 0 (Relative)</option>
+                                <option value="gross">Gross Handicap (Absolute)</option>
+                            </select>
+                            <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                                {handicapMode === 'lowest'
+                                    ? 'Lowest handicap player gets 0 strokes, others get strokes relative to them.'
+                                    : 'All players use their actual handicap (1+ get strokes on appropriate holes).'}
+                            </p>
+                        </div>
+
                         <div className="rounded-xl border border-gray-200 p-3 bg-gray-50">
                             <TeamsManager
                                 dbReady={dbReady}
@@ -7924,10 +7224,6 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
         {/* Sticky Start CTA */}
         <div className="sticky bottom-0 z-40 bg-[#F8FAFC]/95 backdrop-blur border-t border-gray-200">
             <div className="max-w-[420px] mx-auto px-4 py-3">
-                {(() => {
-                    const playerCount = roundPlayerIds.length > 0 ? roundPlayerIds.length : (players?.length || 0);
-                    return (
-                        <>
                 <button
                     onClick={handleStartNewRound}
                     className="w-full h-14 rounded-2xl bg-[#14532D] text-white font-extrabold text-lg shadow-md hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -7938,9 +7234,6 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                 <p className="text-xs text-gray-500 mt-2 text-center">
                     {(!selectedCourseId || playerCount === 0) ? 'Select a course and at least 2 players.' : 'Ready to go.'}
                 </p>
-                        </>
-                    );
-                })()}
             </div>
         </div>
 
@@ -8022,6 +7315,13 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                             handleAddBet={handleAddBet}
                             handleDeleteBet={handleDeleteBet}
                         />
+
+                        <JunkManager
+                            selectedJunkTypes={selectedJunkTypes}
+                            setSelectedJunkTypes={setSelectedJunkTypes}
+                            junkPointValues={junkPointValues}
+                            setJunkPointValues={setJunkPointValues}
+                        />
                     </div>
 
                     <div className="mt-4">
@@ -8031,163 +7331,6 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                             className="w-full h-12 rounded-xl bg-gray-900 text-white font-bold hover:bg-black"
                         >
                             Done
-                        </button>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* Course Selection Modal */}
-        {isCourseModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60">
-                <div className="bg-white w-full sm:max-w-xl sm:rounded-2xl rounded-t-2xl shadow-2xl p-4 max-h-[85vh] overflow-y-auto">
-                    <div className="flex items-center justify-between mb-3">
-                        <h2 className="text-lg font-extrabold text-gray-900">Select Course</h2>
-                        <button
-                            type="button"
-                            onClick={() => setIsCourseModalOpen(false)}
-                            className="text-2xl leading-none text-gray-400 hover:text-gray-700"
-                            aria-label="Close"
-                        >
-                            &times;
-                        </button>
-    </div>
-
-                    <div className="space-y-2">
-                        {courses.length === 0 ? (
-                            <div className="text-sm text-gray-500 p-4 bg-gray-50 rounded-xl text-center">
-                                No courses saved yet. Go to Management to add courses.
-                            </div>
-                        ) : (
-                            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                                {[...courses].sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(course => (
-                                    <button
-                                        key={course.id}
-                                        type="button"
-                                        onClick={() => {
-                                            handleCourseSelect(course.id);
-                                            setIsCourseModalOpen(false);
-                                        }}
-                                        className={`w-full text-left p-4 rounded-xl border-2 transition ${
-                                            selectedCourseId === course.id
-                                                ? 'bg-green-50 border-green-500'
-                                                : 'bg-gray-50 border-gray-200 hover:border-gray-300 hover:bg-gray-100'
-                                        }`}
-                                    >
-                                        <div className="font-semibold text-gray-900">{course.name}</div>
-                                        {course.city && course.state && (
-                                            <div className="text-xs text-gray-500 mt-1">{course.city}, {course.state}</div>
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="mt-4 flex gap-2">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setIsCourseModalOpen(false);
-                                setCurrentView('management');
-                                setTimeout(() => {
-                                    const courseManagerElement = document.getElementById('manage-courses-section');
-                                    if (courseManagerElement) {
-                                        courseManagerElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                    }
-                                }, 100);
-                            }}
-                            className="flex-1 h-12 rounded-xl bg-gray-100 text-gray-900 font-bold hover:bg-gray-200"
-                        >
-                            Add Course
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setIsCourseModalOpen(false)}
-                            className="flex-1 h-12 rounded-xl bg-gray-900 text-white font-bold hover:bg-black"
-                        >
-                            Done
-                        </button>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* Bets Help Modal */}
-        {isBetsHelpModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60">
-                <div className="bg-white w-full sm:max-w-2xl sm:rounded-2xl rounded-t-2xl shadow-2xl p-4 max-h-[85vh] overflow-y-auto">
-                    <div className="flex items-center justify-between mb-3">
-                        <h2 className="text-lg font-extrabold text-gray-900">Bet Types Explained</h2>
-                        <button
-                            type="button"
-                            onClick={() => setIsBetsHelpModalOpen(false)}
-                            className="text-2xl leading-none text-gray-400 hover:text-gray-700"
-                            aria-label="Close"
-                        >
-                            &times;
-                        </button>
-                    </div>
-
-                    <div className="space-y-4">
-                        {/* Skins */}
-                        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                            <h3 className="text-base font-bold text-gray-900 mb-2">Skins</h3>
-                            <p className="text-sm text-gray-700">
-                                Each hole is worth the set amount. The player with the lowest net score on each hole wins that hole's skin. 
-                                If there's a tie, you can enable "Carry Over" so the skin carries to the next hole, increasing its value.
-                            </p>
-                        </div>
-
-                        {/* Nassau */}
-                        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                            <h3 className="text-base font-bold text-gray-900 mb-2">Nassau</h3>
-                            <p className="text-sm text-gray-700">
-                                Creates 3 separate bets: Front 9, Back 9, and Total 18 holes. The amount is per side (e.g., $1 per side = $3 total). 
-                                Each bet is won by the player with the lowest net score for that portion of the round.
-                            </p>
-                        </div>
-
-                        {/* 9 Point */}
-                        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                            <h3 className="text-base font-bold text-gray-900 mb-2">9 Point</h3>
-                            <p className="text-sm text-gray-700">
-                                A 3-player game where 9 points are split per hole based on net scores. Requires exactly 3 players. 
-                                Points are awarded: 5 points to the winner, 3 points to second place, 1 point to third place. 
-                                If there's a tie, points are split accordingly.
-                            </p>
-                        </div>
-
-                        {/* Match Play */}
-                        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                            <h3 className="text-base font-bold text-gray-900 mb-2">Match Play</h3>
-                            <p className="text-sm text-gray-700">
-                                Head-to-head match play where players compete hole by hole. Each hole is worth the set amount. 
-                                The player with the lower net score wins the hole. The match continues until one player is up by more holes than remain.
-                            </p>
-                        </div>
-
-                        {/* Junk Bets */}
-                        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                            <h3 className="text-base font-bold text-gray-900 mb-2">Junk Bets</h3>
-                            <div className="space-y-3 mt-2">
-                                {JUNK_TYPES.map(junkType => (
-                                    <div key={junkType.id} className="border-l-2 border-gray-300 pl-3">
-                                        <h4 className="text-sm font-semibold text-gray-800">{junkType.name}</h4>
-                                        <p className="text-xs text-gray-600 mt-1">{junkType.description}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-4">
-                        <button
-                            type="button"
-                            onClick={() => setIsBetsHelpModalOpen(false)}
-                            className="w-full h-12 rounded-xl bg-gray-900 text-white font-bold hover:bg-black"
-                        >
-                            Got it
                         </button>
                     </div>
                 </div>
@@ -8207,8 +7350,6 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                                 isReadOnly={isViewingSharedRound}
                                 isShareModalOpen={isShareModalOpen}
                                 setIsShareModalOpen={setIsShareModalOpen}
-                                isScorecardModalOpen={isScorecardModalOpen}
-                                setIsScorecardModalOpen={setIsScorecardModalOpen}
                                 shareCodeInput={shareCodeInput}
                                 setShareCodeInput={setShareCodeInput}
                                 handleEnterShareCode={handleEnterShareCode}
@@ -8222,7 +7363,6 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                                 handleSaveScores={handleSaveScores}
                                 handleEndRound={handleEndRound}
                                 dbReady={dbReady}
-                                db={db}
                                 calculatedScores={calculatedScores}
                                 allAvailableBets={allAvailableBets}
                                 selectedJunkTypes={selectedJunkTypes}
