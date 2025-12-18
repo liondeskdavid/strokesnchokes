@@ -4577,17 +4577,7 @@ const Scorecard = ({
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                     </svg>
-                    Share
-                </button>
-                <button
-                    onClick={handleEndRound}
-                    disabled={!dbReady}
-                    className="h-14 rounded-2xl bg-red-600 text-white font-extrabold text-sm shadow-md hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed px-6 flex items-center justify-center gap-2"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    End Round
+                    
                 </button>
                 <button
                     onClick={() => setIsScorecardModalOpen(true)}
@@ -4599,6 +4589,17 @@ const Scorecard = ({
                     </svg>
                     Scorecard
                 </button>
+                <button
+                    onClick={handleEndRound}
+                    disabled={!dbReady}
+                    className="h-14 rounded-2xl bg-red-600 text-white font-extrabold text-sm shadow-md hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed px-6 flex items-center justify-center gap-2"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    End Round
+                </button>
+                
             </div>
         )}
         
@@ -6194,11 +6195,28 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
         }
 
         try {
-            // 1. Get course name from selected course
+            // 1. Get course name and hole data from selected course
             const selectedCourse = courses.find(c => c.id === selectedCourseId);
             const courseName = selectedCourse ? selectedCourse.name : 'Unspecified Course';
             
-            // 2. Filter bets to only include those with amount > 0
+            // 2. Use the selected course's hole data directly (most accurate)
+            // Fallback to holeDataEdit if course doesn't have hole data, then to default
+            let initialHoleData;
+            if (selectedCourse && selectedCourse.holeData && 
+                Object.keys(selectedCourse.holeData).length > 0 &&
+                HOLE_NUMBERS.every(h => selectedCourse.holeData[`hole${h}`])) {
+                // Use the selected course's hole data
+                initialHoleData = selectedCourse.holeData;
+            } else if (Object.keys(holeDataEdit).length > 0 && 
+                HOLE_NUMBERS.every(h => holeDataEdit[`hole${h}`])) {
+                // Fallback to current holeDataEdit
+                initialHoleData = holeDataEdit;
+            } else {
+                // Final fallback to default
+                initialHoleData = generateDefaultHoleData();
+            }
+            
+            // 3. Filter bets to only include those with amount > 0
             const activeBets = allAvailableBets.filter(bet => {
                 const betName = bet.type || bet.name;
                 return (betAmounts[betName] || 0) > 0;
@@ -6213,20 +6231,14 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             // Filter junk types to only include those with amount > 0 (for bet calculations)
             const activeJunkTypes = selectedJunkTypesFromBets;
             
-            // Use current holeDataEdit if available (from selected course or previous edits), otherwise use default
-            const initialHoleData = Object.keys(holeDataEdit).length > 0 && 
-                HOLE_NUMBERS.every(h => holeDataEdit[`hole${h}`]) 
-                ? holeDataEdit 
-                : generateDefaultHoleData();
-            
-            // Generate fresh data structures
+            // 4. Generate fresh data structures
             const initialRoundBetWinners = generateInitialBetSelections(activeBets);
             const initialRoundScores = generateInitialScores(rosterPlayers, initialHoleData);
 
-            // 3. Generate share code
+            // 5. Generate share code
             const shareCode = generateShareCode();
             
-            // 4. Create New Round
+            // 6. Create New Round
             // Store selectedJunkTypes based on betAmounts from the new Bets section
             const newRoundRef = await addDoc(collection(db, getRoundCollectionPath(userId)), {
                 date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
@@ -6248,7 +6260,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                 createdAt: serverTimestamp(),
             });
             
-            // 5. Create shared round entry for code lookup
+            // 7. Create shared round entry for code lookup
             await addDoc(collection(db, SHARED_ROUNDS_COLLECTION), {
                 shareCode: shareCode,
                 userId: userId,
@@ -6256,7 +6268,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                 createdAt: serverTimestamp(),
             });
 
-            // 6. Update local state
+            // 8. Update local state
             setActiveRoundId(newRoundRef.id);
             setBetSelections(initialRoundBetWinners);
             setScores(initialRoundScores);
@@ -7448,7 +7460,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                                             {selectedCourse.name}
                                         </div>
                                     ) : (
-                                        <div className="text-lg font-semibold text-gray-500">Course not found</div>
+                                        <div className="text-lg font-semibold text-gray-500">Select Course</div>
                                     );
                                 })()
                             ) : (
