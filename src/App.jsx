@@ -110,6 +110,7 @@ const PlayerManager = ({
     setRoundPlayerIds,
     myPlayerId,
     handleUpdatePlayerHandicap,
+    handleTogglePlayerFavorite,
 }) => {
     const [editingHandicap, setEditingHandicap] = useState({});
     
@@ -129,60 +130,29 @@ const PlayerManager = ({
         <div className="p-3 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
             <h2 className="text-lg font-bold text-blue-800 mb-2">Select Players For Round</h2>
             <p className="text-xs text-gray-500 mt-1 mb-2">You can modify each player's handicap for this round by clicking on the handicap value</p>
-            {/* Select existing player or enter a new one */}
-            <div className="mb-3">
-              
-                <select
-                    value={selectedExistingPlayerId}
-                    onChange={(e) => {
-                        const selectedId = e.target.value;
-                        setSelectedExistingPlayerId(selectedId);
-                        if (selectedId) {
-                            const existing = players.find(p => p.id === selectedId);
-                            if (existing) {
-                                const nameParts = parseName(existing.name || '');
-                                setNewPlayerFirstName(nameParts.first);
-                                setNewPlayerLastName(nameParts.last);
-                                setNewPlayerHandicap(
-                                    typeof existing.handicap === 'number'
-                                        ? String(existing.handicap)
-                                        : (existing.handicap || '')
-                                );
-                            }
-                        }
-                    }}
-                    className="w-full p-2 border border-gray-300 rounded-lg bg-white text-sm focus:ring-blue-500 focus:border-blue-500"
-                >
-                    <option value="">-- Select Player --</option>
-                    {players.map(player => (
-                        <option key={player.id} value={player.id}>
-                            {player.name} (HCP {player.handicap ?? 0})
-                        </option>
-                    ))}
-                </select>
-            </div>
-
+            
+            {/* Add New Player Section */}
             <div className="flex space-x-2 mb-4">
                 <input
                     type="text"
-                    placeholder="First Name"
+                    placeholder="First"
                     value={newPlayerFirstName}
                     onChange={(e) => setNewPlayerFirstName(e.target.value)}
                     className="flex-1 min-w-0 max-w-28 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
                 <input
                     type="text"
-                    placeholder="Last Name"
+                    placeholder="Last"
                     value={newPlayerLastName}
                     onChange={(e) => setNewPlayerLastName(e.target.value)}
-                    className="flex-1 min-w-0 max-w-28 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="flex-1 min-w-0 max-w-40 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
                 <input
                     type="number"
                     placeholder="HCP"
                     value={newPlayerHandicap}
                     onChange={(e) => setNewPlayerHandicap(e.target.value)}
-                    className="w-16 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                    className="w-20 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                     min="-54" max="54"
                 />
                 <button
@@ -196,14 +166,15 @@ const PlayerManager = ({
                     Add
                 </button>
             </div>
-            <div className="space-y-2 mt-1">
+            
+            {/* All Players List */}
+            <div className="space-y-2 mt-1 max-h-96 overflow-y-auto">
             {players.length === 0 ? (
                 <p className="text-gray-500 italic p-2 bg-gray-50 rounded">
                     Add player names here before starting a round.
                 </p>
             ) : (
                 players
-                    .filter(player => roundPlayerIds.includes(player.id))
                     .sort((a, b) => {
                         // Helper to get first name
                         const getFirstName = (name) => {
@@ -215,20 +186,44 @@ const PlayerManager = ({
                         if (a.id === myPlayerId) return -1;
                         if (b.id === myPlayerId) return 1;
                         
-                        // Sort alphabetically by first name
+                        // Then favorites
+                        const aIsFavorite = a.favorite || false;
+                        const bIsFavorite = b.favorite || false;
+                        if (aIsFavorite && !bIsFavorite) return -1;
+                        if (!aIsFavorite && bIsFavorite) return 1;
+                        
+                        // Sort alphabetically by first name within same favorite status
                         const firstNameA = getFirstName(a.name);
                         const firstNameB = getFirstName(b.name);
                         return firstNameA.localeCompare(firstNameB);
                     })
                     .map(player => {
+                        const isInRound = roundPlayerIds.includes(player.id);
+                        const isFavorite = player.favorite || false;
                         // Always use saved player handicap (not round-specific)
                         const currentHandicap = player.handicap ?? 0;
                         const isEditingHcp = editingHandicap[player.id];
                         const handicapValue = isEditingHcp !== undefined ? editingHandicap[player.id] : currentHandicap;
                         
                         return (
-                            <div key={player.id} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg border border-gray-200">
+                            <div key={player.id} className={`flex justify-between items-center p-2 rounded-lg border ${isInRound ? 'bg-green-100 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
                                 <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleTogglePlayerFavorite && handleTogglePlayerFavorite(player.id)}
+                                        className="flex-shrink-0 p-1 hover:opacity-70 transition-opacity bg-transparent"
+                                        aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+                                    >
+                                        {isFavorite ? (
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                            </svg>
+                                        ) : (
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                            </svg>
+                                        )}
+                                    </button>
                                     <span className="font-medium text-gray-700">
                                         {player.name}
                                     </span>
@@ -274,21 +269,24 @@ const PlayerManager = ({
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            setRoundPlayerIds(prev => prev.filter(id => id !== player.id));
+                                            if (isInRound) {
+                                                setRoundPlayerIds(prev => prev.filter(id => id !== player.id));
+                                            } else {
+                                                setRoundPlayerIds(prev => [...prev, player.id]);
+                                            }
                                         }}
-                                        className="px-2 py-1 text-xs font-medium rounded-lg border bg-white text-red-600 border-red-400 hover:bg-red-50"
+                                        className={`px-2 py-1 text-xs font-medium rounded-lg border ${
+                                            isInRound 
+                                                ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' 
+                                                : 'bg-white text-red-600 border-red-400 hover:bg-red-50'
+                                        }`}
                                     >
-                                        Remove
+                                        {isInRound ? 'Remove' : 'Add'}
                                     </button>
                                 </div>
                             </div>
                         );
                     })
-            )}
-            {players.length > 0 && roundPlayerIds.length === 0 && (
-                <p className="text-[11px] text-gray-500 mt-1">
-                    No players currently in this round. Use the <span className="font-semibold">Saved Players</span> dropdown above to add players.
-                </p>
             )}
             </div>
         </div>
@@ -1161,9 +1159,9 @@ const CourseManager = ({
             </div>
             
             {/* Add New Course Section */}
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="mb-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Add New Course Manually</h3>
-                <div className="flex space-x-2 mb-3">
+                <div className="flex space-x-1 mb-2">
                     <input
                         type="text"
                         placeholder="Course Name"
@@ -1179,7 +1177,7 @@ const CourseManager = ({
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                         </svg>
-                        Add Course
+                        Add
                     </button>
                 </div>
                 <p className="text-xs text-gray-600">
@@ -2878,81 +2876,21 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
     });
 
     return (
-        <div className="p-6 bg-white rounded-xl shadow-2xl border-t-4 border-red-500 mb-6">
-            <h2 className="text-2xl font-bold mb-4 text-red-800 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-200 mb-6">
+            <h2 className="text-2xl font-bold mb-4 text-gray-800 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 mr-2 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 {activeRound.courseName || 'Unspecified'}
 
             </h2>
             
-            {/* Winnings Breakdown by Bet Type - For Verification */}
-            <div className="mb-6 p-4 rounded-xl border-2 border-blue-400 bg-blue-50">
-                <h4 className="text-lg font-bold text-blue-800 mb-3 text-center">
-                    📊 Winnings Breakdown {isTeamMode ? '(Teams)' : '(Singles)'}
-                </h4>
-                <div className="space-y-3">
-                    {summaryData.map(item => {
-                        const breakdown = winningsBreakdown[item.name] || { manual: 0, nassau: 0, skins: 0, matchPlay: 0, ninePoint: 0, junk: 0, total: 0 };
-                        return (
-                            <div key={item.name} className="bg-white p-3 rounded-lg border border-blue-300">
-                                <div className="font-semibold text-blue-900 mb-2">{item.name}</div>
-                                <div className="grid grid-cols-2 md:grid-cols-7 gap-2 text-xs">
-                                    <div>
-                                        <div className="text-gray-600 font-semibold">Manual</div>
-                                        <div className="font-bold text-blue-600">
-                                            ${breakdown.manual.toFixed(0)}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div className="text-gray-600 font-semibold">Nassau</div>
-                                        <div className="font-bold text-blue-600">
-                                            ${breakdown.nassau.toFixed(0)}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div className="text-gray-600 font-semibold">Skins</div>
-                                        <div className="font-bold text-blue-600">
-                                            ${breakdown.skins.toFixed(0)}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div className="text-gray-600 font-semibold">Match Play</div>
-                                        <div className="font-bold text-blue-600">
-                                            ${breakdown.matchPlay.toFixed(0)}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div className="text-gray-600 font-semibold">9 Point</div>
-                                        <div className="font-bold text-blue-600">
-                                            ${breakdown.ninePoint.toFixed(0)}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div className="text-gray-600 font-semibold">Junk</div>
-                                        <div className="font-bold text-blue-600">
-                                            ${breakdown.junk.toFixed(0)}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div className="text-gray-600 font-semibold">Total Gross</div>
-                                        <div className="font-bold text-lg text-blue-600">
-                                            ${breakdown.total.toFixed(0)}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-            
             {/* Zero-Sum Settlement Summary - At the Very Top */}
             {settlements.length > 0 && (
-                <div className="mb-6 p-4 rounded-xl border-2 border-blue-400 bg-blue-50">
-                    <h4 className="text-lg font-bold text-blue-800 mb-3 text-center">
-                        💰 Settlement Summary {isTeamMode ? '(Teams)' : '(Singles)'}
+                <div className="mb-4 p-4 rounded-2xl bg-gradient-to-r from-red-700 to-black border border-green-500">
+                    <h4 className="text-lg font-bold text-white mb-3 text-center flex items-center justify-center gap-2">
+                        <span></span>
+                        <span>Settlement Summary {isTeamMode ? '(Teams)' : '(Singles)'}</span>
                     </h4>
                     <div className="space-y-3">
                         {settlements.map((settlement, idx) => {
@@ -2965,14 +2903,15 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                             const amountPerPlayer = settlement.amount / fromTeamPlayerCount;
                             
                             return (
-                                <div key={idx} className="bg-white p-3 rounded-lg border border-blue-300">
-                                    <p className="text-center font-semibold text-blue-900 mb-2">
-                                        <span className="text-red-600">{settlement.from}</span> owes <span className="text-blue-600">{settlement.to}</span> <span className="text-blue-800">${settlement.amount.toFixed(2)}</span>
+                                <div key={idx} className="bg-white/10 rounded-xl p-3 border border-white/20 backdrop-blur-sm">
+                                    <p className="text-center font-semibold text-white mb-2">
+                                        <span className="text-white font-bold inline-flex items-center gap-1">{settlement.from} owes {settlement.to}
+                                        </span> <span className="text-white font-bold">${settlement.amount.toFixed(2)}</span>
                                     </p>
                                     {isTeamMode && fromTeam && (
-                                        <div className="mt-2 pt-2 border-t border-blue-200">
-                                            <div className="text-xs font-semibold text-blue-700 mb-2">Team Total Net Due: ${settlement.amount.toFixed(2)}</div>
-                                            <div className="text-xs text-blue-600 space-y-1">
+                                        <div className="mt-2 pt-2 border-t border-white/20">
+                                            <div className="text-xs font-semibold text-white/90 mb-2">Team Total Net Due: ${settlement.amount.toFixed(2)}</div>
+                                            <div className="text-xs text-white/80 space-y-1">
                                                 <div className="font-semibold mb-1">Individual Team Member Breakdown:</div>
                                                 {fromTeam.playerIds.map(playerId => {
                                                     const savedPlayer = savedPlayers.find(sp => sp.id === playerId);
@@ -2994,21 +2933,63 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                 </div>
             )}
             
+            {/* Winnings Breakdown by Bet Type - For Verification */}
+            <div className="mb-4 p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200">
+                <h4 className="text-lg font-bold text-gray-800 mb-3 text-center flex items-center justify-center gap-2">
+                    <span>📊</span>
+                    <span>Winnings Breakdown {isTeamMode ? '(Teams)' : '(Singles)'}</span>
+                </h4>
+                <div className="space-y-3">
+                    {summaryData.map(item => {
+                        const breakdown = winningsBreakdown[item.name] || { manual: 0, nassau: 0, skins: 0, matchPlay: 0, ninePoint: 0, junk: 0, total: 0 };
+                        return (
+                            <div key={item.name} className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm">
+                                <div className="font-semibold text-gray-800 mb-2">{item.name}</div>
+                                <div className="grid grid-cols-2 md:grid-cols-7 gap-2 text-xs">
+                                    <div>
+                                        <div className="text-gray-600 font-semibold">Manual <span className="font-bold text-blue-600">${breakdown.manual.toFixed(0)}</span></div>
+                                    </div>
+                                    <div>
+                                        <div className="text-gray-600 font-semibold">Nassau <span className="font-bold text-blue-600">${breakdown.nassau.toFixed(0)}</span></div>
+                                    </div>
+                                    <div>
+                                        <div className="text-gray-600 font-semibold">Skins <span className="font-bold text-blue-600">${breakdown.skins.toFixed(0)}</span></div>
+                                    </div>
+                                    <div>
+                                        <div className="text-gray-600 font-semibold">Match Play <span className="font-bold text-blue-600">${breakdown.matchPlay.toFixed(0)}</span></div>
+                                    </div>
+                                    <div>
+                                        <div className="text-gray-600 font-semibold">9 Point <span className="font-bold text-blue-600">${breakdown.ninePoint.toFixed(0)}</span></div>
+                                    </div>
+                                    <div>
+                                        <div className="text-gray-600 font-semibold">Junk <span className="font-bold text-blue-600">${breakdown.junk.toFixed(0)}</span></div>
+                                    </div>
+                                    <div>
+                                        <div className="text-gray-600 font-semibold">Total Gross <span className="font-bold text-lg text-blue-600">${breakdown.total.toFixed(0)}</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+            
             {/* Two-Player Bet Settlements - Separate from Overall Settlement */}
             {twoPlayerSettlements.length > 0 && (
-                <div className="mb-6 p-4 rounded-xl border-2 border-blue-400 bg-blue-50">
-                    <h4 className="text-lg font-bold text-blue-800 mb-3 text-center">
-                        🎯 Two-Player Bet Settlements
+                <div className="mb-4 p-4 rounded-2xl bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200">
+                    <h4 className="text-lg font-bold text-gray-800 mb-3 text-center flex items-center justify-center gap-2">
+                        <span>🎯</span>
+                        <span>Two-Player Bet Settlements</span>
                     </h4>
-                    <p className="text-xs text-blue-700 mb-3 text-center italic">
+                    <p className="text-xs text-gray-600 mb-3 text-center italic">
                         These bets are settled separately between the two players involved
                     </p>
                     <div className="space-y-3">
                         {twoPlayerSettlements.map((settlement, idx) => (
-                            <div key={idx} className="bg-white p-3 rounded-lg border border-blue-300">
-                                <p className="text-xs text-blue-700 mb-1 font-semibold">{settlement.betName}</p>
-                                <p className="text-center font-semibold text-blue-900">
-                                    <span className="text-red-600">{settlement.from}</span> owes <span className="text-blue-600">{settlement.to}</span> <span className="text-blue-800">${settlement.amount.toFixed(2)}</span>
+                            <div key={idx} className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm">
+                                <p className="text-xs text-gray-600 mb-1 font-semibold">{settlement.betName}</p>
+                                <p className="text-center font-semibold text-gray-800">
+                                    <span className="text-red-600">{settlement.from}</span> owes <span className="text-purple-600">{settlement.to}</span> <span className="text-gray-900 font-bold">${settlement.amount.toFixed(2)}</span>
                                 </p>
                             </div>
                         ))}
@@ -3018,14 +2999,14 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
             
             
             {/* Previous Winners Block */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div className="p-4 bg-blue-100 rounded-xl shadow-md border border-blue-300">
-                    <p className="text-sm font-semibold text-blue-800 uppercase">Gross Score Winner</p>
-                    <p className="text-2xl font-extrabold text-blue-900 mt-1">{results.grossWinner || 'N/A'}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="p-4 rounded-xl bg-gradient-to-r from-blue-600 to-gray-800 border border-blue-500 shadow-sm">
+                    <p className="text-sm font-semibold text-white/90 uppercase">Gross Score Winner</p>
+                    <p className="text-2xl font-extrabold text-white mt-1">{results.grossWinner || 'N/A'}</p>
                 </div>
-                <div className="p-4 bg-blue-100 rounded-xl shadow-md border border-blue-300">
-                    <p className="text-sm font-semibold text-blue-800 uppercase">Net Score Winner</p>
-                    <p className="text-2xl font-extrabold text-blue-900 mt-1">{results.netWinner || 'N/A'}</p>
+                <div className="p-4 rounded-xl bg-gradient-to-r from-green-700 to-black border border-green-500 shadow-sm">
+                    <p className="text-sm font-semibold text-white/90 uppercase">Net Score Winner</p>
+                    <p className="text-2xl font-extrabold text-white mt-1">{results.netWinner || 'N/A'}</p>
                 </div>
             </div>
             
@@ -3068,283 +3049,303 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
             */}
 
             {/* Detailed Bet Payouts Breakdown */}
-            <h4 className="text-2xl font-bold mb-4 text-gray-800 border-t pt-6 mt-6">💰 Bet Payouts Breakdown</h4>
-            
-            <div className="space-y-4">
-                {/* Nassau Bets */}
-                {allAvailableBets && allAvailableBets.filter(b => b.type === 'Nassau').map(bet => {
-                    const result = nassauResults[bet.id];
-                    if (!result) return null;
-                    
-                    const front9Winner = result.front9Winner;
-                    const back9Winner = result.back9Winner;
-                    const totalWinner = result.totalWinner;
-                    const amount = bet.amount || 0;
-                    
-                    return (
-                        <div key={bet.id} className="p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
-                            <h5 className="text-lg font-bold text-blue-800 mb-3">{bet.name} - ${amount} per side</h5>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <div className="bg-white p-3 rounded border border-blue-300">
-                                    <div className="text-xs font-semibold text-blue-700 uppercase mb-1">Front 9</div>
-                                    <div className="text-sm font-bold text-blue-900">
-                                        {front9Winner && front9Winner !== 'Tie' ? (
-                                            <span>{front9Winner}: <span className="text-blue-600">+${amount}</span></span>
-                                        ) : (
-                                            <span className="text-gray-500">No Winner</span>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="bg-white p-3 rounded border border-blue-300">
-                                    <div className="text-xs font-semibold text-blue-700 uppercase mb-1">Back 9</div>
-                                    <div className="text-sm font-bold text-blue-900">
-                                        {back9Winner && back9Winner !== 'Tie' ? (
-                                            <span>{back9Winner}: <span className="text-blue-600">+${amount}</span></span>
-                                        ) : (
-                                            <span className="text-gray-500">No Winner</span>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="bg-white p-3 rounded border border-blue-300">
-                                    <div className="text-xs font-semibold text-blue-700 uppercase mb-1">Total</div>
-                                    <div className="text-sm font-bold text-blue-900">
-                                        {totalWinner && totalWinner !== 'Tie' ? (
-                                            <span>{totalWinner}: <span className="text-blue-600">+${amount}</span></span>
-                                        ) : (
-                                            <span className="text-gray-500">No Winner</span>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
+            <div className="border-t border-gray-200 pt-6 mt-6">
+                <h4 className="text-2xl font-bold mb-4 text-gray-800 flex items-center gap-2">
+                    <span>💰</span>
+                    <span>Bet Payouts Breakdown</span>
+                </h4>
                 
-                {/* Skins Bets */}
-                {allAvailableBets && allAvailableBets.filter(b => b.type === 'Skins').map(bet => {
-                    const result = skinsResults[bet.id];
-                    if (!result) return null;
-                    
-                    const skinsWon = result.skinsWon || {};
-                    const totalWinnings = result.totalWinnings || {};
-                    const amount = bet.amount || 0;
-                    const hasWinners = Object.values(skinsWon).some(count => count > 0);
-                    const carryOver = bet.carryOver !== false; // Default to true if not specified
-                    
-                    return (
-                        <div key={bet.id} className="p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
-                            <div className="flex items-center justify-between mb-3">
-                                <h5 className="text-lg font-bold text-gray-800">{bet.name} - ${amount} per skin</h5>
-                                <span className="text-sm font-semibold text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
-                                    {carryOver ? 'Carry Over' : 'No Carry Over'}
-                                </span>
-                            </div>
-                            {hasWinners ? (
-                                <div className="space-y-2">
-                                    {roundPlayers.map(player => {
-                                        const count = skinsWon[player.name] || 0;
-                                        const winnings = totalWinnings[player.name] || 0;
-                                        if (count === 0) return null;
-                                        return (
-                                            <div key={player.name} className="bg-white p-2 rounded border border-gray-300 flex justify-between items-center">
-                                                <span className="font-medium text-gray-800">{player.name}</span>
-                                                <span className="text-sm text-gray-700">
-                                                    {count} skin{count !== 1 ? 's' : ''} × ${amount} = <span className="text-blue-600 font-bold">${winnings.toFixed(0)}</span>
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <div className="text-sm text-gray-500 italic">No skins won</div>
-                            )}
-                        </div>
-                    );
-                })}
-                
-                {/* Junk/Side Bets */}
-                {activeRound.selectedJunkTypes && activeRound.selectedJunkTypes.length > 0 && (
-                    <div className="p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
-                        <h5 className="text-lg font-bold text-gray-800 mb-3">Junk / Side Bets</h5>
-                        <div className="space-y-3">
-                            {activeRound.selectedJunkTypes.map(junkId => {
-                                const junkType = JUNK_TYPES.find(j => j.id === junkId);
-                                if (!junkType) return null;
-                                
-                                const pointValue = activeRound.junkPointValues?.[junkId] || 1;
-                                const isLosingDots = junkId === 'losingDots';
-                                
-                                // Calculate totals for this junk type
-                                const typeWinnings = {};
-                                roundPlayers.forEach(player => {
-                                    let count = 0;
-                                    HOLE_NUMBERS.forEach(h => {
-                                        const holeKey = `hole${h}`;
-                                        const val = parseInt(activeRound.junkEvents?.[player.name]?.[holeKey]?.[junkId], 10) || 0;
-                                        count += val;
-                                    });
-                                    const points = isLosingDots ? -(count * pointValue) : (count * pointValue);
-                                    if (count > 0 || points !== 0) {
-                                        typeWinnings[player.name] = { count, points };
-                                    }
-                                });
-                                
-                                if (Object.keys(typeWinnings).length === 0) return null;
-                                
-                                return (
-                                    <div key={junkId} className="bg-white p-3 rounded border border-gray-300">
-                                        <div className="font-semibold text-gray-700 mb-2">{junkType.name} (${pointValue} per event)</div>
-                                        <div className="space-y-1">
-                                            {Object.entries(typeWinnings).map(([playerName, data]) => (
-                                                <div key={playerName} className="flex justify-between items-center text-sm">
-                                                    <span className="text-gray-700">{playerName}</span>
-                                                    <span className={data.points >= 0 ? 'text-blue-600' : 'text-red-600'}>
-                                                        {data.count} × ${pointValue} = {data.points >= 0 ? '+' : ''}${data.points.toFixed(0)}
-                                                    </span>
-                                                </div>
-                                            ))}
+                <div className="space-y-4">
+                    {/* Nassau Bets */}
+                    {allAvailableBets && allAvailableBets.filter(b => b.type === 'Nassau').map(bet => {
+                        const result = nassauResults[bet.id];
+                        if (!result) return null;
+                        
+                        const front9Winner = result.front9Winner;
+                        const back9Winner = result.back9Winner;
+                        const totalWinner = result.totalWinner;
+                        const amount = bet.amount || 0;
+                        
+                        return (
+                            <div key={bet.id} className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200">
+                                <h5 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                    <span>💰</span>
+                                    <span>{bet.name} - ${amount} per side</span>
+                                </h5>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <div className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm">
+                                        <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Front 9</div>
+                                        <div className="text-sm font-bold text-gray-800">
+                                            {front9Winner && front9Winner !== 'Tie' ? (
+                                                <span>{front9Winner}: <span className="text-green-600">+${amount}</span></span>
+                                            ) : (
+                                                <span className="text-gray-500">No Winner</span>
+                                            )}
                                         </div>
                                     </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-                
-                {/* Match Play Bets */}
-                {allAvailableBets && allAvailableBets.filter(b => b.type === 'Match Play').map(bet => {
-                    const result = matchPlayResults[bet.id];
-                    if (!result) return null;
-                    
-                    const amount = bet.amount || 0;
-                    const matchResult = result.matchResult;
-                    const netWinnings = result.netWinnings || {};
-                    
-                    // Calculate team winnings and match winner if in teams mode
-                    let displayWinnings = {};
-                    let displayLabel = isTeamMode ? 'Team' : 'Player';
-                    let teamMatchWinner = null;
-                    
-                    if (isTeamMode && activeRound.teams) {
-                        // Calculate holes won per team and determine team match winner
-                        const teamHolesWon = {};
-                        activeRound.teams.forEach(team => {
-                            const teamPlayerNames = team.playerIds
-                                .map(playerId => {
-                                    const savedPlayer = savedPlayers.find(sp => sp.id === playerId);
-                                    return savedPlayer ? savedPlayer.name : null;
-                                })
-                                .filter(name => name !== null);
-                            
-                            // Calculate total holes won for this team
-                            const totalHolesWon = teamPlayerNames.reduce((sum, playerName) => {
-                                return sum + (result.holeWins?.[playerName] || 0);
-                            }, 0);
-                            teamHolesWon[team.name] = totalHolesWon;
-                            
-                            // Sum Match Play winnings for all players in this team
-                            const teamTotal = teamPlayerNames.reduce((sum, playerName) => {
-                                return sum + (netWinnings[playerName] || 0);
-                            }, 0);
-                            
-                            if (teamTotal !== 0) {
-                                displayWinnings[team.name] = teamTotal;
-                            }
-                        });
-                        
-                        // Determine team match winner (team with most holes won)
-                        const teamHolesWonArray = Object.entries(teamHolesWon).map(([teamName, holes]) => ({
-                            teamName,
-                            holes
-                        }));
-                        teamHolesWonArray.sort((a, b) => b.holes - a.holes);
-                        if (teamHolesWonArray.length > 0 && 
-                            teamHolesWonArray[0].holes > (teamHolesWonArray[1]?.holes || 0)) {
-                            teamMatchWinner = teamHolesWonArray[0].teamName;
-                        }
-                    } else {
-                        // Individual player winnings
-                        roundPlayers.forEach(player => {
-                            const net = netWinnings[player.name] || 0;
-                            if (net !== 0) {
-                                displayWinnings[player.name] = net;
-                            }
-                        });
-                    }
-                    
-                    // Use team match winner if in team mode, otherwise use individual match winner
-                    const displayMatchWinner = isTeamMode ? teamMatchWinner : result.matchWinner;
-                    
-                    return (
-                        <div key={bet.id} className="p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
-                            <h5 className="text-lg font-bold text-blue-800 mb-3">{bet.name} - ${amount} per match</h5>
-                            
-                            {/* Match Result */}
-                            <div className="bg-white p-3 rounded border border-blue-300 mb-3">
-                                <div className="text-xs font-semibold text-blue-700 uppercase mb-1">Match Winner</div>
-                                <div className="text-lg font-bold text-blue-900">
-                                    {displayMatchWinner && displayMatchWinner !== 'Tie' ? (
-                                        <span>{displayMatchWinner}: <span className="text-blue-600">+${amount}</span></span>
-                                    ) : (
-                                        <span className="text-gray-500">No Winner / Tie</span>
-                                    )}
-                                </div>
-                                {matchResult && (
-                                    <div className="text-sm text-blue-600 mt-1">
-                                        {matchResult}
+                                    <div className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm">
+                                        <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Back 9</div>
+                                        <div className="text-sm font-bold text-gray-800">
+                                            {back9Winner && back9Winner !== 'Tie' ? (
+                                                <span>{back9Winner}: <span className="text-green-600">+${amount}</span></span>
+                                            ) : (
+                                                <span className="text-gray-500">No Winner</span>
+                                            )}
+                                        </div>
                                     </div>
+                                    <div className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm">
+                                        <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Total</div>
+                                        <div className="text-sm font-bold text-gray-800">
+                                            {totalWinner && totalWinner !== 'Tie' ? (
+                                                <span>{totalWinner}: <span className="text-green-600">+${amount}</span></span>
+                                            ) : (
+                                                <span className="text-gray-500">No Winner</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    
+                    {/* Skins Bets */}
+                    {allAvailableBets && allAvailableBets.filter(b => b.type === 'Skins').map(bet => {
+                        const result = skinsResults[bet.id];
+                        if (!result) return null;
+                        
+                        const skinsWon = result.skinsWon || {};
+                        const totalWinnings = result.totalWinnings || {};
+                        const amount = bet.amount || 0;
+                        const hasWinners = Object.values(skinsWon).some(count => count > 0);
+                        const carryOver = bet.carryOver !== false; // Default to true if not specified
+                        
+                        return (
+                            <div key={bet.id} className="p-4 rounded-2xl bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h5 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                        <span>🎯</span>
+                                        <span>{bet.name} - ${amount} per skin</span>
+                                    </h5>
+                                    <span className="text-sm font-semibold text-gray-700 bg-white px-3 py-1 rounded-full border border-gray-200">
+                                        {carryOver ? 'Carry Over' : 'No Carry Over'}
+                                    </span>
+                                </div>
+                                {hasWinners ? (
+                                    <div className="space-y-2">
+                                        {roundPlayers.map(player => {
+                                            const count = skinsWon[player.name] || 0;
+                                            const winnings = totalWinnings[player.name] || 0;
+                                            if (count === 0) return null;
+                                            return (
+                                                <div key={player.name} className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm flex justify-between items-center">
+                                                    <span className="font-medium text-gray-800">{player.name}</span>
+                                                    <span className="text-sm text-gray-700">
+                                                        {count} skin{count !== 1 ? 's' : ''} × ${amount} = <span className="text-green-600 font-bold">${winnings.toFixed(0)}</span>
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-gray-500 italic bg-white rounded-xl p-3 border border-gray-200">No skins won</div>
                                 )}
                             </div>
-                            
-                            {/* Net Winnings per Player/Team */}
-                            {Object.keys(displayWinnings).length > 0 && (
-                                <div className="bg-white p-3 rounded border border-blue-300">
-                                    <div className="text-xs font-semibold text-blue-700 uppercase mb-2">Net Winnings ({displayLabel})</div>
-                                    <div className="space-y-2">
-                                        {Object.entries(displayWinnings).map(([name, net]) => (
-                                            <div key={name} className="flex justify-between items-center text-sm">
-                                                <span className="text-gray-700 font-semibold">{name}</span>
-                                                <span className={`font-bold ${net >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                                                    {net >= 0 ? '+' : ''}${net.toFixed(0)}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
-                
-                {/* Manual Bets */}
-                {allAvailableBets && betSelections && (() => {
-                    const manualBets = allAvailableBets.filter(b => b.type !== 'Skins' && b.type !== 'Nassau' && b.type !== 'Match Play' && b.type !== '9 Point');
-                    const betsWithWinners = manualBets.filter(bet => {
-                        const winner = betSelections[bet.name];
-                        return winner && winner !== 'N/A' && winner.trim() !== '';
-                    });
+                        );
+                    })}
                     
-                    if (betsWithWinners.length === 0) return null;
-                    
-                    return (
-                        <div className="p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
-                            <h5 className="text-lg font-bold text-blue-800 mb-3">Manual Bets</h5>
-                            <div className="space-y-2">
-                                {betsWithWinners.map(bet => {
-                                    const winner = betSelections[bet.name];
+                    {/* Junk/Side Bets */}
+                    {activeRound.selectedJunkTypes && activeRound.selectedJunkTypes.length > 0 && (
+                        <div className="p-4 rounded-2xl bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200">
+                            <h5 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                <span>🟢</span>
+                                <span>Junk / Side Bets</span>
+                            </h5>
+                            <div className="space-y-3">
+                                {activeRound.selectedJunkTypes.map(junkId => {
+                                    const junkType = JUNK_TYPES.find(j => j.id === junkId);
+                                    if (!junkType) return null;
+                                    
+                                    const pointValue = activeRound.junkPointValues?.[junkId] || 1;
+                                    const isLosingDots = junkId === 'losingDots';
+                                    
+                                    // Calculate totals for this junk type
+                                    const typeWinnings = {};
+                                    roundPlayers.forEach(player => {
+                                        let count = 0;
+                                        HOLE_NUMBERS.forEach(h => {
+                                            const holeKey = `hole${h}`;
+                                            const val = parseInt(activeRound.junkEvents?.[player.name]?.[holeKey]?.[junkId], 10) || 0;
+                                            count += val;
+                                        });
+                                        const points = isLosingDots ? -(count * pointValue) : (count * pointValue);
+                                        if (count > 0 || points !== 0) {
+                                            typeWinnings[player.name] = { count, points };
+                                        }
+                                    });
+                                    
+                                    if (Object.keys(typeWinnings).length === 0) return null;
+                                    
                                     return (
-                                        <div key={bet.id} className="bg-white p-2 rounded border border-blue-300 flex justify-between items-center">
-                                            <span className="font-medium text-gray-800">{bet.name}</span>
-                                            <span className="text-sm text-gray-700">
-                                                {winner}: <span className="text-blue-600 font-bold">+${bet.amount.toFixed(0)}</span>
-                                            </span>
+                                        <div key={junkId} className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm">
+                                            <div className="font-semibold text-gray-800 mb-2">{junkType.name} (${pointValue} per event)</div>
+                                            <div className="space-y-1">
+                                                {Object.entries(typeWinnings).map(([playerName, data]) => (
+                                                    <div key={playerName} className="flex justify-between items-center text-sm">
+                                                        <span className="text-gray-700">{playerName}</span>
+                                                        <span className={`font-bold ${data.points >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                            {data.count} × ${pointValue} = {data.points >= 0 ? '+' : ''}${data.points.toFixed(0)}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     );
                                 })}
                             </div>
                         </div>
-                    );
-                })()}
+                    )}
+                    
+                    {/* Match Play Bets */}
+                    {allAvailableBets && allAvailableBets.filter(b => b.type === 'Match Play').map(bet => {
+                        const result = matchPlayResults[bet.id];
+                        if (!result) return null;
+                        
+                        const amount = bet.amount || 0;
+                        const matchResult = result.matchResult;
+                        const netWinnings = result.netWinnings || {};
+                        
+                        // Calculate team winnings and match winner if in teams mode
+                        let displayWinnings = {};
+                        let displayLabel = isTeamMode ? 'Team' : 'Player';
+                        let teamMatchWinner = null;
+                        
+                        if (isTeamMode && activeRound.teams) {
+                            // Calculate holes won per team and determine team match winner
+                            const teamHolesWon = {};
+                            activeRound.teams.forEach(team => {
+                                const teamPlayerNames = team.playerIds
+                                    .map(playerId => {
+                                        const savedPlayer = savedPlayers.find(sp => sp.id === playerId);
+                                        return savedPlayer ? savedPlayer.name : null;
+                                    })
+                                    .filter(name => name !== null);
+                                
+                                // Calculate total holes won for this team
+                                const totalHolesWon = teamPlayerNames.reduce((sum, playerName) => {
+                                    return sum + (result.holeWins?.[playerName] || 0);
+                                }, 0);
+                                teamHolesWon[team.name] = totalHolesWon;
+                                
+                                // Sum Match Play winnings for all players in this team
+                                const teamTotal = teamPlayerNames.reduce((sum, playerName) => {
+                                    return sum + (netWinnings[playerName] || 0);
+                                }, 0);
+                                
+                                if (teamTotal !== 0) {
+                                    displayWinnings[team.name] = teamTotal;
+                                }
+                            });
+                            
+                            // Determine team match winner (team with most holes won)
+                            const teamHolesWonArray = Object.entries(teamHolesWon).map(([teamName, holes]) => ({
+                                teamName,
+                                holes
+                            }));
+                            teamHolesWonArray.sort((a, b) => b.holes - a.holes);
+                            if (teamHolesWonArray.length > 0 && 
+                                teamHolesWonArray[0].holes > (teamHolesWonArray[1]?.holes || 0)) {
+                                teamMatchWinner = teamHolesWonArray[0].teamName;
+                            }
+                        } else {
+                            // Individual player winnings
+                            roundPlayers.forEach(player => {
+                                const net = netWinnings[player.name] || 0;
+                                if (net !== 0) {
+                                    displayWinnings[player.name] = net;
+                                }
+                            });
+                        }
+                        
+                        // Use team match winner if in team mode, otherwise use individual match winner
+                        const displayMatchWinner = isTeamMode ? teamMatchWinner : result.matchWinner;
+                        
+                        return (
+                            <div key={bet.id} className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200">
+                                <h5 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                    <span>⚔️</span>
+                                    <span>{bet.name} - ${amount} per match</span>
+                                </h5>
+                                
+                                {/* Match Result */}
+                                <div className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm mb-3">
+                                    <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Match Winner</div>
+                                    <div className="text-lg font-bold text-gray-800">
+                                        {displayMatchWinner && displayMatchWinner !== 'Tie' ? (
+                                            <span>{displayMatchWinner}: <span className="text-green-600">+${amount}</span></span>
+                                        ) : (
+                                            <span className="text-gray-500">No Winner / Tie</span>
+                                        )}
+                                    </div>
+                                    {matchResult && (
+                                        <div className="text-sm text-gray-600 mt-1">
+                                            {matchResult}
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                {/* Net Winnings per Player/Team */}
+                                {Object.keys(displayWinnings).length > 0 && (
+                                    <div className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm">
+                                        <div className="text-xs font-semibold text-gray-600 uppercase mb-2">Net Winnings ({displayLabel})</div>
+                                        <div className="space-y-2">
+                                            {Object.entries(displayWinnings).map(([name, net]) => (
+                                                <div key={name} className="flex justify-between items-center text-sm">
+                                                    <span className="text-gray-700 font-semibold">{name}</span>
+                                                    <span className={`font-bold ${net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                        {net >= 0 ? '+' : ''}${net.toFixed(0)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                    
+                    {/* Manual Bets */}
+                    {allAvailableBets && betSelections && (() => {
+                        const manualBets = allAvailableBets.filter(b => b.type !== 'Skins' && b.type !== 'Nassau' && b.type !== 'Match Play' && b.type !== '9 Point');
+                        const betsWithWinners = manualBets.filter(bet => {
+                            const winner = betSelections[bet.name];
+                            return winner && winner !== 'N/A' && winner.trim() !== '';
+                        });
+                        
+                        if (betsWithWinners.length === 0) return null;
+                        
+                        return (
+                            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200">
+                                <h5 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                    <span>📝</span>
+                                    <span>Manual Bets</span>
+                                </h5>
+                                <div className="space-y-2">
+                                    {betsWithWinners.map(bet => {
+                                        const winner = betSelections[bet.name];
+                                        return (
+                                            <div key={bet.id} className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm flex justify-between items-center">
+                                                <span className="font-medium text-gray-800">{bet.name}</span>
+                                                <span className="text-sm text-gray-700">
+                                                    {winner}: <span className="text-green-600 font-bold">+${bet.amount.toFixed(0)}</span>
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })()}
+                </div>
             </div>
 
             <p className="mt-8 text-xs text-gray-500 text-center">
@@ -3377,6 +3378,8 @@ const Scorecard = ({
     setIsShareModalOpen,
     isScorecardModalOpen,
     setIsScorecardModalOpen,
+    isEndRoundConfirmModalOpen,
+    setIsEndRoundConfirmModalOpen,
     shareCodeInput,
     setShareCodeInput,
     handleEnterShareCode,
@@ -3839,7 +3842,7 @@ const Scorecard = ({
                 </button>
                 <div className="text-center">
                     <div className="text-2xl font-bold text-blue-800">Hole {currentHole}</div>
-                    <div className="text-sm text-gray-600">Par {holeData[`hole${currentHole}`]?.par || 4}</div>
+                    <div className="text-sm text-gray-600">Par {holeData[`hole${currentHole}`]?.par || 4} - HCP {holeData[`hole${currentHole}`]?.index || currentHole}</div>
                 </div>
                 <button
                     onClick={() => setCurrentHole(Math.min(18, currentHole + 1))}
@@ -3956,48 +3959,54 @@ const Scorecard = ({
                                             ↓
                                         </button>
                                     </div>
-                                    <div className="h-12 w-12 rounded-full flex-shrink-0 overflow-hidden border-2 border-white/30 relative bg-gray-800">
+                                  {/*  <div className="h-12 w-12 rounded-full flex-shrink-0 overflow-hidden border-2 border-white/30 relative bg-gray-800">
                                         <div className="absolute inset-0 bg-gray-800 text-white flex items-center justify-center text-sm font-bold z-0">
                                             {getInitials(player.name).toUpperCase()}
                                         </div>
-                                    </div>
+                                    </div>*/}
                                     <div className="flex-1 flex flex-col gap-2">
                                         <div className="flex flex-col">
                                             <div className="flex items-center gap-2">
-                                                <div className="text-white font-semibold text-base">
-                                                    {player.name}
+                                                <div className="text-white font-semibold text-base flex items-center gap-2">
+                                                    {(() => {
+                                                        // Extract first name
+                                                        const nameParts = (player.name || '').trim().split(/\s+/);
+                                                        //return nameParts[0] || player.name;
+                                                        return formatName(player.name);
+                                                    })()}
+                                                    <span className="text-white text-xs font-normal opacity-90">
+                                                        ({player.handicap || 0})
+                                                    </span>
                                                 </div>
-                                                {(() => {
-                                                    // Find player's team if in team mode
-                                                    if (activeRound?.teamMode === 'teams' && activeRound?.teams && activeRound.teams.length > 0) {
-                                                        const playerObj = players.find(p => p.name === player.name);
-                                                        if (playerObj) {
-                                                            const playerTeam = activeRound.teams.find(team => 
-                                                                team.playerIds && team.playerIds.includes(playerObj.id)
-                                                            );
-                                                            if (playerTeam) {
-                                                                return (
-                                                                    <span className="text-white text-xs font-medium bg-white/20 px-2 py-0.5 rounded">
-                                                                        {playerTeam.name}
-                                                                    </span>
-                                                                );
-                                                            }
-                                                        }
-                                                    }
-                                                    return null;
-                                                })()}
+                                                
                                                 {hasStroke && (
                                                     <>
                                                         <span className="text-white text-lg" title="Stroke hole">⛳</span>
                                                         <span className="text-white text-xs font-bold bg-white/20 px-2 py-0.5 rounded">
-                                                            Stroke hole!
+                                                            Stroke<br></br>Hole!
                                                         </span>
                                                     </>
                                                 )}
                                             </div>
-                                            <div className="text-white text-xs">
-                                                HCP {player.handicap || 0}
-                                            </div>
+                                            {(() => {
+                                                // Find player's team if in team mode - display below name
+                                                if (activeRound?.teamMode === 'teams' && activeRound?.teams && activeRound.teams.length > 0) {
+                                                    const playerObj = players.find(p => p.name === player.name);
+                                                    if (playerObj) {
+                                                        const playerTeam = activeRound.teams.find(team => 
+                                                            team.playerIds && team.playerIds.includes(playerObj.id)
+                                                        );
+                                                        if (playerTeam) {
+                                                            return (
+                                                                <div className="text-white text-xs font-medium bg-white/20 px-2 py-0.5 rounded inline-block mt-1">
+                                                                    {playerTeam.name}
+                                                                </div>
+                                                            );
+                                                        }
+                                                    }
+                                                }
+                                                return null;
+                                            })()}
                                         </div>
                                         {/* Score adjuster underneath */}
                                         <div className="flex items-center gap-2">
@@ -4103,16 +4112,19 @@ const Scorecard = ({
 
             {/* Bet Summary Card */}
             {(() => {
+                // Check if there are any bets actually selected for this round
+                const roundBets = activeRound?.roundBets || [];
+                const hasJunk = activeRound?.selectedJunkTypes && activeRound.selectedJunkTypes.length > 0;
+                
+                // Only show if there are any bets selected for the round
+                if (roundBets.length === 0 && !hasJunk) {
+                    return null;
+                }
+                
                 const nassauBets = allAvailableBets?.filter(b => b.type === 'Nassau') || [];
                 const skinsBets = allAvailableBets?.filter(b => b.type === 'Skins') || [];
                 const matchPlayBets = allAvailableBets?.filter(b => b.type === 'Match Play') || [];
                 const ninePointBets = allAvailableBets?.filter(b => b.type === '9 Point') || [];
-                const hasJunk = selectedJunkTypes && selectedJunkTypes.length > 0;
-                
-                // Only show if there are any bets
-                if (nassauBets.length === 0 && skinsBets.length === 0 && matchPlayBets.length === 0 && ninePointBets.length === 0 && !hasJunk) {
-                    return null;
-                }
                 
                 const nassauResults = calculatedScores?.nassauResults || {};
                 const skinsResults = calculatedScores?.skinsResults || {};
@@ -4238,7 +4250,7 @@ const Scorecard = ({
                         </div>
                         <div className="space-y-2">
                             {/* Nassau */}
-                            {nassauBets.map(bet => {
+                            {nassauBets.filter(bet => roundBets.some(rb => rb.id === bet.id || rb.name === bet.name)).map(bet => {
                                 const result = nassauResults[bet.id];
                                 if (!result) return null;
                                 
@@ -4267,7 +4279,7 @@ const Scorecard = ({
                             })}
                             
                             {/* Skins */}
-                            {skinsBets.map(bet => {
+                            {skinsBets.filter(bet => roundBets.some(rb => rb.id === bet.id || rb.name === bet.name)).map(bet => {
                                 const result = skinsResults[bet.id];
                                 if (!result || !result.grossWinnings) return null;
                                 
@@ -4321,7 +4333,7 @@ const Scorecard = ({
                             })}
                             
                             {/* Match Play */}
-                            {matchPlayBets.map(bet => {
+                            {matchPlayBets.filter(bet => roundBets.some(rb => rb.id === bet.id || rb.name === bet.name)).map(bet => {
                                 const result = matchPlayResults[bet.id];
                                 if (!result || !result.matchWinner) return null;
                                 
@@ -4336,7 +4348,7 @@ const Scorecard = ({
                             })}
                             
                             {/* 9 Point */}
-                            {ninePointBets.map(bet => {
+                            {ninePointBets.filter(bet => roundBets.some(rb => rb.id === bet.id || rb.name === bet.name)).map(bet => {
                                 const result = ninePointResults[bet.id];
                                 if (!result || !result.grossWinnings) return null;
                                 
@@ -4476,19 +4488,57 @@ const Scorecard = ({
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    Scorecard
+                    
                 </button>
                 <button
-                    onClick={handleEndRound}
+                    onClick={() => setIsEndRoundConfirmModalOpen(true)}
                     disabled={!dbReady}
                     className="h-14 rounded-2xl bg-red-600 text-white font-extrabold text-sm shadow-md hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed px-6 flex items-center justify-center gap-2"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                    End Round
+                    
                 </button>
                 
+            </div>
+        )}
+        
+        {/* End Round Confirmation Modal */}
+        {isEndRoundConfirmModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60">
+                <div className="bg-white w-full sm:max-w-xl sm:rounded-2xl rounded-t-2xl shadow-2xl p-6 max-h-[85vh] overflow-y-auto">
+                    <div className="text-center mb-6">
+                        <div className="flex items-center justify-center mb-4">
+                            <div className="bg-red-100 rounded-full p-3">
+                                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                        </div>
+                        <h3 className="text-2xl font-bold text-gray-800 mb-2">Ready to End the Round?</h3>
+                        <p className="text-gray-600">
+                            Once you end the round, you won't be able to make changes to scores. Make sure all scores are entered correctly.
+                        </p>
+                    </div>
+                    <div className="flex space-x-3">
+                        <button
+                            onClick={() => setIsEndRoundConfirmModalOpen(false)}
+                            className="flex-1 px-4 py-3 bg-gray-200 text-gray-800 font-medium rounded-xl hover:bg-gray-300 transition duration-150"
+                        >
+                            Close
+                        </button>
+                        <button
+                            onClick={() => {
+                                setIsEndRoundConfirmModalOpen(false);
+                                handleEndRound();
+                            }}
+                            className="flex-1 px-4 py-3 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 transition duration-150 shadow-md"
+                        >
+                            Confirm
+                        </button>
+                    </div>
+                </div>
             </div>
         )}
         
@@ -4906,12 +4956,11 @@ const App = () => {
     const [isShareCodeErrorModalOpen, setIsShareCodeErrorModalOpen] = useState(false);
     const [sharedRoundCustomBets, setSharedRoundCustomBets] = useState([]);
 
-    // When there is no active round (and not viewing a shared round), default to no players selected for the next round
+    // On initial load, reset favorites initialization flag
     useEffect(() => {
-        if (!activeRoundId && !isViewingSharedRound) {
-            setRoundPlayerIds([]);
-        }
-    }, [activeRoundId, isViewingSharedRound]);
+        hasInitializedFavoritesRef.current = false;
+        setRoundPlayerIds([]);
+    }, []);
     
     // View state for bottom navigation
     const [currentView, setCurrentView] = useState('play'); // 'play', 'rounds', 'management', 'courses', or 'profile'
@@ -5018,6 +5067,7 @@ const App = () => {
 
     // UI State
     const [isRoundEndModalOpen, setIsRoundEndModalOpen] = useState(false);
+    const [isEndRoundConfirmModalOpen, setIsEndRoundConfirmModalOpen] = useState(false);
 
 const [isPlayersModalOpen, setIsPlayersModalOpen] = useState(false);
 const [isBetsModalOpen, setIsBetsModalOpen] = useState(false);
@@ -5025,6 +5075,7 @@ const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
 const [isBetsHelpModalOpen, setIsBetsHelpModalOpen] = useState(false);
 const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
     const finalSummaryRef = useRef(null);
+    const hasInitializedFavoritesRef = useRef(false);
 
     // Active Round Data States
     const [betSelections, setBetSelections] = useState({});
@@ -5885,10 +5936,17 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
             // Keep roundPlayerIds in sync with saved players, but don't add/remove
             // if the user has already customized the round roster.
+            // Default to favorites on refresh - pre-load only favorites (only once on initial load)
             setRoundPlayerIds(prevIds => {
                 if (!prevIds || prevIds.length === 0) {
-                    // Default: all saved players are in the round
-                    return playerList.map(p => p.id);
+                    // On initial load, pre-load only favorites
+                    if (!hasInitializedFavoritesRef.current && playerList.length > 0) {
+                        hasInitializedFavoritesRef.current = true;
+                        const favoritePlayers = playerList.filter(p => p.favorite === true);
+                        return favoritePlayers.map(p => p.id);
+                    }
+                    // If already initialized or no players, return empty
+                    return [];
                 }
                 const validIds = new Set(playerList.map(p => p.id));
                 return prevIds.filter(id => validIds.has(id));
@@ -6166,7 +6224,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                 createdAt: serverTimestamp(),
             });
 
-            // 8. Update local state for the active round
+            // 8. Update local state
             setActiveRoundId(newRoundRef.id);
             setBetSelections(initialRoundBetWinners);
             setScores(initialRoundScores);
@@ -6174,28 +6232,9 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             setJunkEvents({}); // Clear junk checkboxes
             setSelectedCourseId(''); // Clear course selection
             setLastLoadedScoresRoundId(newRoundRef.id);
-
-            // 9. Reset Play tab "next round" configuration so it's independent of the active round
-            //    Once a round is started, its players/bets are locked to that round and the Play tab
-            //    should look like a fresh, not-yet-configured round.
-            setRoundPlayerIds([]);
-            setBetAmounts({
-                Skins: 0,
-                Nassau: 0,
-                '9 Point': 0,
-                'Match Play': 0,
-                Vegas: 0,
-                Greenies: 0,
-                Sandies: 0,
-                Poleys: 0,
-                'Gaining Dots': 0,
-                'Losing Dots': 0
-            });
-            setSkinsCarryOver(false);
-            // Reset team builder state for the next round setup
+            // Reset teams when starting new round
             setTeamMode('singles');
             setTeams([]);
-
             // Switch to rounds view when starting a new round
             setCurrentView('rounds');
         } catch (error) {
@@ -6669,6 +6708,24 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             });
         } catch (error) {
             handleError("Failed to update player handicap:", error);
+        }
+    };
+
+    const handleTogglePlayerFavorite = async (playerId) => {
+        if (!db || !userId || !playerId) return;
+        
+        try {
+            const player = players.find(p => p.id === playerId);
+            if (!player) return;
+            
+            const currentFavorite = player.favorite || false;
+            const playerRef = doc(db, getPlayerCollectionPath(userId), playerId);
+            await updateDoc(playerRef, {
+                favorite: !currentFavorite,
+                lastUpdated: serverTimestamp(),
+            });
+        } catch (error) {
+            handleError("Failed to toggle player favorite:", error);
         }
     };
 
@@ -7342,7 +7399,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             {/* Header */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                 <h1 className="text-2xl font-extrabold text-gray-900 mt-1">Strokes-N-Chokes</h1>
-                <p className="text-sm text-gray-600 mt-1">Set it up fast. Argue later.</p>
+                <p className="text-sm text-gray-600 mt-1">Get ready to crush some balls.</p>
             </div>
 
             {/* Course Card */}
@@ -7393,7 +7450,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                     <div className="text-lg font-semibold text-gray-500">
                         {(() => {
                             const count = (roundPlayerIds && roundPlayerIds.length) ? roundPlayerIds.length : 0;
-                            return count === 0 ? 'Players (Select Below)' : `Players (${count})`;
+                            return count === 0 ? 'Players' : `Players (${count})`;
                         })()}
                     </div>
                     <button
@@ -7411,11 +7468,51 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                     {(() => {
                         const allPlayers = players || [];
                         const inRoundIds = new Set(roundPlayerIds || []);
+                        
+                        // Helper to get first name for sorting
+                        const getFirstName = (name) => {
+                            const parts = (name || '').trim().split(/\s+/);
+                            return parts[0] || '';
+                        };
+                        
+                        // Show players who are in the round, sorted (me first, then favorites, then alphabetically)
+                        const playersInRound = allPlayers
+                            .filter(p => inRoundIds.has(p.id))
+                            .sort((a, b) => {
+                                // Always put "me" player first
+                                if (a.id === myPlayerId) return -1;
+                                if (b.id === myPlayerId) return 1;
+                                
+                                // Then favorites
+                                const aIsFavorite = a.favorite || false;
+                                const bIsFavorite = b.favorite || false;
+                                if (aIsFavorite && !bIsFavorite) return -1;
+                                if (!aIsFavorite && bIsFavorite) return 1;
+                                
+                                // Then alphabetically by first name
+                                return getFirstName(a.name).localeCompare(getFirstName(b.name));
+                            });
+                        
+                        // If no players in round, show favorites as fallback
+                        const favoritePlayers = allPlayers
+                            .filter(p => p.favorite === true)
+                            .sort((a, b) => getFirstName(a.name).localeCompare(getFirstName(b.name)));
+                        
+                        const playersToShow = playersInRound.length > 0 ? playersInRound : favoritePlayers;
 
                         if (!allPlayers.length) {
                             return (
                                 <div className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-xl p-3">
                                     No players saved yet. Add players to your account first.
+                                </div>
+                            );
+                        }
+
+                        // If no players in round and no favorites, show message to use the modal
+                        if (playersToShow.length === 0) {
+                            return (
+                                <div className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-xl p-3">
+                                    No players in round. Click the &gt; button to add players to your round.
                                 </div>
                             );
                         }
@@ -7461,10 +7558,10 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                             });
                         };
                         
-                        // Group players into rows of 2
+                        // Group players to show into rows of 2
                         const rows = [];
-                        for (let i = 0; i < allPlayers.length; i += 2) {
-                            rows.push(allPlayers.slice(i, i + 2));
+                        for (let i = 0; i < playersToShow.length; i += 2) {
+                            rows.push(playersToShow.slice(i, i + 2));
                         }
 
                         const inRoundCount = inRoundIds.size;
@@ -7503,7 +7600,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                                                         </div>
                                                         <div className="min-w-0 flex-1 text-left">
                                                             <div className="text-sm font-semibold truncate">
-                                                                {formatName(p.name)}
+                                                                {formatName(p.name)}.
                                                             </div>
                                                             <div className="text-xs opacity-90">
                                                                 HCP {p.handicap ?? 0}
@@ -7902,7 +7999,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                                 </svg>
                             </button>
                             <p className="text-xs text-gray-500 mt-2 text-center">
-                                {(!selectedCourseId || playerCount === 0) ? 'Select a course and at least 2 players.' : 'Ready to go.'}
+                                {(!selectedCourseId || playerCount === 0) ? 'Select a course and at least 2 players.' : 'Make em Long, Hit em Hard.'}
                             </p>
                         </>
                     );
@@ -8018,6 +8115,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                         setRoundPlayerIds={setRoundPlayerIds}
                         myPlayerId={myPlayerId}
                         handleUpdatePlayerHandicap={handleUpdatePlayerHandicap}
+                        handleTogglePlayerFavorite={handleTogglePlayerFavorite}
                     />
 
                     <div className="mt-4">
@@ -8292,6 +8390,8 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                                 setIsShareModalOpen={setIsShareModalOpen}
                                 isScorecardModalOpen={isScorecardModalOpen}
                                 setIsScorecardModalOpen={setIsScorecardModalOpen}
+                                isEndRoundConfirmModalOpen={isEndRoundConfirmModalOpen}
+                                setIsEndRoundConfirmModalOpen={setIsEndRoundConfirmModalOpen}
                                 shareCodeInput={shareCodeInput}
                                 setShareCodeInput={setShareCodeInput}
                                 handleEnterShareCode={handleEnterShareCode}
@@ -8503,7 +8603,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             <div 
                 className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-300 shadow-lg z-40"
                 style={{ 
-                    paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
+                    paddingBottom: 'calc(5px + env(safe-area-inset-bottom, 0px))',
                     minHeight: 'calc(70px + env(safe-area-inset-bottom, 0px))'
                 }}
             >
