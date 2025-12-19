@@ -6597,9 +6597,8 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             // 5. Generate share code
             const shareCode = generateShareCode();
             
-            // 6. Reset teams BEFORE creating the round (always start with singles mode)
-            setTeamMode('singles');
-            setTeams([]);
+            // 6. Use current team settings (don't reset - use what user selected)
+            // Only reset teamsDraft since it's just a working copy
             setTeamsDraft([]);
             
             // 7. Create New Round
@@ -6616,8 +6615,8 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                 junkPointValues: junkPointValues || {},
                 junkEvents: {},
                 handicapMode: handicapMode || 'lowest', // Store handicap calculation mode
-                teamMode: 'singles', // Always start new rounds in singles mode
-                teams: [], // Always start with no teams
+                teamMode: teamMode || 'singles', // Use current team mode (from user selection)
+                teams: teamMode === 'teams' ? teams : [], // Store teams if in teams mode
                 shareCode: shareCode, // Store share code
                 betAmounts: betAmounts, // Store bet amounts for this round
                 skinsCarryOver: skinsCarryOver, // Store skins carry-over setting
@@ -7852,11 +7851,23 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             {/* Players Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                 <div className="flex items-center justify-between">
-                    <div className="text-lg font-semibold text-gray-500">
-                        {(() => {
-                            const count = (roundPlayerIds && roundPlayerIds.length) ? roundPlayerIds.length : 0;
-                            return count === 0 ? 'Players' : `Players (${count})`;
-                        })()}
+                    <div className="flex items-center gap-2">
+                        <div className="text-lg font-semibold text-gray-500">
+                            {(() => {
+                                const count = (roundPlayerIds && roundPlayerIds.length) ? roundPlayerIds.length : 0;
+                                return count === 0 ? 'Players' : `Players (${count})`;
+                            })()}
+                        </div>
+                        {teamMode === 'teams' && teams && teams.length > 0 && (
+                            <span className="text-xs font-semibold px-2 py-1 rounded-full bg-green-100 text-green-700 border border-green-300">
+                                Teams
+                            </span>
+                        )}
+                        {teamMode === 'singles' && (
+                            <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-300">
+                                Singles
+                            </span>
+                        )}
                     </div>
                     <button
                         type="button"
@@ -7980,13 +7991,45 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                                                 const globalIndex = rowIndex * 2 + playerIndex;
                                                 const isInRound = inRoundIds.has(p.id);
                                                 const isFavorite = p.favorite === true;
-                                                // Favorites always shown with gray background unless selected
-                                                // Selected players get blue gradient
-                                                const cardClasses = isInRound
-                                                    ? 'bg-gradient-to-r from-blue-600 to-black border-white/20 text-white'
-                                                    : isFavorite
-                                                        ? 'bg-gray-200 border-gray-300 text-gray-900 hover:bg-gray-300'
-                                                        : 'bg-gray-100 border-gray-200 text-gray-900 hover:bg-gray-200';
+                                                
+                                                // Find which team this player belongs to (if teams mode)
+                                                let playerTeam = null;
+                                                if (teamMode === 'teams' && teams && teams.length > 0) {
+                                                    playerTeam = teams.find(team => 
+                                                        team.playerIds && team.playerIds.includes(p.id)
+                                                    );
+                                                }
+                                                
+                                                // Define team colors (different gradient for each team)
+                                                const teamColors = [
+                                                    'bg-gradient-to-r from-blue-600 to-black',      // Team 1: Blue
+                                                    'bg-gradient-to-r from-green-600 to-black',   // Team 2: Green
+                                                    'bg-gradient-to-r from-purple-600 to-black',  // Team 3: Purple
+                                                    'bg-gradient-to-r from-orange-600 to-black',  // Team 4: Orange
+                                                    'bg-gradient-to-r from-red-600 to-black',      // Team 5: Red
+                                                    'bg-gradient-to-r from-yellow-600 to-black',  // Team 6: Yellow
+                                                ];
+                                                
+                                                // Determine card classes based on team mode and selection
+                                                let cardClasses;
+                                                if (isInRound) {
+                                                    if (playerTeam && teamMode === 'teams') {
+                                                        // Player is in a team - use team color
+                                                        const teamIndex = teams.findIndex(t => t.id === playerTeam.id);
+                                                        const teamColor = teamColors[teamIndex % teamColors.length] || teamColors[0];
+                                                        cardClasses = `${teamColor} border-white/20 text-white`;
+                                                    } else {
+                                                        // Player is selected but not in a team (singles mode or not assigned to team)
+                                                        cardClasses = 'bg-gradient-to-r from-blue-600 to-black border-white/20 text-white';
+                                                    }
+                                                } else {
+                                                    // Player not selected
+                                                    if (isFavorite) {
+                                                        cardClasses = 'bg-gray-200 border-gray-300 text-gray-900 hover:bg-gray-300';
+                                                    } else {
+                                                        cardClasses = 'bg-gray-100 border-gray-200 text-gray-900 hover:bg-gray-200';
+                                                    }
+                                                }
                                                 
                                                 return (
                                                     <button
@@ -8041,9 +8084,9 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                                                 });
                                                 setIsTeamsModalOpen(true);
                                             }}
-                                            className="w-full inline-flex items-center justify-center px-4 py-2 rounded-2xl bg-[#14532D] text-white text-sm font-bold shadow-md hover:brightness-110 transition-colors"
+                                            className="w-full inline-flex items-center justify-center px-4 py-2 rounded-2xl bg-[#FFFFFF] text-gray text-sm font-bold shadow-md hover:brightness-110 transition-colors"
                                         >
-                                            Create Teams
+                                           + Play as Teams
                                         </button>
                                     </div>
                                 )}
@@ -8474,13 +8517,18 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                                         return { ...team, name: autoName };
                                     });
                                     
-                                    setTeams(nonEmptyTeamsWithNames);
-                                    // If there are no valid teams, treat it as a singles game
+                                    // If there are no valid teams, revert to singles mode and clear teams
                                     if (nonEmptyTeamsWithNames.length > 0) {
+                                        // Save teams and set to teams mode
+                                        setTeams(nonEmptyTeamsWithNames);
                                         setTeamMode('teams');
                                     } else {
+                                        // No teams - revert to singles mode and clear teams array
+                                        setTeams([]);
                                         setTeamMode('singles');
                                     }
+                                    // Clear the draft since we've saved
+                                    setTeamsDraft([]);
                                     setIsTeamsModalOpen(false);
                                 }}
                                 className="px-4 py-2 text-sm font-bold text-white bg-[#14532D] rounded-2xl shadow-md hover:brightness-110 disabled:opacity-50"
