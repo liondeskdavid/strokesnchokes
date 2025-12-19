@@ -2382,6 +2382,7 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                 skins: 0,
                 matchPlay: 0,
                 ninePoint: 0,
+                vegas: 0,
                 junk: 0,
                 total: 0 // Will be calculated as sum of gross winnings
             };
@@ -2397,6 +2398,8 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                         nassau: 0,
                         skins: 0,
                         matchPlay: 0,
+                        ninePoint: 0,
+                        vegas: 0,
                         junk: 0,
                         total: 0
                     };
@@ -2576,10 +2579,23 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                     }
                 });
                 
+                // Vegas - Only show positive winnings (what they earned)
+                const vegasBets = allAvailableBets.filter(b => b.type === 'Vegas');
+                const vegasResults = calculatedScores.vegasResults || {};
+                vegasBets.forEach(bet => {
+                    const result = vegasResults[bet.id];
+                    if (result && result.teamWinnings) {
+                        const teamWinning = result.teamWinnings[team.name] || 0;
+                        if (teamWinning > 0) {
+                            breakdown[team.name].vegas += teamWinning;
+                        }
+                    }
+                });
+
                 // Calculate total gross winnings for team
                 breakdown[team.name].total = breakdown[team.name].manual + breakdown[team.name].nassau + 
                                              breakdown[team.name].skins + breakdown[team.name].matchPlay + 
-                                             breakdown[team.name].ninePoint + breakdown[team.name].junk;
+                                             breakdown[team.name].ninePoint + breakdown[team.name].vegas + breakdown[team.name].junk;
             });
         } else {
             // For singles, calculate directly
@@ -2697,6 +2713,20 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                 }
             });
 
+            // Vegas - Only show positive winnings (what they earned)
+            const vegasBetsForBreakdown = allAvailableBets.filter(b => b.type === 'Vegas');
+            const vegasResultsForBreakdown = calculatedScores.vegasResults || {};
+            vegasBetsForBreakdown.forEach(bet => {
+                const result = vegasResultsForBreakdown[bet.id];
+                if (result && result.netWinnings) {
+                    Object.entries(result.netWinnings).forEach(([playerName, netWinnings]) => {
+                        if (breakdown[playerName] && netWinnings > 0) {
+                            breakdown[playerName].vegas += netWinnings;
+                        }
+                    });
+                }
+            });
+
             // Junk - Only show positive winnings (what they earned, not what they lost)
             Object.entries(junkWinnings).forEach(([playerName, net]) => {
                 if (breakdown[playerName] && net > 0) {
@@ -2708,7 +2738,7 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
             Object.keys(breakdown).forEach(playerName => {
                 breakdown[playerName].total = breakdown[playerName].manual + breakdown[playerName].nassau + 
                                              breakdown[playerName].skins + breakdown[playerName].matchPlay + 
-                                             breakdown[playerName].ninePoint + breakdown[playerName].junk;
+                                             breakdown[playerName].ninePoint + breakdown[playerName].vegas + breakdown[playerName].junk;
             });
         }
 
@@ -3362,7 +3392,7 @@ const Scorecard = ({
     activeRoundId,
     scores, 
     handleScoreChange, 
-    handleSaveScores, 
+    handleSaveScores,
     handleEndRound, 
     dbReady, 
     db,
@@ -3839,7 +3869,7 @@ const Scorecard = ({
                     return (
                         <div className="mt-6 rounded-xl px-4 py-3 border border-white/20 bg-gradient-to-r from-green-700 to-black">
                             <div className="text-white font-semibold text-base mb-3 flex items-center gap-2">
-                                <span>$$</span>
+                                <span>💰</span>
                                 <span>Bet Summary</span>
                             </div>
                             <div className="space-y-2">
@@ -4440,6 +4470,7 @@ const Scorecard = ({
                 const hasSkins = (betAmounts.Skins || 0) > 0;
                 const hasMatchPlay = (betAmounts['Match Play'] || 0) > 0;
                 const hasNinePoint = (betAmounts['9 Point'] || 0) > 0;
+                const hasVegas = (betAmounts.Vegas || 0) > 0;
                 
                 // Only show if there are any bets selected for the round
                 // if (roundBets.length === 0 && !hasJunk) {
@@ -4450,11 +4481,30 @@ const Scorecard = ({
                 const skinsBets = allAvailableBets?.filter(b => b.type === 'Skins') || [];
                 const matchPlayBets = allAvailableBets?.filter(b => b.type === 'Match Play') || [];
                 const ninePointBets = allAvailableBets?.filter(b => b.type === '9 Point') || [];
+                let vegasBets = allAvailableBets?.filter(b => b.type === 'Vegas') || [];
+                
+                // If Vegas is selected via betAmounts but no bet exists in allAvailableBets, create a temporary one
+                // Use the same ID format as the calculation
+                if (hasVegas && vegasBets.length === 0) {
+                    vegasBets = [{
+                        id: 'vegas_temp',
+                        type: 'Vegas',
+                        name: 'Vegas',
+                        amount: betAmounts.Vegas || 0
+                    }];
+                } else if (hasVegas && vegasBets.length > 0) {
+                    // If bet exists but amount is different, update it
+                    vegasBets = vegasBets.map(bet => ({
+                        ...bet,
+                        amount: bet.amount || betAmounts.Vegas || 0
+                    }));
+                }
                 
                 const nassauResults = calculatedScores?.nassauResults || {};
                 const skinsResults = calculatedScores?.skinsResults || {};
                 const matchPlayResults = calculatedScores?.matchPlayResults || {};
                 const ninePointResults = calculatedScores?.ninePointResults || {};
+                const vegasResults = calculatedScores?.vegasResults || {};
                 
                 // Check if team mode
                 const isTeamMode = activeRound?.teamMode === 'teams' && activeRound?.teams && activeRound.teams.length > 0;
@@ -4575,7 +4625,7 @@ const Scorecard = ({
                 return (
                     <div className="mt-4 rounded-xl px-4 py-3 border border-white/20 bg-gradient-to-r from-green-700 to-black">
                         <div className="text-white font-semibold text-base mb-3 flex items-center gap-2">
-                            <span>$$</span>
+                            <span>💰</span>
                             <span>Bet Summary</span>
                         </div>
                         <div className="space-y-2">
@@ -4793,6 +4843,96 @@ const Scorecard = ({
                                         </div>
                                     );
                                 }
+                            })}
+                            
+                            {/* Vegas */}
+                            {hasVegas && vegasBets.map(bet => {
+                                const result = vegasResults[bet.id];
+                                
+                                // Show bet even if results aren't calculated yet
+                                if (!result || !result.teamWinnings) {
+                                    // Check if we have the right setup for Vegas
+                                    const roundPlayers = calculatedScores?.players || [];
+                                    const roundTeams = activeRound?.teams || [];
+                                    const isTeamMode = activeRound?.teamMode === 'teams' && roundTeams.length === 2;
+                                    
+                                    if (roundPlayers.length !== 4) {
+                                        return (
+                                            <div key={bet.id} className="text-white text-sm">
+                                                <span className="font-semibold">Vegas:</span> Requires 4 players
+                                            </div>
+                                        );
+                                    }
+                                    
+                                    if (!isTeamMode || roundTeams.length !== 2) {
+                                        return (
+                                            <div key={bet.id} className="text-white text-sm">
+                                                <span className="font-semibold">Vegas:</span> Requires 2 teams
+                                            </div>
+                                        );
+                                    }
+                                    
+                                    return (
+                                        <div key={bet.id} className="text-white text-sm">
+                                            <span className="font-semibold">Vegas:</span> In Progress
+                                        </div>
+                                    );
+                                }
+                                
+                                const teamWinnings = result.teamWinnings || {};
+                                const holeResults = result.holeResults || {};
+                                const teamNames = Object.keys(teamWinnings);
+                                
+                                // Get the cumulative score for each team
+                                const getCurrentTeamScore = (teamName) => {
+                                    // Use cumulative scores from the result if available
+                                    if (result.cumulativeScores && result.cumulativeScores[teamName] !== undefined) {
+                                        return result.cumulativeScores[teamName];
+                                    }
+                                    // Fallback: find the most recent hole's cumulative score
+                                    const holes = Object.keys(holeResults).map(Number).sort((a, b) => b - a);
+                                    for (const hole of holes) {
+                                        const holeResult = holeResults[hole];
+                                        if (holeResult.team1.name === teamName && holeResult.team1.cumulative !== undefined) {
+                                            return holeResult.team1.cumulative;
+                                        }
+                                        if (holeResult.team2.name === teamName && holeResult.team2.cumulative !== undefined) {
+                                            return holeResult.team2.cumulative;
+                                        }
+                                    }
+                                    return null;
+                                };
+                                
+                                // Show all teams with their current totals (even if 0)
+                                if (teamNames.length === 0) {
+                                    return (
+                                        <div key={bet.id} className="text-white text-sm">
+                                            <span className="font-semibold">Vegas:</span> No winnings yet
+                                        </div>
+                                    );
+                                }
+                                
+                                // Sort teams by winnings (highest first)
+                                const sortedTeams = teamNames
+                                    .sort((a, b) => (teamWinnings[b] || 0) - (teamWinnings[a] || 0));
+                                
+                                return (
+                                    <div key={bet.id} className="text-white text-sm">
+                                        <span className="font-semibold">Vegas:</span>{' '}
+                                        {sortedTeams.map((team, index) => {
+                                            const winnings = teamWinnings[team] || 0;
+                                            const sign = winnings > 0 ? '+' : (winnings < 0 ? '' : '');
+                                            const currentScore = getCurrentTeamScore(team);
+                                            const scoreDisplay = currentScore !== null ? ` / ${currentScore}` : '';
+                                            return (
+                                                <span key={team}>
+                                                    {index > 0 ? ', ' : ''}
+                                                    {team} {sign}${Math.abs(winnings).toFixed(2)}{scoreDisplay}
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
+                                );
                             })}
                             
                             {/* Junk */}
@@ -6238,7 +6378,190 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             });
         }
 
-        return { playerTotals, holeData: holeDataResult, players: roundPlayers, grossWinner, netWinner, nassauResults, skinsResults, matchPlayResults, ninePointResults };
+        // Calculate Vegas (if Vegas bets exist and exactly 4 players with 2 teams)
+        const vegasBetsFromAll = allAvailableBets.filter(b => b.type === 'Vegas');
+        const vegasAmount = activeRound?.betAmounts?.Vegas || 0;
+        const vegasResults = {};
+        
+        // Check if Vegas is selected via betAmounts or allAvailableBets
+        const hasVegasBet = vegasBetsFromAll.length > 0 || vegasAmount > 0;
+        
+        if (hasVegasBet && roundPlayers.length === 4) {
+            const roundTeams = activeRound?.teams || [];
+            const isTeamMode = activeRound?.teamMode === 'teams' && roundTeams.length === 2;
+            
+            if (isTeamMode) {
+                // Use existing bets or create a temporary one from betAmounts
+                const vegasBetsToProcess = vegasBetsFromAll.length > 0 
+                    ? vegasBetsFromAll 
+                    : [{ id: 'vegas_temp', type: 'Vegas', amount: vegasAmount }];
+                
+                vegasBetsToProcess.forEach(bet => {
+                    const pointAmount = bet.amount || vegasAmount || 0;
+                    const teamWinnings = {}; // Track winnings per team
+                    const holeResults = {}; // Track results per hole
+                    const cumulativeScores = {}; // Track cumulative two-digit scores per team
+                    
+                    // Initialize team winnings and cumulative scores for all teams
+                    roundTeams.forEach(team => {
+                        if (team.name) {
+                            teamWinnings[team.name] = 0;
+                            cumulativeScores[team.name] = 0;
+                        }
+                    });
+                    
+                    // Calculate Vegas for each hole (cumulative)
+                    HOLE_NUMBERS.forEach(h => {
+                        const holeKey = `hole${h}`;
+                        const holeScores = {};
+                        
+                        // Get net scores for this hole for all players
+                        roundPlayers.forEach(player => {
+                            const netScore = holeDataResult[player.name]?.[holeKey]?.netScore;
+                            if (netScore !== undefined && netScore !== null && netScore !== '') {
+                                holeScores[player.name] = Number(netScore);
+                            }
+                        });
+                        
+                        // Check if we have scores for all 4 players
+                        if (Object.keys(holeScores).length === 4) {
+                            // Get team scores for this hole
+                            const teamScores = {};
+                            roundTeams.forEach(team => {
+                                const teamPlayerScores = (team.playerIds || [])
+                                    .map(playerId => {
+                                        const player = savedPlayersRef.find(p => p.id === playerId);
+                                        return player ? holeScores[player.name] : null;
+                                    })
+                                    .filter(score => score !== null);
+                                
+                                if (teamPlayerScores.length === 2) {
+                                    // Sort scores: lower score first
+                                    const sortedScores = [...teamPlayerScores].sort((a, b) => a - b);
+                                    // Create two-digit number: lower score is first digit
+                                    const twoDigitNumber = sortedScores[0] * 10 + sortedScores[1];
+                                    teamScores[team.name] = {
+                                        scores: sortedScores,
+                                        twoDigitNumber: twoDigitNumber
+                                    };
+                                }
+                            });
+                            
+                            // Check if both teams have valid scores
+                            const teamNames = Object.keys(teamScores);
+                            if (teamNames.length === 2) {
+                                const team1Name = teamNames[0];
+                                const team2Name = teamNames[1];
+                                const team1HoleNumber = teamScores[team1Name].twoDigitNumber;
+                                const team2HoleNumber = teamScores[team2Name].twoDigitNumber;
+                                
+                                // Add this hole's score to cumulative total
+                                cumulativeScores[team1Name] = (cumulativeScores[team1Name] || 0) + team1HoleNumber;
+                                cumulativeScores[team2Name] = (cumulativeScores[team2Name] || 0) + team2HoleNumber;
+                                
+                                // Compare cumulative scores to determine winner
+                                const team1Cumulative = cumulativeScores[team1Name];
+                                const team2Cumulative = cumulativeScores[team2Name];
+                                
+                                // Team with lower cumulative two-digit number wins by the difference
+                                let points = 0;
+                                let winningTeam = null;
+                                
+                                if (team1Cumulative < team2Cumulative) {
+                                    points = team2Cumulative - team1Cumulative;
+                                    winningTeam = team1Name;
+                                } else if (team2Cumulative < team1Cumulative) {
+                                    points = team1Cumulative - team2Cumulative;
+                                    winningTeam = team2Name;
+                                }
+                                // If tie (team1Cumulative === team2Cumulative), no points awarded
+                                
+                                if (winningTeam && points > 0) {
+                                    // Winning team gets points * pointAmount
+                                    teamWinnings[winningTeam] = (teamWinnings[winningTeam] || 0) + (points * pointAmount);
+                                    
+                                    // Store hole result with both hole score and cumulative
+                                    holeResults[h] = {
+                                        team1: {
+                                            name: team1Name,
+                                            scores: teamScores[team1Name].scores,
+                                            twoDigitNumber: team1HoleNumber,
+                                            cumulative: team1Cumulative
+                                        },
+                                        team2: {
+                                            name: team2Name,
+                                            scores: teamScores[team2Name].scores,
+                                            twoDigitNumber: team2HoleNumber,
+                                            cumulative: team2Cumulative
+                                        },
+                                        winningTeam: winningTeam,
+                                        points: points,
+                                        winnings: points * pointAmount
+                                    };
+                                } else {
+                                    // Tie hole (cumulative scores are equal)
+                                    holeResults[h] = {
+                                        team1: {
+                                            name: team1Name,
+                                            scores: teamScores[team1Name].scores,
+                                            twoDigitNumber: team1HoleNumber,
+                                            cumulative: team1Cumulative
+                                        },
+                                        team2: {
+                                            name: team2Name,
+                                            scores: teamScores[team2Name].scores,
+                                            twoDigitNumber: team2HoleNumber,
+                                            cumulative: team2Cumulative
+                                        },
+                                        winningTeam: null,
+                                        points: 0,
+                                        winnings: 0
+                                    };
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Calculate net winnings per player (distribute team winnings to players)
+                    const netWinnings = {};
+                    roundPlayers.forEach(player => {
+                        netWinnings[player.name] = 0;
+                    });
+                    
+                    roundTeams.forEach(team => {
+                        const teamWinning = teamWinnings[team.name] || 0;
+                        const teamPlayerIds = team.playerIds || [];
+                        const teamPlayerCount = teamPlayerIds.length;
+                        
+                        if (teamPlayerCount > 0) {
+                            // Split team winnings equally among team members
+                            const winningsPerPlayer = teamWinning / teamPlayerCount;
+                            
+                            teamPlayerIds.forEach(playerId => {
+                                const player = savedPlayersRef.find(p => p.id === playerId);
+                                if (player) {
+                                    netWinnings[player.name] = (netWinnings[player.name] || 0) + winningsPerPlayer;
+                                }
+                            });
+                        }
+                    });
+                    
+                    // Calculate total winnings (for zero-sum check)
+                    const totalWinnings = Object.values(teamWinnings).reduce((sum, w) => sum + w, 0);
+                    
+                    vegasResults[bet.id] = {
+                        teamWinnings,
+                        netWinnings,
+                        holeResults,
+                        cumulativeScores, // Include cumulative scores for display
+                        amount: pointAmount,
+                        totalWinnings
+                    };
+                });
+            }
+        }
+
+        return { playerTotals, holeData: holeDataResult, players: roundPlayers, grossWinner, netWinner, nassauResults, skinsResults, matchPlayResults, ninePointResults, vegasResults };
     }, [activeRound, players, scores, holeDataEdit, allAvailableBets]);
 
 
@@ -6937,6 +7260,23 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                     playerNames.forEach(name => {
                         const ninePointWinnings = result.netWinnings[name] || 0;
                         winnings[name] = (winnings[name] || 0) + ninePointWinnings;
+                    });
+                }
+            });
+        }
+
+        // 2f. Vegas Calculation (Automatic) - Only for 4 players with 2 teams
+        const vegasBets = allAvailableBets.filter(b => b.type === 'Vegas');
+        const vegasResults = calculatedScores.vegasResults || {};
+
+        if (vegasBets.length > 0 && playerNames.length === 4) {
+            vegasBets.forEach(bet => {
+                const result = vegasResults[bet.id];
+                if (result && result.netWinnings) {
+                    // Add Vegas winnings to total winnings
+                    playerNames.forEach(name => {
+                        const vegasWinnings = result.netWinnings[name] || 0;
+                        winnings[name] = (winnings[name] || 0) + vegasWinnings;
                     });
                 }
             });
@@ -8084,7 +8424,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                                                 });
                                                 setIsTeamsModalOpen(true);
                                             }}
-                                            className="w-full inline-flex items-center justify-center px-4 py-2 rounded-2xl bg-[#FFFFFF] text-gray text-sm font-bold shadow-md hover:brightness-110 transition-colors"
+                                            className="w-full inline-flex items-center justify-center px-4 py-2 rounded-2xl bg-[#FFFFFF] text-black text-sm font-bold shadow-md hover:brightness-110 transition-colors"
                                         >
                                            + Play as Teams
                                         </button>
