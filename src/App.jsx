@@ -312,6 +312,8 @@ const TeamsManager = ({
     const removeTeam = (teamId) => {
         const updated = (teams || []).filter(t => t.id !== teamId);
         setTeams(updated);
+        // If all teams are removed, the parent component should handle resetting teamMode
+        // This will be handled when the modal is saved
     };
 
     const updateTeamName = (teamId, name) => {
@@ -3736,6 +3738,321 @@ const Scorecard = ({
                         })}
                     </div>
                 </div>
+                
+                {/* Bet Summary for Ended Rounds */}
+                {(() => {
+                    // Check if there are any bets actually selected for this round
+                    const roundBets = activeRound?.roundBets || [];
+                    const hasJunk = activeRound?.selectedJunkTypes && activeRound.selectedJunkTypes.length > 0;
+                    
+                    // Only show if there are any bets selected for the round
+                    if (roundBets.length === 0 && !hasJunk) {
+                        return null;
+                    }
+                    
+                    const nassauBets = allAvailableBets?.filter(b => b.type === 'Nassau') || [];
+                    const skinsBets = allAvailableBets?.filter(b => b.type === 'Skins') || [];
+                    const matchPlayBets = allAvailableBets?.filter(b => b.type === 'Match Play') || [];
+                    const ninePointBets = allAvailableBets?.filter(b => b.type === '9 Point') || [];
+                    
+                    const nassauResults = calculatedScores?.nassauResults || {};
+                    const skinsResults = calculatedScores?.skinsResults || {};
+                    const matchPlayResults = calculatedScores?.matchPlayResults || {};
+                    const ninePointResults = calculatedScores?.ninePointResults || {};
+                    
+                    // Check if team mode
+                    const isTeamMode = activeRound?.teamMode === 'teams' && activeRound?.teams && activeRound.teams.length > 0;
+                    const teams = activeRound?.teams || [];
+                    
+                    // Helper to get team name for a player (or player name if not in team mode)
+                    const getDisplayName = (playerName) => {
+                        if (!isTeamMode || !playerName) {
+                            const parts = (playerName || '').trim().split(/\s+/);
+                            if (parts.length >= 2) {
+                                return parts[0] + ' ' + (parts[parts.length - 1][0] || '').toUpperCase();
+                            } else if (parts.length === 1) {
+                                return parts[0] || 'Player';
+                            }
+                            return 'Player';
+                        }
+                        
+                        const playerObj = players.find(p => p.name === playerName);
+                        if (playerObj) {
+                            const playerTeam = teams.find(team => 
+                                team.playerIds && team.playerIds.includes(playerObj.id)
+                            );
+                            if (playerTeam) {
+                                return playerTeam.name;
+                            }
+                        }
+                        
+                        const parts = (playerName || '').trim().split(/\s+/);
+                        if (parts.length >= 2) {
+                            return parts[0] + ' ' + (parts[parts.length - 1][0] || '').toUpperCase();
+                        } else if (parts.length === 1) {
+                            return parts[0] || 'Player';
+                        }
+                        return 'Player';
+                    };
+                    
+                    // Calculate junk totals from activeRound.junkEvents
+                    const junkTotals = {};
+                    const junkTotalsByTeam = {};
+                    const roundPlayersForJunk = calculatedScores?.players || [];
+                    if (hasJunk && activeRound.junkEvents && roundPlayersForJunk.length > 0 && activeRound.selectedJunkTypes) {
+                        roundPlayersForJunk.forEach(player => {
+                            let totalPoints = 0;
+                            activeRound.selectedJunkTypes.forEach(junkId => {
+                                let count = 0;
+                                HOLE_NUMBERS.forEach(h => {
+                                    const holeKey = `hole${h}`;
+                                    const val = activeRound.junkEvents[player.name]?.[holeKey]?.[junkId];
+                                    const numVal = typeof val === 'number' ? val : (parseInt(val, 10) || 0);
+                                    count += numVal;
+                                });
+                                const pointValue = junkPointValues?.[junkId] || 1;
+                                const points = junkId === 'losingDots' 
+                                    ? -(count * pointValue) 
+                                    : (count * pointValue);
+                                totalPoints += points;
+                            });
+                            junkTotals[player.name] = totalPoints;
+                            
+                            if (isTeamMode) {
+                                const playerObj = players.find(p => p.name === player.name);
+                                if (playerObj) {
+                                    const playerTeam = teams.find(team => 
+                                        team.playerIds && team.playerIds.includes(playerObj.id)
+                                    );
+                                    if (playerTeam) {
+                                        junkTotalsByTeam[playerTeam.name] = (junkTotalsByTeam[playerTeam.name] || 0) + totalPoints;
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    
+                    const formatName = (fullName) => {
+                        return getDisplayName(fullName);
+                    };
+                    
+                    return (
+                        <div className="mt-6 rounded-xl px-4 py-3 border border-white/20 bg-gradient-to-r from-green-700 to-black">
+                            <div className="text-white font-semibold text-base mb-3 flex items-center gap-2">
+                                <span>$$</span>
+                                <span>Bet Summary</span>
+                            </div>
+                            <div className="space-y-2">
+                                {/* Nassau */}
+                                {nassauBets.filter(bet => roundBets.some(rb => rb.id === bet.id || rb.name === bet.name)).map(bet => {
+                                    const result = nassauResults[bet.id];
+                                    if (!result) return null;
+                                    
+                                    return (
+                                        <div key={bet.id} className="space-y-1">
+                                            <div className="text-white text-sm">
+                                                <span className="font-semibold">Nassau Front 9:</span>{' '}
+                                                {result.front9Winner && result.front9Winner !== 'Tie' 
+                                                    ? formatName(result.front9Winner) 
+                                                    : 'Tie'}
+                                            </div>
+                                            <div className="text-white text-sm">
+                                                <span className="font-semibold">Nassau Back 9:</span>{' '}
+                                                {result.back9Winner && result.back9Winner !== 'Tie' 
+                                                    ? formatName(result.back9Winner) 
+                                                    : 'Tie'}
+                                            </div>
+                                            <div className="text-white text-sm">
+                                                <span className="font-semibold">Nassau Total:</span>{' '}
+                                                {result.totalWinner && result.totalWinner !== 'Tie' 
+                                                    ? formatName(result.totalWinner) 
+                                                    : 'Tie'}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                
+                                {/* Skins */}
+                                {skinsBets.filter(bet => roundBets.some(rb => rb.id === bet.id || rb.name === bet.name)).map(bet => {
+                                    const result = skinsResults[bet.id];
+                                    if (!result || !result.grossWinnings) return null;
+                                    
+                                    const playerWinnings = result.grossWinnings || {};
+                                    const playersList = Object.keys(playerWinnings);
+                                    if (playersList.length === 0) return null;
+                                    
+                                    if (isTeamMode) {
+                                        const teamWinnings = {};
+                                        playersList.forEach(playerName => {
+                                            const playerObj = players.find(p => p.name === playerName);
+                                            if (playerObj) {
+                                                const playerTeam = teams.find(team => 
+                                                    team.playerIds && team.playerIds.includes(playerObj.id)
+                                                );
+                                                if (playerTeam) {
+                                                    teamWinnings[playerTeam.name] = (teamWinnings[playerTeam.name] || 0) + (playerWinnings[playerName] || 0);
+                                                }
+                                            }
+                                        });
+                                        
+                                        const teamNames = Object.keys(teamWinnings);
+                                        if (teamNames.length === 0) return null;
+                                        
+                                        const leaderTeam = teamNames.reduce((max, team) => 
+                                            (teamWinnings[team] || 0) > (teamWinnings[max] || 0) ? team : max
+                                        );
+                                        const winnings = teamWinnings[leaderTeam] || 0;
+                                        
+                                        return (
+                                            <div key={bet.id} className="text-white text-sm">
+                                                <span className="font-semibold">Skins:</span>{' '}
+                                                {winnings > 0 ? `${leaderTeam} +$${winnings.toFixed(0)}` : 'No skins won'}
+                                            </div>
+                                        );
+                                    } else {
+                                        const leader = playersList.reduce((max, player) => 
+                                            (playerWinnings[player] || 0) > (playerWinnings[max] || 0) ? player : max
+                                        );
+                                        const winnings = playerWinnings[leader] || 0;
+                                        
+                                        return (
+                                            <div key={bet.id} className="text-white text-sm">
+                                                <span className="font-semibold">Skins:</span>{' '}
+                                                {winnings > 0 ? `${formatName(leader)} +$${winnings.toFixed(0)}` : 'No skins won'}
+                                            </div>
+                                        );
+                                    }
+                                })}
+                                
+                                {/* Match Play */}
+                                {matchPlayBets.filter(bet => roundBets.some(rb => rb.id === bet.id || rb.name === bet.name)).map(bet => {
+                                    const result = matchPlayResults[bet.id];
+                                    if (!result || !result.matchWinner) return null;
+                                    
+                                    return (
+                                        <div key={bet.id} className="text-white text-sm">
+                                            <span className="font-semibold">Match Play:</span>{' '}
+                                            {result.matchWinner !== 'Tie' 
+                                                ? formatName(result.matchWinner) 
+                                                : 'Tie'}
+                                        </div>
+                                    );
+                                })}
+                                
+                                {/* 9 Point */}
+                                {ninePointBets.filter(bet => roundBets.some(rb => rb.id === bet.id || rb.name === bet.name)).map(bet => {
+                                    const result = ninePointResults[bet.id];
+                                    if (!result || !result.grossWinnings) return null;
+                                    
+                                    const playerWinnings = result.grossWinnings || {};
+                                    const playersList = Object.keys(playerWinnings);
+                                    if (playersList.length === 0) return null;
+                                    
+                                    if (isTeamMode) {
+                                        const teamWinnings = {};
+                                        playersList.forEach(playerName => {
+                                            const playerObj = players.find(p => p.name === playerName);
+                                            if (playerObj) {
+                                                const playerTeam = teams.find(team => 
+                                                    team.playerIds && team.playerIds.includes(playerObj.id)
+                                                );
+                                                if (playerTeam) {
+                                                    teamWinnings[playerTeam.name] = (teamWinnings[playerTeam.name] || 0) + (playerWinnings[playerName] || 0);
+                                                }
+                                            }
+                                        });
+                                        
+                                        const teamNames = Object.keys(teamWinnings);
+                                        if (teamNames.length === 0) return null;
+                                        
+                                        const leaderTeam = teamNames.reduce((max, team) => 
+                                            (teamWinnings[team] || 0) > (teamWinnings[max] || 0) ? team : max
+                                        );
+                                        const winnings = teamWinnings[leaderTeam] || 0;
+                                        
+                                        return (
+                                            <div key={bet.id} className="text-white text-sm">
+                                                <span className="font-semibold">9 Point:</span>{' '}
+                                                {winnings > 0 ? `${leaderTeam} +$${winnings.toFixed(0)}` : 'No points won'}
+                                            </div>
+                                        );
+                                    } else {
+                                        const leader = playersList.reduce((max, player) => 
+                                            (playerWinnings[player] || 0) > (playerWinnings[max] || 0) ? player : max
+                                        );
+                                        const winnings = playerWinnings[leader] || 0;
+                                        
+                                        return (
+                                            <div key={bet.id} className="text-white text-sm">
+                                                <span className="font-semibold">9 Point:</span>{' '}
+                                                {winnings > 0 ? `${formatName(leader)} +$${winnings.toFixed(0)}` : 'No points won'}
+                                            </div>
+                                        );
+                                    }
+                                })}
+                                
+                                {/* Junk */}
+                                {hasJunk && (() => {
+                                    if (isTeamMode) {
+                                        const teamsWithJunk = Object.keys(junkTotalsByTeam)
+                                            .filter(team => (junkTotalsByTeam[team] || 0) > 0)
+                                            .sort((a, b) => (junkTotalsByTeam[b] || 0) - (junkTotalsByTeam[a] || 0));
+                                        
+                                        if (teamsWithJunk.length === 0) {
+                                            return (
+                                                <div className="text-white text-sm">
+                                                    <span className="font-semibold">Junk:</span> No junk points
+                                                </div>
+                                            );
+                                        }
+                                        
+                                        return (
+                                            <div className="text-white text-sm">
+                                                <span className="font-semibold">Junk:</span>{' '}
+                                                {teamsWithJunk.map((team, index) => {
+                                                    const total = junkTotalsByTeam[team] || 0;
+                                                    return (
+                                                        <span key={team}>
+                                                            {index > 0 ? ', ' : ''}
+                                                            {team} {total > 0 ? '+' : ''}${total.toFixed(0)}
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+                                        );
+                                    } else {
+                                        const playersWithJunk = Object.keys(junkTotals)
+                                            .filter(player => (junkTotals[player] || 0) > 0)
+                                            .sort((a, b) => (junkTotals[b] || 0) - (junkTotals[a] || 0));
+                                        
+                                        if (playersWithJunk.length === 0) {
+                                            return (
+                                                <div className="text-white text-sm">
+                                                    <span className="font-semibold">Junk:</span> No junk points
+                                                </div>
+                                            );
+                                        }
+                                        
+                                        return (
+                                            <div className="text-white text-sm">
+                                                <span className="font-semibold">Junk:</span>{' '}
+                                                {playersWithJunk.map((player, index) => {
+                                                    const total = junkTotals[player] || 0;
+                                                    return (
+                                                        <span key={player}>
+                                                            {index > 0 ? ', ' : ''}
+                                                            {formatName(player)} {total > 0 ? '+' : ''}${total.toFixed(0)}
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+                                        );
+                                    }
+                                })()}
+                            </div>
+                        </div>
+                    );
+                })()}
                 {/* Scorecard div closed above */}
 
                 {/* Enter Share Code Section - Always visible at bottom */}
@@ -4114,12 +4431,20 @@ const Scorecard = ({
             {(() => {
                 // Check if there are any bets actually selected for this round
                 const roundBets = activeRound?.roundBets || [];
-                const hasJunk = activeRound?.selectedJunkTypes && activeRound.selectedJunkTypes.length > 0;
+                const betAmounts = activeRound?.betAmounts || {};
+                // Use selectedJunkTypes from props (current state) instead of activeRound (might be stale)
+                const hasJunk = selectedJunkTypes && selectedJunkTypes.length > 0;
+                
+                // Check if standard bets are selected via betAmounts
+                const hasNassau = (betAmounts.Nassau || 0) > 0;
+                const hasSkins = (betAmounts.Skins || 0) > 0;
+                const hasMatchPlay = (betAmounts['Match Play'] || 0) > 0;
+                const hasNinePoint = (betAmounts['9 Point'] || 0) > 0;
                 
                 // Only show if there are any bets selected for the round
-                if (roundBets.length === 0 && !hasJunk) {
-                    return null;
-                }
+                // if (roundBets.length === 0 && !hasJunk) {
+                //     return null;
+                // }
                 
                 const nassauBets = allAvailableBets?.filter(b => b.type === 'Nassau') || [];
                 const skinsBets = allAvailableBets?.filter(b => b.type === 'Skins') || [];
@@ -4202,7 +4527,12 @@ const Scorecard = ({
                 const junkTotals = {};
                 const junkTotalsByTeam = {}; // For team mode
                 const roundPlayers = calculatedScores?.players || [];
-                if (hasJunk && junkEvents && roundPlayers.length > 0 && selectedJunkTypes) {
+                // Always initialize totals for all players, even if they have 0
+                roundPlayers.forEach(player => {
+                    junkTotals[player.name] = 0;
+                });
+                
+                if (hasJunk && junkEvents && roundPlayers.length > 0 && selectedJunkTypes && selectedJunkTypes.length > 0) {
                     roundPlayers.forEach(player => {
                         let totalPoints = 0;
                         selectedJunkTypes.forEach(junkId => {
@@ -4250,9 +4580,25 @@ const Scorecard = ({
                         </div>
                         <div className="space-y-2">
                             {/* Nassau */}
-                            {nassauBets.filter(bet => roundBets.some(rb => rb.id === bet.id || rb.name === bet.name)).map(bet => {
+                            {hasNassau && nassauBets.map(bet => {
                                 const result = nassauResults[bet.id];
-                                if (!result) return null;
+                                
+                                // Show bet even if results aren't calculated yet
+                                if (!result) {
+                                    return (
+                                        <div key={bet.id} className="space-y-1">
+                                            <div className="text-white text-sm">
+                                                <span className="font-semibold">Nassau Front 9:</span> In Progress
+                                            </div>
+                                            <div className="text-white text-sm">
+                                                <span className="font-semibold">Nassau Back 9:</span> In Progress
+                                            </div>
+                                            <div className="text-white text-sm">
+                                                <span className="font-semibold">Nassau Total:</span> In Progress
+                                            </div>
+                                        </div>
+                                    );
+                                }
                                 
                                 return (
                                     <div key={bet.id} className="space-y-1">
@@ -4279,13 +4625,27 @@ const Scorecard = ({
                             })}
                             
                             {/* Skins */}
-                            {skinsBets.filter(bet => roundBets.some(rb => rb.id === bet.id || rb.name === bet.name)).map(bet => {
+                            {hasSkins && skinsBets.map(bet => {
                                 const result = skinsResults[bet.id];
-                                if (!result || !result.grossWinnings) return null;
+                                
+                                // Show bet even if results aren't calculated yet
+                                if (!result || !result.grossWinnings) {
+                                    return (
+                                        <div key={bet.id} className="text-white text-sm">
+                                            <span className="font-semibold">Skins:</span> In Progress
+                                        </div>
+                                    );
+                                }
                                 
                                 const playerWinnings = result.grossWinnings || {};
                                 const playersList = Object.keys(playerWinnings);
-                                if (playersList.length === 0) return null;
+                                if (playersList.length === 0) {
+                                    return (
+                                        <div key={bet.id} className="text-white text-sm">
+                                            <span className="font-semibold">Skins:</span> No skins won
+                                        </div>
+                                    );
+                                }
                                 
                                 if (isTeamMode) {
                                     // Aggregate by team
@@ -4303,7 +4663,13 @@ const Scorecard = ({
                                     });
                                     
                                     const teamNames = Object.keys(teamWinnings);
-                                    if (teamNames.length === 0) return null;
+                                    if (teamNames.length === 0) {
+                                        return (
+                                            <div key={bet.id} className="text-white text-sm">
+                                                <span className="font-semibold">Skins:</span> No skins won
+                                            </div>
+                                        );
+                                    }
                                     
                                     const leaderTeam = teamNames.reduce((max, team) => 
                                         (teamWinnings[team] || 0) > (teamWinnings[max] || 0) ? team : max
@@ -4333,9 +4699,17 @@ const Scorecard = ({
                             })}
                             
                             {/* Match Play */}
-                            {matchPlayBets.filter(bet => roundBets.some(rb => rb.id === bet.id || rb.name === bet.name)).map(bet => {
+                            {hasMatchPlay && matchPlayBets.map(bet => {
                                 const result = matchPlayResults[bet.id];
-                                if (!result || !result.matchWinner) return null;
+                                
+                                // Show bet even if results aren't calculated yet
+                                if (!result || !result.matchWinner) {
+                                    return (
+                                        <div key={bet.id} className="text-white text-sm">
+                                            <span className="font-semibold">Match Play:</span> In Progress
+                                        </div>
+                                    );
+                                }
                                 
                                 return (
                                     <div key={bet.id} className="text-white text-sm">
@@ -4348,13 +4722,27 @@ const Scorecard = ({
                             })}
                             
                             {/* 9 Point */}
-                            {ninePointBets.filter(bet => roundBets.some(rb => rb.id === bet.id || rb.name === bet.name)).map(bet => {
+                            {hasNinePoint && ninePointBets.map(bet => {
                                 const result = ninePointResults[bet.id];
-                                if (!result || !result.grossWinnings) return null;
+                                
+                                // Show bet even if results aren't calculated yet
+                                if (!result || !result.grossWinnings) {
+                                    return (
+                                        <div key={bet.id} className="text-white text-sm">
+                                            <span className="font-semibold">9 Point:</span> In Progress
+                                        </div>
+                                    );
+                                }
                                 
                                 const playerWinnings = result.grossWinnings || {};
                                 const playersList = Object.keys(playerWinnings);
-                                if (playersList.length === 0) return null;
+                                if (playersList.length === 0) {
+                                    return (
+                                        <div key={bet.id} className="text-white text-sm">
+                                            <span className="font-semibold">9 Point:</span> No points won
+                                        </div>
+                                    );
+                                }
                                 
                                 if (isTeamMode) {
                                     // Aggregate by team
@@ -4372,7 +4760,13 @@ const Scorecard = ({
                                     });
                                     
                                     const teamNames = Object.keys(teamWinnings);
-                                    if (teamNames.length === 0) return null;
+                                    if (teamNames.length === 0) {
+                                        return (
+                                            <div key={bet.id} className="text-white text-sm">
+                                                <span className="font-semibold">9 Point:</span> No points won
+                                            </div>
+                                        );
+                                    }
                                     
                                     const leaderTeam = teamNames.reduce((max, team) => 
                                         (teamWinnings[team] || 0) > (teamWinnings[max] || 0) ? team : max
@@ -4404,9 +4798,8 @@ const Scorecard = ({
                             {/* Junk */}
                             {hasJunk && (() => {
                                 if (isTeamMode) {
-                                    // Team mode: show team totals
+                                    // Team mode: show team totals (include all teams, even with 0 or negative)
                                     const teamsWithJunk = Object.keys(junkTotalsByTeam)
-                                        .filter(team => (junkTotalsByTeam[team] || 0) > 0)
                                         .sort((a, b) => (junkTotalsByTeam[b] || 0) - (junkTotalsByTeam[a] || 0));
                                     
                                     if (teamsWithJunk.length === 0) {
@@ -4432,9 +4825,10 @@ const Scorecard = ({
                                         </div>
                                     );
                                 } else {
-                                    // Single mode: show player totals
-                                    const playersWithJunk = Object.keys(junkTotals)
-                                        .filter(player => (junkTotals[player] || 0) > 0)
+                                    // Single mode: show player totals (include all players, even with 0 or negative)
+                                    const playersWithJunk = roundPlayers
+                                        .map(p => p.name)
+                                        .filter(player => junkTotals.hasOwnProperty(player) && (junkTotals[player] || 0) !== 0)
                                         .sort((a, b) => (junkTotals[b] || 0) - (junkTotals[a] || 0));
                                     
                                     if (playersWithJunk.length === 0) {
@@ -4971,6 +5365,15 @@ const App = () => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     }, [currentView]);
+    
+    // Reset teams when switching to Play page with no active round
+    useEffect(() => {
+        if (currentView === 'play' && !activeRoundId) {
+            setTeamMode('singles');
+            setTeams([]);
+            setTeamsDraft([]);
+        }
+    }, [currentView, activeRoundId]);
     
     // Set up real-time listener for shared round
     useEffect(() => {
@@ -6194,7 +6597,12 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             // 5. Generate share code
             const shareCode = generateShareCode();
             
-            // 6. Create New Round
+            // 6. Reset teams BEFORE creating the round (always start with singles mode)
+            setTeamMode('singles');
+            setTeams([]);
+            setTeamsDraft([]);
+            
+            // 7. Create New Round
             // Store selectedJunkTypes based on betAmounts from the new Bets section
             const newRoundRef = await addDoc(collection(db, getRoundCollectionPath(userId)), {
                 date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
@@ -6208,15 +6616,15 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                 junkPointValues: junkPointValues || {},
                 junkEvents: {},
                 handicapMode: handicapMode || 'lowest', // Store handicap calculation mode
-                teamMode: teamMode || 'singles', // Store team mode
-                teams: teamMode === 'teams' ? teams : [], // Store teams if in teams mode
+                teamMode: 'singles', // Always start new rounds in singles mode
+                teams: [], // Always start with no teams
                 shareCode: shareCode, // Store share code
                 betAmounts: betAmounts, // Store bet amounts for this round
                 skinsCarryOver: skinsCarryOver, // Store skins carry-over setting
                 createdAt: serverTimestamp(),
             });
             
-            // 7. Create shared round entry for code lookup
+            // 8. Create shared round entry for code lookup
             await addDoc(collection(db, SHARED_ROUNDS_COLLECTION), {
                 shareCode: shareCode,
                 userId: userId,
@@ -6224,7 +6632,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                 createdAt: serverTimestamp(),
             });
 
-            // 8. Update local state
+            // 9. Update local state
             setActiveRoundId(newRoundRef.id);
             setBetSelections(initialRoundBetWinners);
             setScores(initialRoundScores);
@@ -6232,9 +6640,6 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             setJunkEvents({}); // Clear junk checkboxes
             setSelectedCourseId(''); // Clear course selection
             setLastLoadedScoresRoundId(newRoundRef.id);
-            // Reset teams when starting new round
-            setTeamMode('singles');
-            setTeams([]);
             // Switch to rounds view when starting a new round
             setCurrentView('rounds');
         } catch (error) {
@@ -7475,30 +7880,30 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                             return parts[0] || '';
                         };
                         
-                        // Show players who are in the round, sorted (me first, then favorites, then alphabetically)
-                        const playersInRound = allPlayers
-                            .filter(p => inRoundIds.has(p.id))
+                        // Always show favorites first, even if not in round
+                        const favoritePlayers = allPlayers
+                            .filter(p => p.favorite === true)
                             .sort((a, b) => {
                                 // Always put "me" player first
                                 if (a.id === myPlayerId) return -1;
                                 if (b.id === myPlayerId) return 1;
-                                
-                                // Then favorites
-                                const aIsFavorite = a.favorite || false;
-                                const bIsFavorite = b.favorite || false;
-                                if (aIsFavorite && !bIsFavorite) return -1;
-                                if (!aIsFavorite && bIsFavorite) return 1;
-                                
                                 // Then alphabetically by first name
                                 return getFirstName(a.name).localeCompare(getFirstName(b.name));
                             });
                         
-                        // If no players in round, show favorites as fallback
-                        const favoritePlayers = allPlayers
-                            .filter(p => p.favorite === true)
-                            .sort((a, b) => getFirstName(a.name).localeCompare(getFirstName(b.name)));
+                        // Show players who are in the round (excluding favorites since they're shown separately)
+                        const playersInRound = allPlayers
+                            .filter(p => inRoundIds.has(p.id) && !p.favorite)
+                            .sort((a, b) => {
+                                // Always put "me" player first
+                                if (a.id === myPlayerId) return -1;
+                                if (b.id === myPlayerId) return 1;
+                                // Then alphabetically by first name
+                                return getFirstName(a.name).localeCompare(getFirstName(b.name));
+                            });
                         
-                        const playersToShow = playersInRound.length > 0 ? playersInRound : favoritePlayers;
+                        // Combine: favorites first (always shown), then players in round
+                        const playersToShow = [...favoritePlayers, ...playersInRound];
 
                         if (!allPlayers.length) {
                             return (
@@ -7574,9 +7979,14 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                                             {row.map((p, playerIndex) => {
                                                 const globalIndex = rowIndex * 2 + playerIndex;
                                                 const isInRound = inRoundIds.has(p.id);
+                                                const isFavorite = p.favorite === true;
+                                                // Favorites always shown with gray background unless selected
+                                                // Selected players get blue gradient
                                                 const cardClasses = isInRound
                                                     ? 'bg-gradient-to-r from-blue-600 to-black border-white/20 text-white'
-                                                    : 'bg-gray-100 border-gray-200 text-gray-900 hover:bg-gray-200';
+                                                    : isFavorite
+                                                        ? 'bg-gray-200 border-gray-300 text-gray-900 hover:bg-gray-300'
+                                                        : 'bg-gray-100 border-gray-200 text-gray-900 hover:bg-gray-200';
                                                 
                                                 return (
                                                     <button
