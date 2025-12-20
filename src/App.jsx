@@ -127,32 +127,31 @@ const PlayerManager = ({
     };
 
     return (
-        <div className="p-3 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
-            <h2 className="text-lg font-bold text-blue-800 mb-2">Select Players For Round</h2>
-            <p className="text-xs text-gray-500 mt-1 mb-2">You can modify each player's handicap for this round by clicking on the handicap value</p>
-            
+        <div className="space-y-4">
             {/* Add New Player Section */}
-            <div className="flex space-x-2 mb-4">
+            <div className="p-4 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
+                <h2 className="text-lg font-bold text-blue-800 mb-3">Add New Player</h2>
+                <div className="flex space-x-2">
                 <input
                     type="text"
-                    placeholder="First"
+                        placeholder="First"
                     value={newPlayerFirstName}
                     onChange={(e) => setNewPlayerFirstName(e.target.value)}
                     className="flex-1 min-w-0 max-w-28 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
                 <input
                     type="text"
-                    placeholder="Last"
+                        placeholder="Last"
                     value={newPlayerLastName}
                     onChange={(e) => setNewPlayerLastName(e.target.value)}
-                    className="flex-1 min-w-0 max-w-40 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        className="flex-1 min-w-0 max-w-40 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
                 <input
                     type="number"
                     placeholder="HCP"
                     value={newPlayerHandicap}
                     onChange={(e) => setNewPlayerHandicap(e.target.value)}
-                    className="w-20 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                        className="w-20 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                     min="-54" max="54"
                 />
                 <button
@@ -166,16 +165,22 @@ const PlayerManager = ({
                     Add
                 </button>
             </div>
+            </div>
             
-            {/* All Players List */}
-            <div className="space-y-2 mt-1 max-h-96 overflow-y-auto">
-            {players.length === 0 ? (
-                <p className="text-gray-500 italic p-2 bg-gray-50 rounded">
-                    Add player names here before starting a round.
-                </p>
-            ) : (
-                players
-                    .sort((a, b) => {
+            {/* Select Players For Round Section */}
+            <div className="p-4 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
+                <h2 className="text-lg font-bold text-blue-800 mb-2">Select Players For Round</h2>
+                <p className="text-xs text-gray-500 mt-1 mb-3">You can modify each player's handicap for this round by clicking on the handicap value</p>
+                
+                {/* All Players List */}
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {players.length === 0 ? (
+                        <p className="text-gray-500 italic p-2 bg-gray-50 rounded">
+                            Add player names here before starting a round.
+                        </p>
+                    ) : (
+                        players
+                            .sort((a, b) => {
                         // Helper to get first name
                         const getFirstName = (name) => {
                             const parts = (name || '').trim().split(/\s+/);
@@ -205,34 +210,54 @@ const PlayerManager = ({
                         const isEditingHcp = editingHandicap[player.id];
                         const handicapValue = isEditingHcp !== undefined ? editingHandicap[player.id] : currentHandicap;
                         
+                        const handlePlayerBoxClick = () => {
+                            // Toggle player in round
+                            if (isInRound) {
+                                setRoundPlayerIds(prev => prev.filter(id => id !== player.id));
+                            } else {
+                                setRoundPlayerIds(prev => [...prev, player.id]);
+                            }
+                        };
+                        
                         return (
-                            <div key={player.id} className={`flex justify-between items-center p-2 rounded-lg border ${isInRound ? 'bg-green-100 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
-                                <div className="flex items-center gap-2">
+                            <div 
+                                key={player.id} 
+                                onClick={handlePlayerBoxClick}
+                                className={`flex justify-between items-center p-2 rounded-lg border cursor-pointer transition-colors ${
+                                    isInRound 
+                                        ? 'bg-gradient-to-r from-blue-600 to-gray-800 border-white/20 text-white shadow-sm' 
+                                        : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                                }`}
+                            >
+                                <div className="flex items-center gap-2 flex-1">
                                     <button
                                         type="button"
-                                        onClick={() => handleTogglePlayerFavorite && handleTogglePlayerFavorite(player.id)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleTogglePlayerFavorite && handleTogglePlayerFavorite(player.id);
+                                        }}
                                         className="flex-shrink-0 p-1 hover:opacity-70 transition-opacity bg-transparent"
                                         aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
                                     >
                                         {isFavorite ? (
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${isInRound ? 'text-yellow-300' : 'text-yellow-400'}`} viewBox="0 0 20 20" fill="currentColor">
                                                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                             </svg>
                                         ) : (
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${isInRound ? 'text-gray-300' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                                             </svg>
                                         )}
                                     </button>
-                                    <span className="font-medium text-gray-700">
+                                    <span className={`font-medium ${isInRound ? 'text-white' : 'text-gray-700'}`}>
                                         {player.name}
                                     </span>
                                     {myPlayerId === player.id && (
-                                        <span className="text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded font-semibold">Me</span>
+                                        <span className={`text-xs px-1.5 py-0.5 rounded font-semibold ${isInRound ? 'bg-white/20 text-white border border-white/30' : 'bg-blue-600 text-white'}`}>Me</span>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs text-gray-500">HCP:</span>
+                                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                    <span className={`text-xs ${isInRound ? 'text-white/80' : 'text-gray-500'}`}>HCP:</span>
                                     <input
                                         type="number"
                                         value={handicapValue === '' ? '' : (typeof handicapValue === 'number' ? handicapValue : currentHandicap)}
@@ -261,33 +286,22 @@ const PlayerManager = ({
                                                 e.target.blur();
                                             }
                                         }}
-                                        className="w-16 p-1 border border-gray-300 rounded text-sm text-center focus:ring-blue-500 focus:border-blue-500"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className={`w-16 p-1 border rounded text-sm text-center focus:ring-blue-500 focus:border-blue-500 ${
+                                            isInRound 
+                                                ? 'border-white/30 bg-white/10 text-white placeholder-white/50' 
+                                                : 'border-gray-300 text-gray-700'
+                                        }`}
                                         min="-54"
                                         max="54"
                                         disabled={!handleUpdatePlayerHandicap || !dbReady}
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            if (isInRound) {
-                                                setRoundPlayerIds(prev => prev.filter(id => id !== player.id));
-                                            } else {
-                                                setRoundPlayerIds(prev => [...prev, player.id]);
-                                            }
-                                        }}
-                                        className={`px-2 py-1 text-xs font-medium rounded-lg border ${
-                                            isInRound 
-                                                ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' 
-                                                : 'bg-white text-red-600 border-red-400 hover:bg-red-50'
-                                        }`}
-                                    >
-                                        {isInRound ? 'Remove' : 'Add'}
-                                    </button>
                                 </div>
                             </div>
                         );
                     })
-            )}
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -2591,7 +2605,7 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                         }
                     }
                 });
-
+                
                 // Calculate total gross winnings for team
                 breakdown[team.name].total = breakdown[team.name].manual + breakdown[team.name].nassau + 
                                              breakdown[team.name].skins + breakdown[team.name].matchPlay + 
@@ -3392,7 +3406,7 @@ const Scorecard = ({
     activeRoundId,
     scores, 
     handleScoreChange, 
-    handleSaveScores,
+    handleSaveScores, 
     handleEndRound, 
     dbReady, 
     db,
@@ -3417,6 +3431,8 @@ const Scorecard = ({
     handleEnterShareCode,
     isViewingSharedRound,
     setIsViewingSharedRound,
+    allowModification,
+    setAllowModification,
     setSharedRound,
     setSharedRoundId,
     setActiveRoundId,
@@ -4201,7 +4217,7 @@ const Scorecard = ({
             </div>
 
             {/* Single Hole Scorecard - Player Cards Stacked */}
-            {!isEnded && !isReadOnly ? (
+            {(!isEnded && !isReadOnly) || (isViewingSharedRound && !isEnded) ? (
                 <div className="space-y-3">
                     {roundPlayers.map((player, playerIndex) => {
                         const playerScores = scores[player.name] || {};
@@ -4334,33 +4350,38 @@ const Scorecard = ({
                                                         </span>
                                                     </>
                                                 )}
-                                            </div>
-                                            {(() => {
+                                                </div>
+                                                {(() => {
                                                 // Find player's team if in team mode - display below name
-                                                if (activeRound?.teamMode === 'teams' && activeRound?.teams && activeRound.teams.length > 0) {
-                                                    const playerObj = players.find(p => p.name === player.name);
-                                                    if (playerObj) {
-                                                        const playerTeam = activeRound.teams.find(team => 
-                                                            team.playerIds && team.playerIds.includes(playerObj.id)
-                                                        );
-                                                        if (playerTeam) {
-                                                            return (
-                                                                <div className="text-white text-xs font-medium bg-white/20 px-2 py-0.5 rounded inline-block mt-1">
-                                                                    {playerTeam.name}
-                                                                </div>
+                                                    if (activeRound?.teamMode === 'teams' && activeRound?.teams && activeRound.teams.length > 0) {
+                                                        const playerObj = players.find(p => p.name === player.name);
+                                                        if (playerObj) {
+                                                            const playerTeam = activeRound.teams.find(team => 
+                                                                team.playerIds && team.playerIds.includes(playerObj.id)
                                                             );
+                                                            if (playerTeam) {
+                                                                return (
+                                                                <div className="text-white text-xs font-medium bg-white/20 px-2 py-0.5 rounded inline-block mt-1">
+                                                                        {playerTeam.name}
+                                                                </div>
+                                                                );
+                                                            }
                                                         }
                                                     }
-                                                }
-                                                return null;
-                                            })()}
+                                                    return null;
+                                                })()}
                                         </div>
                                         {/* Score adjuster underneath */}
                                         <div className="flex items-center gap-2">
                                             <button
                                                 type="button"
                                                 onClick={handleDecreaseScore}
-                                                className="bg-white text-gray-900 text-lg font-bold w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 transition-colors"
+                                                disabled={isReadOnly}
+                                                className={`text-lg font-bold w-8 h-8 flex items-center justify-center rounded transition-colors ${
+                                                    isReadOnly 
+                                                        ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                                                        : 'bg-white text-gray-900 hover:bg-gray-100'
+                                                }`}
                                                 aria-label={`Decrease score for ${player.name}`}
                                             >
                                                 −
@@ -4371,7 +4392,12 @@ const Scorecard = ({
                                             <button
                                                 type="button"
                                                 onClick={handleIncreaseScore}
-                                                className="bg-white text-gray-900 text-lg font-bold w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 transition-colors"
+                                                disabled={isReadOnly}
+                                                className={`text-lg font-bold w-8 h-8 flex items-center justify-center rounded transition-colors ${
+                                                    isReadOnly 
+                                                        ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                                                        : 'bg-white text-gray-900 hover:bg-gray-100'
+                                                }`}
                                                 aria-label={`Increase score for ${player.name}`}
                                             >
                                                 +
@@ -4414,6 +4440,8 @@ const Scorecard = ({
                                             };
                                             
                                             const handleToggleJunk = () => {
+                                                // Don't allow modification if read-only
+                                                if (isReadOnly) return;
                                                 // Toggle: if active (count > 0), set to 0; if inactive, set to 1
                                                 const newCount = isActive ? 0 : 1;
                                                 handleJunkEventChange(player.name, holeKey, junkId, newCount);
@@ -4426,7 +4454,12 @@ const Scorecard = ({
                                                     key={junkId}
                                                     type="button"
                                                     onClick={handleToggleJunk}
+                                                    disabled={isReadOnly}
                                                     className={`flex items-center justify-center gap-1 rounded-lg px-2 py-1.5 border transition-all w-full ${
+                                                        isReadOnly
+                                                            ? 'opacity-50 cursor-not-allowed'
+                                                            : ''
+                                                    } ${
                                                         isActive
                                                             ? (isLosingDots 
                                                                 ? 'bg-red-500 border-red-400' 
@@ -5142,8 +5175,8 @@ const Scorecard = ({
         
         {/* Share Modal */}
         {isShareModalOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-2xl shadow-2xl border-2 border-blue-200 max-w-md w-full p-6">
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+                <div className="bg-white rounded-2xl shadow-2xl border-2 border-blue-200 max-w-md w-full p-4 sm:p-6">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-2xl font-bold text-blue-800">Share Round</h3>
                         <button
@@ -5185,6 +5218,34 @@ const Scorecard = ({
                             <p className="text-xs text-gray-500 mt-2 text-center">
                                 Share this code with others to let them view this round
                             </p>
+                            
+                            {/* Allow Modification Checkbox */}
+                            <div className="mt-4 flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="allowModification"
+                                    checked={allowModification !== undefined ? allowModification : (activeRound?.allowModification !== undefined ? activeRound.allowModification : true)}
+                                    onChange={(e) => {
+                                        if (setAllowModification) {
+                                            setAllowModification(e.target.checked);
+                                        }
+                                        // Save to round immediately
+                                        if (db && userId && activeRoundId) {
+                                            const roundRef = doc(db, getRoundCollectionPath(userId), activeRoundId);
+                                            updateDoc(roundRef, {
+                                                allowModification: e.target.checked,
+                                                lastUpdated: serverTimestamp(),
+                                            }).catch(error => {
+                                                console.error('Failed to update allowModification:', error);
+                                            });
+                                        }
+                                    }}
+                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                                <label htmlFor="allowModification" className="text-sm text-gray-700 cursor-pointer">
+                                    Allow viewers to modify scores
+                                </label>
+                            </div>
                         </div>
                     )}
                     
@@ -5200,7 +5261,7 @@ const Scorecard = ({
                                 onChange={(e) => setShareCodeInput(e.target.value.toUpperCase().slice(0, 4))}
                                 placeholder="ABCD"
                                 maxLength={4}
-                                className="flex-1 px-4 py-2 border-2 border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg font-bold tracking-widest uppercase"
+                                className="flex-1 min-w-0 px-2 sm:px-4 py-2 border-2 border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-base sm:text-lg font-bold tracking-widest uppercase"
                             />
                             <button
                                 onClick={async () => {
@@ -5210,7 +5271,7 @@ const Scorecard = ({
                                     }
                                 }}
                                 disabled={!dbReady || shareCodeInput.length !== 4}
-                                className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                className="px-4 sm:px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm sm:text-base flex-shrink-0"
                             >
                                 View
                             </button>
@@ -5221,7 +5282,9 @@ const Scorecard = ({
                     {isViewingSharedRound && (
                         <div className="mt-4 p-3 bg-gray-100 border-2 border-gray-400 rounded-lg">
                             <p className="text-sm font-semibold text-gray-800 text-center">
-                                📖 Viewing Shared Round (Read-Only)
+                                {activeRound?.allowModification 
+                                    ? '📝 Viewing Shared Round (Editable)' 
+                                    : '📖 Viewing Shared Round (Read-Only)'}
                             </p>
                             <button
                                 onClick={() => {
@@ -5403,7 +5466,7 @@ const Scorecard = ({
                     onChange={(e) => setShareCodeInput(e.target.value.toUpperCase().slice(0, 4))}
                     placeholder="ABCD"
                     maxLength={4}
-                    className="flex-1 px-4 py-2 border-2 border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg font-bold tracking-widest uppercase"
+                    className="flex-1 min-w-0 px-2 sm:px-4 py-2 border-2 border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-base sm:text-lg font-bold tracking-widest uppercase"
                 />
                 <button
                     onClick={async () => {
@@ -5413,7 +5476,7 @@ const Scorecard = ({
                         }
                     }}
                     disabled={!dbReady || shareCodeInput.length !== 4}
-                    className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    className="px-4 sm:px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm sm:text-base flex-shrink-0"
                 >
                     View
                 </button>
@@ -5489,6 +5552,7 @@ const App = () => {
     const [isScorecardModalOpen, setIsScorecardModalOpen] = useState(false);
     const [isShareCodeErrorModalOpen, setIsShareCodeErrorModalOpen] = useState(false);
     const [sharedRoundCustomBets, setSharedRoundCustomBets] = useState([]);
+    const [allowModification, setAllowModification] = useState(true); // Default to allowing modification
 
     // On initial load, reset favorites initialization flag
     useEffect(() => {
@@ -6736,6 +6800,11 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                 setSelectedJunkTypes(currentActiveRound.selectedJunkTypes || []);
                 setJunkPointValues(currentActiveRound.junkPointValues || {});
                 
+                // Load allowModification setting
+                if (isNewRoundSelected || isRoundEnded) {
+                    setAllowModification(currentActiveRound.allowModification !== undefined ? currentActiveRound.allowModification : true);
+                }
+                
                 // Load Teams data (only when explicitly selecting a new round or round ended)
                 // Don't overwrite local team edits when user is actively setting up teams
                 // Only update from Firestore if it's a new round or the round ended
@@ -6943,6 +7012,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                 shareCode: shareCode, // Store share code
                 betAmounts: betAmounts, // Store bet amounts for this round
                 skinsCarryOver: skinsCarryOver, // Store skins carry-over setting
+                allowModification: allowModification, // Store allow modification setting
                 createdAt: serverTimestamp(),
             });
             
@@ -7037,6 +7107,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             setSelectedJunkTypes(roundData.selectedJunkTypes || []);
             setJunkPointValues(roundData.junkPointValues || {});
             setRoundBets(roundData.roundBets || []);
+            // Note: allowModification is read from roundData.allowModification in activeRound
         } catch (error) {
             handleError('Failed to load shared round:', error);
             alert('Failed to load shared round. Please try again.');
@@ -8192,11 +8263,11 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="text-lg font-semibold text-gray-500">
-                            {(() => {
-                                const count = (roundPlayerIds && roundPlayerIds.length) ? roundPlayerIds.length : 0;
+                    <div className="text-lg font-semibold text-gray-500">
+                        {(() => {
+                            const count = (roundPlayerIds && roundPlayerIds.length) ? roundPlayerIds.length : 0;
                                 return count === 0 ? 'Players' : `Players (${count})`;
-                            })()}
+                        })()}
                         </div>
                         {teamMode === 'teams' && teams && teams.length > 0 && (
                             <span className="text-xs font-semibold px-2 py-1 rounded-full bg-green-100 text-green-700 border border-green-300">
@@ -9183,9 +9254,11 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                             <Scorecard
                                 activeRound={activeRound}
                                 activeRoundId={isViewingSharedRound ? sharedRoundId : activeRoundId}
-                                isReadOnly={isViewingSharedRound}
+                                isReadOnly={isViewingSharedRound && !(activeRound?.allowModification)}
                                 isShareModalOpen={isShareModalOpen}
                                 setIsShareModalOpen={setIsShareModalOpen}
+                                allowModification={allowModification}
+                                setAllowModification={setAllowModification}
                                 isScorecardModalOpen={isScorecardModalOpen}
                                 setIsScorecardModalOpen={setIsScorecardModalOpen}
                                 isEndRoundConfirmModalOpen={isEndRoundConfirmModalOpen}
