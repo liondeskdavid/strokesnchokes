@@ -23,13 +23,14 @@ const SHARED_ROUNDS_COLLECTION = 'shared_rounds'; // Collection for mapping shar
 const NUM_HOLES = 18;
 // Available structured bet types for the round
 // Note: 'Vegas' is a team game (2v2) where team hole scores are paired into a two-digit number.
-const BET_TYPES = ['9 Point', 'Match Play', 'Nassau', 'Vegas', 'Side Bet', 'Skins'];
+// Note: 'Best Ball' is a team game where the lowest score(s) among teammates count for each hole.
+const BET_TYPES = ['9 Point', 'Match Play', 'Nassau', 'Vegas', 'Best Ball', 'Side Bet', 'Skins'];
 const JUNK_TYPES = [
     { id: 'greenies', name: 'Greenies', description: 'Closest to pin on par 3', points: 1 },
     { id: 'sandies', name: 'Sandies', description: 'Up-and-down from greenside bunker', points: 1 },
     { id: 'poleys', name: 'Poleys', description: 'Putt longer than flagstick height', points: 1 },
     { id: 'gainingDots', name: 'Birdies+', description: 'Birdies, chip-ins, long putts', points: 1 },
-    { id: 'losingDots', name: 'Negas', description: 'Bunker, water hazard, OB', points: 1 }
+    { id: 'losingDots', name: 'Neggies', description: 'Bunker, water hazard, OB', points: 1 }
 ];
 const HOLE_NUMBERS = Array.from({ length: NUM_HOLES }, (_, i) => i + 1);
 
@@ -170,7 +171,7 @@ const PlayerManager = ({
             {/* Select Players For Round Section */}
             <div className="p-4 bg-white rounded-2xl shadow-xl border-2 border-blue-200">
                 <h2 className="text-lg font-bold text-blue-800 mb-2">Select Players For Round</h2>
-                <p className="text-xs text-gray-500 mt-1 mb-3">You can modify each player's handicap for this round by clicking on the handicap value</p>
+                <p className="text-xs text-gray-500 mt-1 mb-3">You can modify each player's handicap for this round by clicking on the handicap value. Save your favorites.</p>
                 
                 {/* All Players List */}
                 <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -448,7 +449,7 @@ const TeamsManager = ({
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                     </svg>
-                    New Team
+                    Next Team
                 </button>
                 {teams.length === 0 && (
                     <p className="text-xs text-gray-500 italic text-center py-2">
@@ -2296,8 +2297,13 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
     const nassauResults = calculatedScores.nassauResults || {};
     const skinsResults = calculatedScores.skinsResults || {};
     const matchPlayResults = calculatedScores.matchPlayResults || {};
+    const ninePointResults = calculatedScores.ninePointResults || {};
+    // Use saved results from activeRound.results as fallback if calculatedScores is not available
+    const vegasResults = calculatedScores.vegasResults || results.vegasResults || {};
+    const bestBallResults = calculatedScores.bestBallResults || results.bestBallResults || {};
     const betSelections = activeRound.betSelections || {};
     const roundBets = activeRound.roundBets || [];
+    const betAmounts = activeRound.betAmounts || {};
 
     // Extract player totals from calculatedScores (which is ensured to be up-to-date on end)
     const playerTotals = calculatedScores.playerTotals || {};
@@ -2397,6 +2403,7 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                 matchPlay: 0,
                 ninePoint: 0,
                 vegas: 0,
+                bestBall: 0,
                 junk: 0,
                 total: 0 // Will be calculated as sum of gross winnings
             };
@@ -2478,46 +2485,51 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                 });
 
                 // Nassau - Only show gross winnings (what they won, not net)
-                const nassauBets = allAvailableBets.filter(b => b.type === 'Nassau');
-                nassauBets.forEach(bet => {
-                    const result = nassauResults[bet.id];
-                    if (result) {
-                        const amount = bet.amount || 0;
-                        if (result.isThreePlayer) {
-                            // For 3 players, calculate gross winnings from individual matchups
-                            // Each matchup winner gets the bet amount (Front 9, Back 9, Total = 3 matchups per player pair)
-                            teamPlayerNames.forEach(playerName => {
-                                let grossWon = 0;
-                                // Check Front 9, Back 9, and Total matchups
-                                ['front9', 'back9', 'total'].forEach(segment => {
-                                    const matchups = result[`${segment}Matchups`] || {};
-                                    Object.values(matchups).forEach(matchup => {
-                                        if (matchup.winner === playerName) {
-                                            grossWon += amount;
-                                        }
+                const hasNassau = (betAmounts.Nassau || 0) > 0;
+                if (hasNassau) {
+                    const nassauBets = allAvailableBets.filter(b => b.type === 'Nassau');
+                    nassauBets.forEach(bet => {
+                        const result = nassauResults[bet.id];
+                        if (result) {
+                            const amount = bet.amount || 0;
+                            if (result.isThreePlayer) {
+                                // For 3 players, calculate gross winnings from individual matchups
+                                // Each matchup winner gets the bet amount (Front 9, Back 9, Total = 3 matchups per player pair)
+                                teamPlayerNames.forEach(playerName => {
+                                    let grossWon = 0;
+                                    // Check Front 9, Back 9, and Total matchups
+                                    ['front9', 'back9', 'total'].forEach(segment => {
+                                        const matchups = result[`${segment}Matchups`] || {};
+                                        Object.values(matchups).forEach(matchup => {
+                                            if (matchup.winner === playerName) {
+                                                grossWon += amount;
+                                            }
+                                        });
                                     });
+                                    breakdown[team.name].nassau += grossWon;
                                 });
-                                breakdown[team.name].nassau += grossWon;
-                            });
-                        } else {
-                            // For 2 players, only count wins
-                            if (result.front9Winner && result.front9Winner !== 'Tie' && teamPlayerNames.includes(result.front9Winner)) {
-                                breakdown[team.name].nassau += amount;
-                            }
-                            if (result.back9Winner && result.back9Winner !== 'Tie' && teamPlayerNames.includes(result.back9Winner)) {
-                                breakdown[team.name].nassau += amount;
-                            }
-                            if (result.totalWinner && result.totalWinner !== 'Tie' && teamPlayerNames.includes(result.totalWinner)) {
-                                breakdown[team.name].nassau += amount;
+                            } else {
+                                // For 2 players, only count wins
+                                if (result.front9Winner && result.front9Winner !== 'Tie' && teamPlayerNames.includes(result.front9Winner)) {
+                                    breakdown[team.name].nassau += amount;
+                                }
+                                if (result.back9Winner && result.back9Winner !== 'Tie' && teamPlayerNames.includes(result.back9Winner)) {
+                                    breakdown[team.name].nassau += amount;
+                                }
+                                if (result.totalWinner && result.totalWinner !== 'Tie' && teamPlayerNames.includes(result.totalWinner)) {
+                                    breakdown[team.name].nassau += amount;
+                                }
                             }
                         }
-                    }
-                });
+                    });
+                }
 
                 // Skins - Use gross winnings (skins won × amount) for breakdown verification
-                const skinsBets = allAvailableBets.filter(b => b.type === 'Skins');
-                skinsBets.forEach(bet => {
-                    const result = skinsResults[bet.id];
+                const hasSkins = (betAmounts.Skins || 0) > 0;
+                if (hasSkins) {
+                    const skinsBets = allAvailableBets.filter(b => b.type === 'Skins');
+                    skinsBets.forEach(bet => {
+                        const result = skinsResults[bet.id];
                     if (result) {
                         teamPlayerNames.forEach(playerName => {
                             // Calculate gross winnings: skins won × bet amount
@@ -2527,63 +2539,70 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                         });
                     }
                 });
+                }
 
                 // Match Play - Only show gross winnings (what they won)
-                const matchPlayBets = allAvailableBets.filter(b => b.type === 'Match Play');
-                matchPlayBets.forEach(bet => {
-                    const result = matchPlayResults[bet.id];
-                    if (result) {
-                        const amount = bet.amount || 0;
-                        // Calculate team holes won to determine team match winner
-                        let teamHolesWon = 0;
-                        teamPlayerNames.forEach(playerName => {
-                            teamHolesWon += result.holeWins?.[playerName] || 0;
-                        });
-                        
-                        // Determine if this team won by comparing with other teams
-                        let isTeamWinner = false;
-                        if (activeRound.teams && activeRound.teams.length > 0) {
-                            const allTeamHolesWon = activeRound.teams.map(t => {
-                                const tPlayerNames = t.playerIds
-                                    .map(playerId => {
-                                        const savedPlayer = savedPlayers.find(sp => sp.id === playerId);
-                                        return savedPlayer ? savedPlayer.name : null;
-                                    })
-                                    .filter(name => name !== null);
-                                return {
-                                    teamName: t.name,
-                                    holesWon: tPlayerNames.reduce((sum, pName) => sum + (result.holeWins?.[pName] || 0), 0)
-                                };
+                const hasMatchPlay = (betAmounts['Match Play'] || 0) > 0;
+                if (hasMatchPlay) {
+                    const matchPlayBets = allAvailableBets.filter(b => b.type === 'Match Play');
+                    matchPlayBets.forEach(bet => {
+                        const result = matchPlayResults[bet.id];
+                        if (result) {
+                            const amount = bet.amount || 0;
+                            // Calculate team holes won to determine team match winner
+                            let teamHolesWon = 0;
+                            teamPlayerNames.forEach(playerName => {
+                                teamHolesWon += result.holeWins?.[playerName] || 0;
                             });
-                            const maxHolesWon = Math.max(...allTeamHolesWon.map(t => t.holesWon));
-                            // Team wins if they have the most holes won and it's more than other teams
-                            isTeamWinner = teamHolesWon === maxHolesWon && 
-                                         allTeamHolesWon.filter(t => t.holesWon === maxHolesWon).length === 1;
-                        } else {
-                            // Fallback: check if any team member won individually
-                            isTeamWinner = teamPlayerNames.some(playerName => result.matchWinner === playerName);
+                            
+                            // Determine if this team won by comparing with other teams
+                            let isTeamWinner = false;
+                            if (activeRound.teams && activeRound.teams.length > 0) {
+                                const allTeamHolesWon = activeRound.teams.map(t => {
+                                    const tPlayerNames = t.playerIds
+                                        .map(playerId => {
+                                            const savedPlayer = savedPlayers.find(sp => sp.id === playerId);
+                                            return savedPlayer ? savedPlayer.name : null;
+                                        })
+                                        .filter(name => name !== null);
+                                    return {
+                                        teamName: t.name,
+                                        holesWon: tPlayerNames.reduce((sum, pName) => sum + (result.holeWins?.[pName] || 0), 0)
+                                    };
+                                });
+                                const maxHolesWon = Math.max(...allTeamHolesWon.map(t => t.holesWon));
+                                // Team wins if they have the most holes won and it's more than other teams
+                                isTeamWinner = teamHolesWon === maxHolesWon && 
+                                             allTeamHolesWon.filter(t => t.holesWon === maxHolesWon).length === 1;
+                            } else {
+                                // Fallback: check if any team member won individually
+                                isTeamWinner = teamPlayerNames.some(playerName => result.matchWinner === playerName);
+                            }
+                            
+                            if (isTeamWinner) {
+                                breakdown[team.name].matchPlay += amount;
+                            }
                         }
-                        
-                        if (isTeamWinner) {
-                            breakdown[team.name].matchPlay += amount;
-                        }
-                    }
-                });
+                    });
+                }
 
                 // 9 Point - Only show positive winnings (what they earned, not what they lost)
-                const ninePointBets = allAvailableBets.filter(b => b.type === '9 Point');
-                const ninePointResults = calculatedScores.ninePointResults || {};
-                ninePointBets.forEach(bet => {
-                    const result = ninePointResults[bet.id];
-                    if (result && result.grossWinnings) {
-                        teamPlayerNames.forEach(playerName => {
-                            const grossWinnings = result.grossWinnings[playerName] || 0;
-                            if (grossWinnings > 0) {
-                                breakdown[team.name].ninePoint += grossWinnings;
-                            }
-                        });
-                    }
-                });
+                const hasNinePoint = (betAmounts['9 Point'] || 0) > 0;
+                if (hasNinePoint) {
+                    const ninePointBets = allAvailableBets.filter(b => b.type === '9 Point');
+                    const ninePointResults = calculatedScores.ninePointResults || {};
+                    ninePointBets.forEach(bet => {
+                        const result = ninePointResults[bet.id];
+                        if (result && result.grossWinnings) {
+                            teamPlayerNames.forEach(playerName => {
+                                const grossWinnings = result.grossWinnings[playerName] || 0;
+                                if (grossWinnings > 0) {
+                                    breakdown[team.name].ninePoint += grossWinnings;
+                                }
+                            });
+                        }
+                    });
+                }
 
                 // Junk - Only show positive winnings (what they earned, not what they lost)
                 teamPlayerNames.forEach(playerName => {
@@ -2594,22 +2613,42 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                 });
                 
                 // Vegas - Only show positive winnings (what they earned)
-                const vegasBets = allAvailableBets.filter(b => b.type === 'Vegas');
-                const vegasResults = calculatedScores.vegasResults || {};
-                vegasBets.forEach(bet => {
-                    const result = vegasResults[bet.id];
-                    if (result && result.teamWinnings) {
-                        const teamWinning = result.teamWinnings[team.name] || 0;
-                        if (teamWinning > 0) {
-                            breakdown[team.name].vegas += teamWinning;
+                const hasVegas = (betAmounts.Vegas || 0) > 0;
+                if (hasVegas) {
+                    const vegasBets = allAvailableBets.filter(b => b.type === 'Vegas');
+                    const vegasResults = calculatedScores.vegasResults || {};
+                    vegasBets.forEach(bet => {
+                        const result = vegasResults[bet.id];
+                        if (result && result.teamWinnings) {
+                            const teamWinning = result.teamWinnings[team.name] || 0;
+                            if (teamWinning > 0) {
+                                breakdown[team.name].vegas += teamWinning;
+                            }
                         }
-                    }
-                });
+                    });
+                }
+                
+                // Best Ball - Only show positive winnings (what they earned)
+                const hasBestBall = (betAmounts['Best Ball'] || 0) > 0;
+                if (hasBestBall) {
+                    const bestBallBets = allAvailableBets.filter(b => b.type === 'Best Ball');
+                    const bestBallResults = calculatedScores.bestBallResults || {};
+                    bestBallBets.forEach(bet => {
+                        const result = bestBallResults[bet.id];
+                        if (result && result.teamWinnings) {
+                            const teamWinning = result.teamWinnings[team.name] || 0;
+                            if (teamWinning > 0) {
+                                breakdown[team.name].bestBall += teamWinning;
+                            }
+                        }
+                    });
+                }
                 
                 // Calculate total gross winnings for team
                 breakdown[team.name].total = breakdown[team.name].manual + breakdown[team.name].nassau + 
                                              breakdown[team.name].skins + breakdown[team.name].matchPlay + 
-                                             breakdown[team.name].ninePoint + breakdown[team.name].vegas + breakdown[team.name].junk;
+                                             breakdown[team.name].ninePoint + breakdown[team.name].vegas + 
+                                             breakdown[team.name].bestBall + breakdown[team.name].junk;
             });
         } else {
             // For singles, calculate directly
@@ -2654,8 +2693,10 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
             });
 
             // Nassau - Only show gross winnings (what they won, not net)
-            const nassauBets = allAvailableBets.filter(b => b.type === 'Nassau');
-            nassauBets.forEach(bet => {
+            const hasNassau = (betAmounts.Nassau || 0) > 0;
+            if (hasNassau) {
+                const nassauBets = allAvailableBets.filter(b => b.type === 'Nassau');
+                nassauBets.forEach(bet => {
                 const result = nassauResults[bet.id];
                 if (result) {
                     const amount = bet.amount || 0;
@@ -2684,10 +2725,13 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                     }
                 }
             });
+            }
 
             // Skins - Use gross winnings (skins won × amount) for breakdown verification
-            const skinsBets = allAvailableBets.filter(b => b.type === 'Skins');
-            skinsBets.forEach(bet => {
+            const hasSkins = (betAmounts.Skins || 0) > 0;
+            if (hasSkins) {
+                const skinsBets = allAvailableBets.filter(b => b.type === 'Skins');
+                skinsBets.forEach(bet => {
                 const result = skinsResults[bet.id];
                 if (result) {
                     Object.entries(result.skinsWon || {}).forEach(([playerName, skinsWon]) => {
@@ -2699,10 +2743,13 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                     });
                 }
             });
+            }
 
             // Match Play - Only show gross winnings (what they won)
-            const matchPlayBets = allAvailableBets.filter(b => b.type === 'Match Play');
-            matchPlayBets.forEach(bet => {
+            const hasMatchPlay = (betAmounts['Match Play'] || 0) > 0;
+            if (hasMatchPlay) {
+                const matchPlayBets = allAvailableBets.filter(b => b.type === 'Match Play');
+                matchPlayBets.forEach(bet => {
                 const result = matchPlayResults[bet.id];
                 if (result) {
                     const amount = bet.amount || 0;
@@ -2712,35 +2759,59 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                     }
                 }
             });
+            }
 
             // 9 Point - Only show positive winnings (what they earned, not what they lost)
-            const ninePointBets = allAvailableBets.filter(b => b.type === '9 Point');
-            const ninePointResults = calculatedScores.ninePointResults || {};
-            ninePointBets.forEach(bet => {
-                const result = ninePointResults[bet.id];
-                if (result && result.grossWinnings) {
-                    Object.entries(result.grossWinnings).forEach(([playerName, grossWinnings]) => {
-                        if (breakdown[playerName] && grossWinnings > 0) {
-                            breakdown[playerName].ninePoint += grossWinnings;
-                        }
-                    });
-                }
-            });
+            const hasNinePoint = (betAmounts['9 Point'] || 0) > 0;
+            if (hasNinePoint) {
+                const ninePointBets = allAvailableBets.filter(b => b.type === '9 Point');
+                const ninePointResults = calculatedScores.ninePointResults || {};
+                ninePointBets.forEach(bet => {
+                    const result = ninePointResults[bet.id];
+                    if (result && result.grossWinnings) {
+                        Object.entries(result.grossWinnings).forEach(([playerName, grossWinnings]) => {
+                            if (breakdown[playerName] && grossWinnings > 0) {
+                                breakdown[playerName].ninePoint += grossWinnings;
+                            }
+                        });
+                    }
+                });
+            }
 
             // Vegas - Only show positive winnings (what they earned)
-            const vegasBetsForBreakdown = allAvailableBets.filter(b => b.type === 'Vegas');
-            const vegasResultsForBreakdown = calculatedScores.vegasResults || {};
-            vegasBetsForBreakdown.forEach(bet => {
-                const result = vegasResultsForBreakdown[bet.id];
+            const hasVegas = (betAmounts.Vegas || 0) > 0;
+            if (hasVegas) {
+                const vegasBetsForBreakdown = allAvailableBets.filter(b => b.type === 'Vegas');
+                const vegasResultsForBreakdown = calculatedScores.vegasResults || {};
+                vegasBetsForBreakdown.forEach(bet => {
+                    const result = vegasResultsForBreakdown[bet.id];
+                    if (result && result.netWinnings) {
+                        Object.entries(result.netWinnings).forEach(([playerName, netWinnings]) => {
+                            if (breakdown[playerName] && netWinnings > 0) {
+                                breakdown[playerName].vegas += netWinnings;
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Best Ball - Only show positive winnings (what they earned)
+            const hasBestBall = (betAmounts['Best Ball'] || 0) > 0;
+            if (hasBestBall) {
+                const bestBallBetsForBreakdown = allAvailableBets.filter(b => b.type === 'Best Ball');
+                const bestBallResultsForBreakdown = calculatedScores.bestBallResults || {};
+                bestBallBetsForBreakdown.forEach(bet => {
+                const result = bestBallResultsForBreakdown[bet.id];
                 if (result && result.netWinnings) {
                     Object.entries(result.netWinnings).forEach(([playerName, netWinnings]) => {
                         if (breakdown[playerName] && netWinnings > 0) {
-                            breakdown[playerName].vegas += netWinnings;
+                            breakdown[playerName].bestBall += netWinnings;
                         }
                     });
                 }
             });
-
+            }
+            
             // Junk - Only show positive winnings (what they earned, not what they lost)
             Object.entries(junkWinnings).forEach(([playerName, net]) => {
                 if (breakdown[playerName] && net > 0) {
@@ -2752,7 +2823,8 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
             Object.keys(breakdown).forEach(playerName => {
                 breakdown[playerName].total = breakdown[playerName].manual + breakdown[playerName].nassau + 
                                              breakdown[playerName].skins + breakdown[playerName].matchPlay + 
-                                             breakdown[playerName].ninePoint + breakdown[playerName].vegas + breakdown[playerName].junk;
+                                             breakdown[playerName].ninePoint + breakdown[playerName].vegas + 
+                                             breakdown[playerName].bestBall + breakdown[playerName].junk;
             });
         }
 
@@ -2987,32 +3059,69 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                 </h4>
                 <div className="space-y-3">
                     {summaryData.map(item => {
-                        const breakdown = winningsBreakdown[item.name] || { manual: 0, nassau: 0, skins: 0, matchPlay: 0, ninePoint: 0, junk: 0, total: 0 };
+                        const breakdown = winningsBreakdown[item.name] || { manual: 0, nassau: 0, skins: 0, matchPlay: 0, ninePoint: 0, vegas: 0, bestBall: 0, junk: 0, total: 0 };
+                        const betAmounts = activeRound.betAmounts || {};
+                        const hasJunk = activeRound.selectedJunkTypes && activeRound.selectedJunkTypes.length > 0;
+                        
+                        // Build array of bet items to display (only selected bets)
+                        const betItems = [];
+                        
+                        // Always show Manual if there are any manual bets
+                        if (breakdown.manual > 0 || Object.keys(activeRound.betSelections || {}).length > 0) {
+                            betItems.push({ name: 'Manual', value: breakdown.manual });
+                        }
+                        
+                        // Only show if selected
+                        if ((betAmounts.Nassau || 0) > 0) {
+                            betItems.push({ name: 'Nassau', value: breakdown.nassau });
+                        }
+                        if ((betAmounts.Skins || 0) > 0) {
+                            betItems.push({ name: 'Skins', value: breakdown.skins });
+                        }
+                        if ((betAmounts['Match Play'] || 0) > 0) {
+                            betItems.push({ name: 'Match Play', value: breakdown.matchPlay });
+                        }
+                        if ((betAmounts['9 Point'] || 0) > 0) {
+                            betItems.push({ name: '9 Point', value: breakdown.ninePoint });
+                        }
+                        if ((betAmounts.Vegas || 0) > 0) {
+                            betItems.push({ name: 'Vegas', value: breakdown.vegas });
+                        }
+                        if ((betAmounts['Best Ball'] || 0) > 0) {
+                            betItems.push({ name: 'Best Ball', value: breakdown.bestBall });
+                        }
+                        if (hasJunk) {
+                            betItems.push({ name: 'Junk', value: breakdown.junk });
+                        }
+                        
+                        // Always show Total Gross
+                        betItems.push({ name: 'Total Gross', value: breakdown.total, isTotal: true });
+                        
+                        // Determine grid columns class based on number of items
+                        let gridColsClass = 'md:grid-cols-2';
+                        if (betItems.length <= 3) {
+                            gridColsClass = 'md:grid-cols-3';
+                        } else if (betItems.length <= 4) {
+                            gridColsClass = 'md:grid-cols-4';
+                        } else if (betItems.length <= 5) {
+                            gridColsClass = 'md:grid-cols-5';
+                        } else if (betItems.length <= 6) {
+                            gridColsClass = 'md:grid-cols-6';
+                        } else {
+                            gridColsClass = 'md:grid-cols-7';
+                        }
+                        
                         return (
                             <div key={item.name} className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm">
                                 <div className="font-semibold text-gray-800 mb-2">{item.name}</div>
-                                <div className="grid grid-cols-2 md:grid-cols-7 gap-2 text-xs">
-                                    <div>
-                                        <div className="text-gray-600 font-semibold">Manual <span className="font-bold text-blue-600">${breakdown.manual.toFixed(0)}</span></div>
-                                    </div>
-                                    <div>
-                                        <div className="text-gray-600 font-semibold">Nassau <span className="font-bold text-blue-600">${breakdown.nassau.toFixed(0)}</span></div>
-                                    </div>
-                                    <div>
-                                        <div className="text-gray-600 font-semibold">Skins <span className="font-bold text-blue-600">${breakdown.skins.toFixed(0)}</span></div>
-                                    </div>
-                                    <div>
-                                        <div className="text-gray-600 font-semibold">Match Play <span className="font-bold text-blue-600">${breakdown.matchPlay.toFixed(0)}</span></div>
-                                    </div>
-                                    <div>
-                                        <div className="text-gray-600 font-semibold">9 Point <span className="font-bold text-blue-600">${breakdown.ninePoint.toFixed(0)}</span></div>
-                                    </div>
-                                    <div>
-                                        <div className="text-gray-600 font-semibold">Junk <span className="font-bold text-blue-600">${breakdown.junk.toFixed(0)}</span></div>
-                                    </div>
-                                    <div>
-                                        <div className="text-gray-600 font-semibold">Total Gross <span className="font-bold text-lg text-blue-600">${breakdown.total.toFixed(0)}</span></div>
-                                    </div>
+                                <div className={`grid grid-cols-2 ${gridColsClass} gap-2 text-xs`}>
+                                    {betItems.map((betItem, idx) => (
+                                        <div key={idx}>
+                                            <div className={`text-gray-600 font-semibold ${betItem.isTotal ? 'text-base' : ''}`}>
+                                                {betItem.name} <span className={`font-bold ${betItem.isTotal ? 'text-lg' : ''} text-blue-600`}>${betItem.value.toFixed(0)}</span>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         );
@@ -3103,9 +3212,13 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                 
                 <div className="space-y-4">
                     {/* Nassau Bets */}
-                    {allAvailableBets && allAvailableBets.filter(b => b.type === 'Nassau').map(bet => {
-                        const result = nassauResults[bet.id];
-                        if (!result) return null;
+                    {(() => {
+                        const hasNassau = (betAmounts.Nassau || 0) > 0;
+                        if (!hasNassau) return null;
+                        
+                        return allAvailableBets && allAvailableBets.filter(b => b.type === 'Nassau').map(bet => {
+                            const result = nassauResults[bet.id];
+                            if (!result) return null;
                         
                         const front9Winner = result.front9Winner;
                         const back9Winner = result.back9Winner;
@@ -3152,12 +3265,17 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                                 </div>
                             </div>
                         );
-                    })}
+                        });
+                    })()}
                     
                     {/* Skins Bets */}
-                    {allAvailableBets && allAvailableBets.filter(b => b.type === 'Skins').map(bet => {
-                        const result = skinsResults[bet.id];
-                        if (!result) return null;
+                    {(() => {
+                        const hasSkins = (betAmounts.Skins || 0) > 0;
+                        if (!hasSkins) return null;
+                        
+                        return allAvailableBets && allAvailableBets.filter(b => b.type === 'Skins').map(bet => {
+                            const result = skinsResults[bet.id];
+                            if (!result) return null;
                         
                         const skinsWon = result.skinsWon || {};
                         const totalWinnings = result.totalWinnings || {};
@@ -3197,7 +3315,8 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                                 )}
                             </div>
                         );
-                    })}
+                        });
+                    })()}
                     
                     {/* Junk/Side Bets */}
                     {activeRound.selectedJunkTypes && activeRound.selectedJunkTypes.length > 0 && (
@@ -3252,9 +3371,13 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                     )}
                     
                     {/* Match Play Bets */}
-                    {allAvailableBets && allAvailableBets.filter(b => b.type === 'Match Play').map(bet => {
-                        const result = matchPlayResults[bet.id];
-                        if (!result) return null;
+                    {(() => {
+                        const hasMatchPlay = (betAmounts['Match Play'] || 0) > 0;
+                        if (!hasMatchPlay) return null;
+                        
+                        return allAvailableBets && allAvailableBets.filter(b => b.type === 'Match Play').map(bet => {
+                            const result = matchPlayResults[bet.id];
+                            if (!result) return null;
                         
                         const amount = bet.amount || 0;
                         const matchResult = result.matchResult;
@@ -3357,11 +3480,203 @@ const RoundSummary = ({ activeRound, calculatedScores, allAvailableBets, players
                                 )}
                             </div>
                         );
-                    })}
+                        });
+                    })()}
+                    
+                    {/* 9 Point Bets */}
+                    {(() => {
+                        const hasNinePoint = (betAmounts['9 Point'] || 0) > 0;
+                        if (!hasNinePoint) return null;
+                        
+                        const ninePointBets = allAvailableBets?.filter(b => b.type === '9 Point') || [];
+                        if (ninePointBets.length === 0) return null;
+                        
+                        return ninePointBets.map(bet => {
+                            const result = ninePointResults[bet.id];
+                            if (!result || !result.grossWinnings) return null;
+                            
+                            const grossWinnings = result.grossWinnings || {};
+                            const amount = bet.amount || 0;
+                            const hasWinners = Object.values(grossWinnings).some(w => w > 0);
+                            
+                            return (
+                                <div key={bet.id} className="p-4 rounded-2xl bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200">
+                                    <h5 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                        <span>9️⃣</span>
+                                        <span>{bet.name} - ${amount} per point</span>
+                                    </h5>
+                                    {hasWinners ? (
+                                        <div className="space-y-2">
+                                            {roundPlayers.map(player => {
+                                                const winnings = grossWinnings[player.name] || 0;
+                                                if (winnings === 0) return null;
+                                                return (
+                                                    <div key={player.name} className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm flex justify-between items-center">
+                                                        <span className="font-medium text-gray-800">{player.name}</span>
+                                                        <span className="text-sm text-gray-700">
+                                                            <span className="text-green-600 font-bold">+${winnings.toFixed(0)}</span>
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-gray-500 italic bg-white rounded-xl p-3 border border-gray-200">No points won</div>
+                                    )}
+                                </div>
+                            );
+                        });
+                    })()}
+                    
+                    {/* Vegas Bets */}
+                    {(() => {
+                        const hasVegas = (betAmounts.Vegas || 0) > 0;
+                        if (!hasVegas) return null;
+                        
+                        const vegasBets = allAvailableBets?.filter(b => b.type === 'Vegas') || [];
+                        if (vegasBets.length === 0) return null;
+                        
+                        return vegasBets.map(bet => {
+                            const result = vegasResults[bet.id];
+                            if (!result || !result.netWinnings) return null;
+                            
+                            const netWinnings = result.netWinnings || {};
+                            const teamWinnings = result.teamWinnings || {};
+                            const amount = bet.amount || 0;
+                            const hasWinners = Object.values(netWinnings).some(w => w !== 0);
+                            
+                            return (
+                                <div key={bet.id} className="p-4 rounded-2xl bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200">
+                                    <h5 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                        <span>🎰</span>
+                                        <span>{bet.name} - ${amount} per point</span>
+                                    </h5>
+                                    {hasWinners ? (
+                                        <div className="space-y-2">
+                                            {isTeamMode && activeRound.teams ? (
+                                                activeRound.teams.map(team => {
+                                                    const teamWinning = teamWinnings[team.name] || 0;
+                                                    if (teamWinning === 0) return null;
+                                                    return (
+                                                        <div key={team.name} className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm flex justify-between items-center">
+                                                            <span className="font-medium text-gray-800">{team.name}</span>
+                                                            <span className={`text-sm font-bold ${teamWinning >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                                {teamWinning >= 0 ? '+' : ''}${teamWinning.toFixed(2)}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                roundPlayers.map(player => {
+                                                    const winnings = netWinnings[player.name] || 0;
+                                                    if (winnings === 0) return null;
+                                                    return (
+                                                        <div key={player.name} className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm flex justify-between items-center">
+                                                            <span className="font-medium text-gray-800">{player.name}</span>
+                                                            <span className={`text-sm font-bold ${winnings >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                                {winnings >= 0 ? '+' : ''}${winnings.toFixed(2)}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-gray-500 italic bg-white rounded-xl p-3 border border-gray-200">No winnings</div>
+                                    )}
+                                </div>
+                            );
+                        });
+                    })()}
+                    
+                    {/* Best Ball Bets */}
+                    {(() => {
+                        const hasBestBall = (betAmounts['Best Ball'] || 0) > 0;
+                        if (!hasBestBall) return null;
+                        
+                        const bestBallBets = allAvailableBets?.filter(b => b.type === 'Best Ball') || [];
+                        if (bestBallBets.length === 0) return null;
+                        
+                        return bestBallBets.map(bet => {
+                            const result = bestBallResults[bet.id];
+                            const amount = bet.amount || 0;
+                            const roundTeams = activeRound?.teams || [];
+                            const isTeamMode = activeRound?.teamMode === 'teams' && roundTeams.length >= 2;
+                            
+                            // Show bet even if results aren't calculated yet
+                            if (!result || !result.teamWinnings) {
+                                if (!isTeamMode || roundTeams.length < 2) {
+                                    return (
+                                        <div key={bet.id} className="p-4 rounded-2xl bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
+                                            <h5 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                                <span>⛳</span>
+                                                <span>{bet.name} - ${amount} per hole</span>
+                                            </h5>
+                                            <div className="text-sm text-gray-500 italic bg-white rounded-xl p-3 border border-gray-200">Requires teams</div>
+                                        </div>
+                                    );
+                                }
+                                
+                                return (
+                                    <div key={bet.id} className="p-4 rounded-2xl bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
+                                        <h5 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                            <span>⛳</span>
+                                            <span>{bet.name} - ${amount} per hole</span>
+                                        </h5>
+                                        <div className="text-sm text-gray-500 italic bg-white rounded-xl p-3 border border-gray-200">In Progress</div>
+                                    </div>
+                                );
+                            }
+                            
+                            const teamWinnings = result.teamWinnings || {};
+                            const hasWinners = Object.values(teamWinnings).some(w => w > 0);
+                            
+                            // Check if all teams are tied
+                            const allTeamNames = roundTeams.map(t => t.name).filter(Boolean);
+                            const currentWinnings = {};
+                            allTeamNames.forEach(team => {
+                                currentWinnings[team] = teamWinnings[team] || 0;
+                            });
+                            const uniqueWinnings = [...new Set(Object.values(currentWinnings))];
+                            const isTied = uniqueWinnings.length === 1;
+                            
+                            return (
+                                <div key={bet.id} className="p-4 rounded-2xl bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
+                                    <h5 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                        <span>⛳</span>
+                                        <span>{bet.name} - ${amount} per hole</span>
+                                    </h5>
+                                    {isTied ? (
+                                        <div className="text-sm text-gray-500 italic bg-white rounded-xl p-3 border border-gray-200">Tie</div>
+                                    ) : hasWinners ? (
+                                        <div className="space-y-2">
+                                            {allTeamNames.map(team => {
+                                                const winnings = teamWinnings[team] || 0;
+                                                return (
+                                                    <div key={team} className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm flex justify-between items-center">
+                                                        <span className="font-medium text-gray-800">{team}</span>
+                                                        <span className="text-sm text-gray-700">
+                                                            {winnings > 0 ? (
+                                                                <span className="text-green-600 font-bold">+${winnings.toFixed(2)}</span>
+                                                            ) : (
+                                                                <span className="text-gray-500">$0.00</span>
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-gray-500 italic bg-white rounded-xl p-3 border border-gray-200">No winnings</div>
+                                    )}
+                                </div>
+                            );
+                        });
+                    })()}
                     
                     {/* Manual Bets */}
                     {allAvailableBets && betSelections && (() => {
-                        const manualBets = allAvailableBets.filter(b => b.type !== 'Skins' && b.type !== 'Nassau' && b.type !== 'Match Play' && b.type !== '9 Point');
+                        const manualBets = allAvailableBets.filter(b => b.type !== 'Skins' && b.type !== 'Nassau' && b.type !== 'Match Play' && b.type !== '9 Point' && b.type !== 'Vegas' && b.type !== 'Best Ball');
                         const betsWithWinners = manualBets.filter(bet => {
                             const winner = betSelections[bet.name];
                             return winner && winner !== 'N/A' && winner.trim() !== '';
@@ -4504,6 +4819,7 @@ const Scorecard = ({
                 const hasMatchPlay = (betAmounts['Match Play'] || 0) > 0;
                 const hasNinePoint = (betAmounts['9 Point'] || 0) > 0;
                 const hasVegas = (betAmounts.Vegas || 0) > 0;
+                const hasBestBall = (betAmounts['Best Ball'] || 0) > 0;
                 
                 // Only show if there are any bets selected for the round
                 // if (roundBets.length === 0 && !hasJunk) {
@@ -4967,6 +5283,104 @@ const Scorecard = ({
                                     </div>
                                 );
                             })}
+                            
+                            {/* Best Ball */}
+                            {hasBestBall && (() => {
+                                const bestBallBets = allAvailableBets.filter(b => b.type === 'Best Ball');
+                                const bestBallAmount = betAmounts['Best Ball'] || 0;
+                                const bestBallResults = calculatedScores?.bestBallResults || {};
+                                
+                                // Create temporary bet if needed
+                                const bestBallBetsToShow = bestBallBets.length > 0 
+                                    ? bestBallBets 
+                                    : (bestBallAmount > 0 ? [{ id: 'bestball_temp', type: 'Best Ball', amount: bestBallAmount }] : []);
+                                
+                                return bestBallBetsToShow.map(bet => {
+                                    const result = bestBallResults[bet.id];
+                                    const roundTeamsForDisplay = activeRound?.teams || [];
+                                    const isTeamMode = activeRound?.teamMode === 'teams' && roundTeamsForDisplay.length >= 2;
+                                    
+                                    // Show bet even if results aren't calculated yet
+                                    if (!result || !result.teamWinnings) {
+                                        if (!isTeamMode || roundTeamsForDisplay.length < 2) {
+                                            return (
+                                                <div key={bet.id} className="text-white text-sm">
+                                                    <span className="font-semibold">Best Ball:</span> Requires teams
+                                                </div>
+                                            );
+                                        }
+                                        
+                                        return (
+                                            <div key={bet.id} className="text-white text-sm">
+                                                <span className="font-semibold">Best Ball:</span> In Progress
+                                            </div>
+                                        );
+                                    }
+                                    
+                                    const teamWinnings = result.teamWinnings || {};
+                                    const holeResults = result.holeResults || {};
+                                    
+                                    // Get all team names from the round (not just from teamWinnings)
+                                    const allTeamNames = roundTeamsForDisplay.map(t => t.name).filter(Boolean);
+                                    
+                                    if (allTeamNames.length === 0) {
+                                        return (
+                                            <div key={bet.id} className="text-white text-sm">
+                                                <span className="font-semibold">Best Ball:</span> In Progress
+                                            </div>
+                                        );
+                                    }
+                                    
+                                    // Get the most recent hole's cumulative winnings, or use current teamWinnings
+                                    const getCurrentWinnings = (teamName) => {
+                                        const holes = Object.keys(holeResults).map(Number).sort((a, b) => b - a);
+                                        if (holes.length > 0) {
+                                            const latestHole = holeResults[holes[0]];
+                                            if (latestHole && latestHole.cumulativeWinnings) {
+                                                return latestHole.cumulativeWinnings[teamName] || 0;
+                                            }
+                                        }
+                                        return teamWinnings[teamName] || 0;
+                                    };
+                                    
+                                    // Get current winnings for all teams
+                                    const currentWinnings = {};
+                                    allTeamNames.forEach(team => {
+                                        currentWinnings[team] = getCurrentWinnings(team);
+                                    });
+                                    
+                                    // Check if all teams are tied (all winnings are equal - could be 0 or any positive value)
+                                    const uniqueWinnings = [...new Set(Object.values(currentWinnings))];
+                                    const isTied = uniqueWinnings.length === 1;
+                                    
+                                    if (isTied && allTeamNames.length > 0) {
+                                        return (
+                                            <div key={bet.id} className="text-white text-sm">
+                                                <span className="font-semibold">Best Ball:</span> Tie
+                                            </div>
+                                        );
+                                    }
+                                    
+                                    // Sort teams by winnings (highest first)
+                                    const sortedTeams = [...allTeamNames].sort((a, b) => (currentWinnings[b] || 0) - (currentWinnings[a] || 0));
+                                    
+                                    return (
+                                        <div key={bet.id} className="text-white text-sm">
+                                            <span className="font-semibold">Best Ball:</span>{' '}
+                                            {sortedTeams.map((team, index) => {
+                                                const winnings = currentWinnings[team] || 0;
+                                                const sign = winnings > 0 ? '+' : '';
+                                                return (
+                                                    <span key={team}>
+                                                        {index > 0 ? ', ' : ''}
+                                                        {team} {sign}${Math.abs(winnings).toFixed(2)}
+                                                    </span>
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                });
+                            })()}
                             
                             {/* Junk */}
                             {hasJunk && (() => {
@@ -6625,7 +7039,184 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             }
         }
 
-        return { playerTotals, holeData: holeDataResult, players: roundPlayers, grossWinner, netWinner, nassauResults, skinsResults, matchPlayResults, ninePointResults, vegasResults };
+        // Calculate Best Ball (if Best Ball bets exist and teams are set up)
+        const bestBallBetsFromAll = allAvailableBets.filter(b => b.type === 'Best Ball');
+        const bestBallAmount = activeRound?.betAmounts?.['Best Ball'] || 0;
+        const bestBallResults = {};
+        
+        // Check if Best Ball is selected via betAmounts or allAvailableBets
+        const hasBestBallBet = bestBallBetsFromAll.length > 0 || bestBallAmount > 0;
+        
+        if (hasBestBallBet) {
+            const roundTeams = activeRound?.teams || [];
+            const isTeamMode = activeRound?.teamMode === 'teams' && roundTeams.length >= 2;
+            
+            if (isTeamMode && roundTeams.length >= 2) {
+                // Use existing bets or create a temporary one from betAmounts
+                const bestBallBetsToProcess = bestBallBetsFromAll.length > 0 
+                    ? bestBallBetsFromAll 
+                    : [{ id: 'bestball_temp', type: 'Best Ball', amount: bestBallAmount }];
+                
+                bestBallBetsToProcess.forEach(bet => {
+                    const holeAmount = bet.amount || bestBallAmount || 0;
+                    const teamWinnings = {}; // Track cumulative winnings per team
+                    const holeResults = {}; // Track results per hole
+                    const teamHoleScores = {}; // Track best scores per hole per team
+                    
+                    // Initialize team winnings for all teams (start at 0)
+                    roundTeams.forEach(team => {
+                        if (team.name) {
+                            teamWinnings[team.name] = 0;
+                            teamHoleScores[team.name] = {};
+                        }
+                    });
+                    
+                    // Get all team names for reference
+                    const allTeamNames = roundTeams.map(t => t.name).filter(Boolean);
+                    
+                    // Calculate Best Ball for each hole (cumulative)
+                    HOLE_NUMBERS.forEach(h => {
+                        const holeKey = `hole${h}`;
+                        const holeScores = {};
+                        
+                        // Get net scores for this hole for all players
+                        roundPlayers.forEach(player => {
+                            const netScore = holeDataResult[player.name]?.[holeKey]?.netScore;
+                            if (netScore !== undefined && netScore !== null && netScore !== '') {
+                                holeScores[player.name] = Number(netScore);
+                            }
+                        });
+                        
+                        // Calculate best score(s) for each team on this hole
+                        const teamHoleBestScores = {}; // Track best score for each team on this hole
+                        roundTeams.forEach(team => {
+                            const teamPlayerIds = team.playerIds || [];
+                            const teamPlayerScores = teamPlayerIds
+                                .map(playerId => {
+                                    const player = savedPlayersRef.find(p => p.id === playerId);
+                                    return player && holeScores[player.name] !== undefined 
+                                        ? { name: player.name, score: holeScores[player.name] }
+                                        : null;
+                                })
+                                .filter(item => item !== null);
+                            
+                            if (teamPlayerScores.length > 0) {
+                                // Sort scores from lowest to highest
+                                const sortedScores = [...teamPlayerScores].sort((a, b) => a.score - b.score);
+                                
+                                // Determine how many scores to use based on team size
+                                let bestScores = [];
+                                if (teamPlayerScores.length === 2) {
+                                    // 2-Person Best Ball: use the lower score
+                                    bestScores = [sortedScores[0].score];
+                                } else if (teamPlayerScores.length === 4) {
+                                    // Two Best Balls of Foursome: use the two lowest scores
+                                    bestScores = [sortedScores[0].score, sortedScores[1].score];
+                                } else {
+                                    // For other team sizes, use the lowest score
+                                    bestScores = [sortedScores[0].score];
+                                }
+                                
+                                // Sum the best scores for this hole
+                                const holeBestScore = bestScores.reduce((sum, score) => sum + score, 0);
+                                teamHoleBestScores[team.name] = holeBestScore;
+                                
+                                // Store hole score
+                                teamHoleScores[team.name][h] = {
+                                    bestScores: bestScores,
+                                    total: holeBestScore,
+                                    allScores: sortedScores.map(s => s.score)
+                                };
+                            }
+                        });
+                        
+                        // Determine winner of this hole (lowest best score wins)
+                        const teamsWithScores = Object.keys(teamHoleBestScores);
+                        if (teamsWithScores.length >= 2) {
+                            // Find the team with the lowest best score on this hole
+                            const sortedTeams = [...teamsWithScores].sort((a, b) => teamHoleBestScores[a] - teamHoleBestScores[b]);
+                            const winningTeam = sortedTeams[0];
+                            const winningScore = teamHoleBestScores[winningTeam];
+                            
+                            // Check if there's a tie (multiple teams with the same lowest score)
+                            const tiedTeams = teamsWithScores.filter(team => teamHoleBestScores[team] === winningScore);
+                            
+                            if (tiedTeams.length === 1) {
+                                // One winner: winning team gets the bet amount (per hole, not per stroke)
+                                // Only add to winner, don't deduct from losers
+                                
+                                // Ensure all teams are in teamWinnings (initialize if missing)
+                                allTeamNames.forEach(teamName => {
+                                    if (teamWinnings[teamName] === undefined) {
+                                        teamWinnings[teamName] = 0;
+                                    }
+                                });
+                                
+                                // Winning team gets the bet amount (no deduction from losing teams)
+                                teamWinnings[winningTeam] = (teamWinnings[winningTeam] || 0) + holeAmount;
+                                
+                                // Store hole result with snapshot of cumulative winnings
+                                holeResults[h] = {
+                                    winningTeam: winningTeam,
+                                    teamScores: teamHoleBestScores,
+                                    holeWinnings: holeAmount, // Winnings for winning team on this hole
+                                    cumulativeWinnings: { ...teamWinnings } // Snapshot of all team winnings after this hole
+                                };
+                            } else {
+                                // Tie on this hole - no winnings (carry over to next hole)
+                                // Ensure all teams are in teamWinnings (initialize if missing)
+                                allTeamNames.forEach(teamName => {
+                                    if (teamWinnings[teamName] === undefined) {
+                                        teamWinnings[teamName] = 0;
+                                    }
+                                });
+                                
+                                holeResults[h] = {
+                                    winningTeam: null,
+                                    teamScores: teamHoleBestScores,
+                                    holeWinnings: 0,
+                                    cumulativeWinnings: { ...teamWinnings } // Snapshot of all team winnings (unchanged)
+                                };
+                            }
+                        }
+                    });
+                    
+                    // Calculate net winnings per player (distribute team winnings to players)
+                    const netWinnings = {};
+                    roundPlayers.forEach(player => {
+                        netWinnings[player.name] = 0;
+                    });
+                    
+                    roundTeams.forEach(team => {
+                        const teamWinning = teamWinnings[team.name] || 0;
+                        const teamPlayerIds = team.playerIds || [];
+                        const teamPlayerCount = teamPlayerIds.length;
+                        
+                        if (teamPlayerCount > 0) {
+                            // Split team winnings equally among team members
+                            const winningsPerPlayer = teamWinning / teamPlayerCount;
+                            
+                            teamPlayerIds.forEach(playerId => {
+                                const player = savedPlayersRef.find(p => p.id === playerId);
+                                if (player) {
+                                    netWinnings[player.name] = (netWinnings[player.name] || 0) + winningsPerPlayer;
+                                }
+                            });
+                        }
+                    });
+                    
+                    bestBallResults[bet.id] = {
+                        teamHoleScores,
+                        teamWinnings,
+                        holeResults,
+                        netWinnings,
+                        amount: holeAmount
+                    };
+                });
+            }
+        }
+
+        return { playerTotals, holeData: holeDataResult, players: roundPlayers, grossWinner, netWinner, nassauResults, skinsResults, matchPlayResults, ninePointResults, vegasResults, bestBallResults };
     }, [activeRound, players, scores, holeDataEdit, allAvailableBets]);
 
 
@@ -6633,7 +7224,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
     const generateInitialBetSelections = useCallback((bets) => {
         const initialSelections = {};
         // Only include manual bets in initial selections (exclude Skins, Nassau, and Match Play which are auto-calculated)
-        bets.filter(b => b.type !== 'Skins' && b.type !== 'Nassau' && b.type !== 'Match Play' && b.type !== '9 Point').forEach(bet => {
+        bets.filter(b => b.type !== 'Skins' && b.type !== 'Nassau' && b.type !== 'Match Play' && b.type !== '9 Point' && b.type !== 'Vegas' && b.type !== 'Best Ball').forEach(bet => {
             initialSelections[bet.name] = ''; // Stores winner name (string)
         });
         return initialSelections;
@@ -7353,7 +7944,24 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             });
         }
 
-        // 2f. Junk/Side Bets Calculation
+        // 2g. Best Ball Calculation (Automatic) - Only for team mode with 2+ teams
+        const bestBallBets = allAvailableBets.filter(b => b.type === 'Best Ball');
+        const bestBallResults = calculatedScores.bestBallResults || {};
+
+        if (bestBallBets.length > 0 && activeRound.teamMode === 'teams' && activeRound.teams && activeRound.teams.length >= 2) {
+            bestBallBets.forEach(bet => {
+                const result = bestBallResults[bet.id];
+                if (result && result.netWinnings) {
+                    // Add Best Ball winnings to total winnings
+                    playerNames.forEach(name => {
+                        const bestBallWinnings = result.netWinnings[name] || 0;
+                        winnings[name] = (winnings[name] || 0) + bestBallWinnings;
+                    });
+                }
+            });
+        }
+
+        // 2h. Junk/Side Bets Calculation
         const junkWinnings = {};
         playerNames.forEach(name => junkWinnings[name] = 0);
         
@@ -7384,7 +7992,10 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
         // - Nassau (2b)
         // - Skins (2c)
         // - Match Play (2d)
-        // - Junk/Side bets (2e)
+        // - 9 Point (2e)
+        // - Vegas (2f)
+        // - Best Ball (2g)
+        // - Junk/Side bets (2h)
         // If in teams mode, sum each team's players' individual winnings to get team totals.
         let finalWinnings = winnings;
         let teamWinnings = {};
@@ -7421,6 +8032,8 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             skinsWon: skinsWon, // Save skins breakdown
             skinsAmount: skinsBets.length > 0 ? skinsBets[0].amount : 0, // Save skins amount
             junkWinnings: junkWinnings, // Save junk winnings breakdown
+            bestBallResults: calculatedScores.bestBallResults || {}, // Save Best Ball results
+            vegasResults: calculatedScores.vegasResults || {}, // Save Vegas results
         };
 
         // --- STEP 5: Update Firestore Status and Results ---
@@ -7440,6 +8053,48 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
             console.error("Failed to end round status:", error);
             alert(`Error ending round: ${error.message || error.toString()}\n\nPlease check the console for more details.`);
             handleError("Failed to end round status:", error);
+        }
+    };
+
+    const handleEndAllActiveRounds = async () => {
+        if (!db || !userId) {
+            alert("Cannot end rounds - database not ready.");
+            return;
+        }
+
+        const activeRounds = rounds.filter(r => r.status === 'Active');
+        
+        if (activeRounds.length === 0) {
+            alert("No active rounds to end.");
+            return;
+        }
+
+        const confirmMessage = `Are you sure you want to end all ${activeRounds.length} active round(s)?\n\nThis will mark them as ended.`;
+        if (!window.confirm(confirmMessage)) {
+            return;
+        }
+
+        try {
+            const roundRefs = activeRounds.map(round => 
+                doc(db, getRoundCollectionPath(userId), round.id)
+            );
+
+            const updatePromises = roundRefs.map((roundRef, index) => {
+                const round = activeRounds[index];
+                return updateDoc(roundRef, {
+                    status: 'Ended',
+                    lastUpdated: serverTimestamp(),
+                    // Optionally save scores if they exist
+                    ...(round.scores && { scores: round.scores }),
+                });
+            });
+
+            await Promise.all(updatePromises);
+            alert(`Successfully ended ${activeRounds.length} active round(s).`);
+        } catch (error) {
+            console.error("Failed to end all active rounds:", error);
+            alert(`Error ending rounds: ${error.message || error.toString()}`);
+            handleError("Failed to end all active rounds:", error);
         }
     };
 
@@ -8583,6 +9238,7 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                     const nassau = findBet('Nassau');
                     const ninePoint = findBet('9 Point');
                     const vegas = findBet('Vegas');
+                    const bestBall = findBet('Best Ball');
                     const matchPlay = findBet('Match Play');
 
                     const skinsAmt = skins?.amount ?? skins?.value ?? skins?.betAmount ?? '';
@@ -8590,12 +9246,14 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                     const ninePointAmt = ninePoint?.amount ?? ninePoint?.value ?? ninePoint?.betAmount ?? '';
                     const matchPlayAmt = matchPlay?.amount ?? matchPlay?.value ?? matchPlay?.betAmount ?? '';
                     const vegasAmt = vegas?.amount ?? vegas?.value ?? vegas?.betAmount ?? '';
+                    const bestBallAmt = bestBall?.amount ?? bestBall?.value ?? bestBall?.betAmount ?? '';
 
                     // Get player count based ONLY on explicitly selected round players
                     const selectedIds = (roundPlayerIds && roundPlayerIds.length) ? roundPlayerIds : [];
                     const playerCount = selectedIds.length || 0;
                     const hasThreePlayers = playerCount === 3;
                     const hasFourPlayers = playerCount === 4;
+                    const hasTeams = teamMode === 'teams' && teams && teams.length >= 2;
 
                     // Create bet items array
                     const betItems = [
@@ -8637,6 +9295,16 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                             configured: !!vegas && hasFourPlayers,
                             amount: betAmounts['Vegas'],
                             disabled: !hasFourPlayers
+                        },
+                        {
+                            name: 'Best Ball',
+                            descriptor: ' / hole',
+                            baseSummary: hasTeams
+                                ? ''
+                                : 'Requires teams',
+                            configured: !!bestBall && hasTeams,
+                            amount: betAmounts['Best Ball'],
+                            disabled: !hasTeams
                         },
                         // Individual junk bet types
                         ...JUNK_TYPES.map(junkType => {
@@ -9345,9 +10013,19 @@ const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
                         
                         {/* Rounds List - Always shown at bottom of Rounds page */}
                         <div className="mt-8 p-6 bg-white rounded-2xl shadow-xl border-2 border-gray-200">
-                            <h3 className="text-lg font-medium mb-3 text-gray-700 text-center">
-                                Current Active or Past Rounds ({rounds.length})
-                            </h3>
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-lg font-medium text-gray-700">
+                                    Current Active or Past Rounds ({rounds.length})
+                                </h3>
+                                {rounds.some(r => r.status === 'Active') && (
+                                    <button
+                                        onClick={handleEndAllActiveRounds}
+                                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg shadow-md transition duration-150"
+                                    >
+                                        End All Active Rounds
+                                    </button>
+                                )}
+                            </div>
                             <ul className="space-y-2 max-h-96 overflow-y-auto">
                                 {rounds
                                     .slice()
